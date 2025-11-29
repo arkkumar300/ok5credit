@@ -1,22 +1,56 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput, Alert, ScrollView, Image, Dimensions } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Camera, Mic } from 'lucide-react-native';
+import { ArrowLeft, Camera, Paperclip as PaperclipIcon, Mic, X } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import moment from 'moment';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import ApiService from './components/ApiServices';
 
 export default function TransactionScreen() {
-  const [amount, setAmount] = useState('88');
+  const [amount, setAmount] = useState(0);
   const [note, setNote] = useState('');
-  const [selectedDate, setSelectedDate] = useState('Aug 9, 2025');
+  const [selectedDate, setSelectedDate] = useState(moment().format('DD MMM YYYY'));
   const [activeType, setActiveType] = useState(null);
-
+  const [images, setImages] = useState("");
+  const [imageUri, setImageUri] = useState("");
+  const [billID, setBillID] = useState("");
   const router = useRouter();
-  const { personName, personType } = useLocalSearchParams();
+  const { transactionType, transaction_for, id, personName } = useLocalSearchParams();
 
   const handleNumberPress = (num) => {
-    if (amount === '0' || amount === '88') {
+    if (amount === '0') {
       setAmount(num);
     } else {
       setAmount(amount + num);
+    }
+  };
+
+  const uploadImage = async (uri) => {
+    try {
+      const formData = new FormData();
+
+      const fileName = uri.split('/').pop();
+      const fileType = fileName.split('.').pop();
+
+      formData.append('file', {
+        uri,
+        name: fileName,
+        type: `image/${fileType}`,
+      });
+      const response = await ApiService.post(`/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const result = response.data;
+      const rrr = `https://aquaservices.esotericprojects.tech/uploads/${result.file_info.filename}`;
+      console.log('Upload success:', rrr);
+      return rrr;
+    } catch (error) {
+      console.error('Upload failed:', error);
+      Alert.alert('Upload Failed', 'Could not upload image');
     }
   };
 
@@ -36,153 +70,320 @@ export default function TransactionScreen() {
     }
   };
 
-  const handleTypeSelect = (type) => {
-    setActiveType(type);
-    router.push({
-      pathname: '/transaction-success',
-      params: {
-        personName,
-        personType,
-        amount,
-        transactionType: type,
-        note,
-        date: selectedDate
+  const addTransaction = async () => {
+    const date = moment().format('YYYY-MM-DD'); // Today's date
+    const userData = await AsyncStorage.getItem("userData");
+    const userId = JSON.parse(userData).id;
+    const transactionFor = transaction_for === 'customer' ? 'customer' : 'supplier';
+
+    const commonPayload = {
+      userId: userId,
+      transaction_type: transactionType,
+      transaction_for: transactionFor,
+      amount: Number(amount),
+      description: note,
+      transaction_date: date,
+      ...(imageUri ? { transaction_pic: imageUri } : {}),
+      ...(billID ? { bill_id: billID } : {}),
+    };
+
+    const payload =
+      transactionFor === 'customer'
+        ? { ...commonPayload, customer_id: id } // Replace with actual customer_id
+        : { ...commonPayload, supplier_id: id }; // Replace with actual supplier_id
+
+    const url =
+      transactionFor === 'customer'
+        ? '/transactions/customer'
+        : '/transactions/supplier';
+
+    try {
+      console.log("transactionType ::", transaction_for);
+      const response = await ApiService.post(url, payload);
+      Alert.alert('Success', 'Transaction added successfully!');
+      if (transactionFor === 'customer') {
+        router.push({
+          pathname: '/customerDetails',
+          params: {
+            personName: personName,
+            personType: transaction_for,
+            personId: id
+          }
+        });
+      } else if (transactionFor === 'supplier') {
+        router.push({
+          pathname: '/supplierDetails',
+          params: {
+            personName: personName,
+            personType: transaction_for,
+            personId: id
+          }
+        });
       }
-    });
+    } catch (error) {
+      console.error('Error:', error);
+      Alert.alert('Error', 'Failed to add transaction');
+    }
   };
 
   const getInitial = (name) => {
     return name ? name.charAt(0).toUpperCase() : 'U';
   };
 
+  const requestPermissions = async () => {
+    const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+    const { status: libraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (cameraStatus !== 'granted' || libraryStatus !== 'granted') {
+      Alert.alert('Permission Required', 'Camera and photo library permissions are required to add images.');
+      return false;
+    }
+    return true;
+  };
+
+  const showImagePickerOptions = () => {
+    Alert.alert(
+      'Add Images',
+      'Choose an option',
+      [
+        { text: 'Camera', onPress: openCamera },
+        { text: 'Gallery', onPress: openGallery },
+        { text: 'Cancel', style: 'cancel' }
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const openCamera = async () => {
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        cameraType: ImagePicker.CameraType.back,
+      });
+
+      if (
+        result &&
+        !result.canceled &&
+        Array.isArray(result.assets) &&
+        result.assets.length > 0 &&
+        result.assets[0].uri
+      ) {
+        const localUri = result.assets[0].uri;
+
+        // Optional: preview the local image first
+        setImageUri(localUri);
+
+        // Upload the image (assuming uploadImage returns a URL)
+        const uploadedUrl = await uploadImage(localUri);
+
+        // Save the uploaded image URL
+        setImageUri(uploadedUrl);
+        setImages([uploadedUrl]); // Store it as an array with one image
+      } else {
+        console.log('Camera cancelled or no image captured');
+      }
+    } catch (error) {
+      console.error('Camera error:', error);
+      Alert.alert('Error', 'Failed to open camera');
+    }
+  };
+
+  const openGallery = async () => {
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+  
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+  
+      if (
+        result &&
+        !result.canceled &&
+        Array.isArray(result.assets) &&
+        result.assets.length > 0 &&
+        result.assets[0].uri
+      ) {
+        const localUri = result.assets[0].uri;
+  
+        // Optional: preview the local image first
+        setImageUri(localUri);
+  
+        // Upload the image (assuming uploadImage returns a URL)
+        const uploadedUrl = await uploadImage(localUri);
+  
+        // Save the uploaded image URL
+        setImageUri(uploadedUrl);
+        setImages([uploadedUrl]); // Store it as an array with one image
+      } else {
+        console.log('Gallery cancelled or no image selected');
+      }
+    } catch (error) {
+      console.error('Gallery error:', error);
+      Alert.alert('Error', 'Failed to open gallery');
+    }
+  };
+
+  const removeImage = (indexToRemove) => {
+    setImages(prevImages => prevImages.filter((_, index) => index !== indexToRemove));
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ArrowLeft size={24} color="#333" />
-        </TouchableOpacity>
-        <View style={styles.personInfo}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitial(personName)}</Text>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ArrowLeft size={24} color="#333" />
+          </TouchableOpacity>
+          <View style={styles.personInfo}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{getInitial(personName)}</Text>
+            </View>
+            <View>
+              <Text style={styles.personName}>{personName}</Text>
+              <Text style={styles.balanceText}>₹0</Text>
+            </View>
           </View>
-          <View>
-            <Text style={styles.personName}>{personName}</Text>
-            <Text style={styles.balanceText}>₹0</Text>
+          <View style={styles.securedBadge}>
+            <Text style={styles.securedText}>SECURED</Text>
+            <Text style={styles.lockIcon}>🔒</Text>
           </View>
         </View>
-        <View style={styles.securedBadge}>
-          <Text style={styles.securedText}>SECURED</Text>
-          <Text style={styles.lockIcon}>🔒</Text>
-        </View>
-      </View>
 
-      <View style={styles.amountContainer}>
-        <Text style={styles.currencySymbol}>₹</Text>
-        <Text style={styles.amountDisplay}>{amount}</Text>
-      </View>
-
-      <View style={styles.dateContainer}>
-        <Text style={styles.dateLabel}>Date</Text>
-        <View style={styles.dateSelector}>
-          <Text style={styles.dateText}>{selectedDate}</Text>
-          <Text style={styles.dropdownArrow}>⌄</Text>
-        </View>
-      </View>
-
-      <TouchableOpacity style={styles.addImagesButton}>
-        <Camera size={20} color="#4CAF50" />
-        <Text style={styles.addImagesText}>Add Images</Text>
-      </TouchableOpacity>
-
-      <View style={styles.noteContainer}>
-        <TextInput
-          style={styles.noteInput}
-          placeholder="Add Note (Optional)"
-          value={note}
-          onChangeText={setNote}
-          multiline
-        />
-        <TouchableOpacity style={styles.micButton}>
-          <Mic size={20} color="#666" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.calculator}>
-        <View style={styles.calculatorRow}>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('1')}>
-            <Text style={styles.calcButtonText}>1</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('2')}>
-            <Text style={styles.calcButtonText}>2</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('3')}>
-            <Text style={styles.calcButtonText}>3</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.calcButton, styles.operatorButton]} onPress={() => handleOperationPress('delete')}>
-            <Text style={styles.calcButtonText}>⌫</Text>
-          </TouchableOpacity>
+        <View style={styles.amountContainer}>
+          <Text style={styles.currencySymbol}>₹</Text>
+          <Text style={styles.amountDisplay}>{amount}</Text>
         </View>
 
-        <View style={styles.calculatorRow}>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('4')}>
-            <Text style={styles.calcButtonText}>4</Text>
+        <View style={styles.dateContainer}>
+          <Text style={styles.dateLabel}>Date</Text>
+          <View style={styles.dateSelector}>
+            <Text style={styles.dateText}>{selectedDate}</Text>
+            <Text style={styles.dropdownArrow}>⌄</Text>
+          </View>
+        </View>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity style={styles.addImagesButton} onPress={showImagePickerOptions}>
+            <Camera size={20} color="#4CAF50" />
+            <Text style={styles.addImagesText}>Add Images</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('5')}>
-            <Text style={styles.calcButtonText}>5</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('6')}>
-            <Text style={styles.calcButtonText}>6</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.calcButton, styles.operatorButton]} onPress={() => handleOperationPress('clear')}>
-            <Text style={styles.calcButtonText}>×</Text>
+          {transactionType === 'you_gave' && transaction_for === 'customer'&&
+            <TouchableOpacity
+              style={[styles.addImagesButton, styles.addBillButton, { marginLeft: 20 }]}
+              onPress={() => {
+                router.push({
+                  pathname: '/billGenaration',params:{customerId:id,bill_type:"BILL"}
+                });
+              }}
+            >
+              <PaperclipIcon size={20} color="#ffffff" />
+              <Text style={[styles.addImagesText, styles.addBillText]}>Add Bill</Text>
+            </TouchableOpacity>}
+        </View>
+
+        {images && (
+          <View style={styles.imagesContainer}>
+            <Text style={styles.imagesTitle}>Selected Images </Text>
+            <View style={styles.imageWrapper}>
+              <Image source={{ uri: imageUri }} style={styles.selectedImage} />
+            </View>
+          </View>
+        )}
+
+        <View style={styles.noteContainer}>
+          <TextInput
+            style={styles.noteInput}
+            placeholder="Add Note (Optional)"
+            value={note}
+            onChangeText={setNote}
+            multiline
+          />
+          <TouchableOpacity style={styles.micButton}>
+            <Mic size={20} color="#666" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.calculatorRow}>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('7')}>
-            <Text style={styles.calcButtonText}>7</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('8')}>
-            <Text style={styles.calcButtonText}>8</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('9')}>
-            <Text style={styles.calcButtonText}>9</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.calcButton, styles.operatorButton]}>
-            <Text style={styles.calcButtonText}>—</Text>
-          </TouchableOpacity>
+        <View style={styles.calculator}>
+          <View style={styles.calculatorRow}>
+            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('1')}>
+              <Text style={styles.calcButtonText}>1</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('2')}>
+              <Text style={styles.calcButtonText}>2</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('3')}>
+              <Text style={styles.calcButtonText}>3</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.calcButton, styles.operatorButton]} onPress={() => handleOperationPress('delete')}>
+              <Text style={styles.calcButtonText}>⌫</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.calculatorRow}>
+            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('4')}>
+              <Text style={styles.calcButtonText}>4</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('5')}>
+              <Text style={styles.calcButtonText}>5</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('6')}>
+              <Text style={styles.calcButtonText}>6</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.calcButton, styles.operatorButton]} onPress={() => handleOperationPress('clear')}>
+              <Text style={styles.calcButtonText}>×</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.calculatorRow}>
+            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('7')}>
+              <Text style={styles.calcButtonText}>7</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('8')}>
+              <Text style={styles.calcButtonText}>8</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('9')}>
+              <Text style={styles.calcButtonText}>9</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.calcButton, styles.operatorButton]}>
+              <Text style={styles.calcButtonText}>—</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.calculatorRow}>
+            <TouchableOpacity style={styles.calcButton} onPress={() => handleOperationPress('decimal')}>
+              <Text style={styles.calcButtonText}>.</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('0')}>
+              <Text style={styles.calcButtonText}>0</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.calcButton, styles.equalsButton]}>
+              <Text style={styles.calcButtonText}>=</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.calcButton, styles.operatorButton]}>
+              <Text style={styles.calcButtonText}>+</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.calculatorRow}>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleOperationPress('decimal')}>
-            <Text style={styles.calcButtonText}>.</Text>
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={styles.receivedButton}
+            onPress={() => addTransaction()}
+          >
+            <Text style={styles.receivedText}>Submit</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('0')}>
-            <Text style={styles.calcButtonText}>0</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.calcButton, styles.equalsButton]}>
-            <Text style={styles.calcButtonText}>=</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.calcButton, styles.operatorButton]}>
-            <Text style={styles.calcButtonText}>+</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
 
-      <View style={styles.actionButtons}>
-        <TouchableOpacity
-          style={styles.receivedButton}
-          onPress={() => handleTypeSelect('received')}
-        >
-          <Text style={styles.receivedText}>↓ Received</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.givenButton}
-          onPress={() => handleTypeSelect('given')}
-        >
-          <Text style={styles.givenText}>↑ Given</Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -191,6 +392,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  scrollView: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -292,6 +496,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginHorizontal: 30, alignSelf: 'center',
+    marginBottom: 20,
+  },
   addImagesButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -299,15 +509,64 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#4CAF50',
     borderRadius: 8,
-    paddingVertical: 16,
-    marginHorizontal: 80,
-    marginBottom: 40,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    flex: 0.48,
+  },
+  addBillButton: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
   },
   addImagesText: {
     fontSize: 16,
     color: '#4CAF50',
     fontWeight: '500',
     marginLeft: 8,
+  },
+  addBillText: {
+    color: '#ffffff',
+  },
+  imagesContainer: {
+    marginHorizontal: 24,
+    marginBottom: 20,
+  },
+  imagesTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  imagesScrollView: {
+    paddingVertical: 8,
+  },
+  imageWrapper: {
+    position: 'relative',
+    marginRight: 12,
+  },
+  selectedImage: {
+    width: '90%',
+    height: 200, resizeMode: 'stretch',
+    borderRadius: 8, margin: 10,
+    backgroundColor: '#f0f0f0',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#FF4444',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   noteContainer: {
     flexDirection: 'row',

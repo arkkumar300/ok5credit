@@ -1,35 +1,84 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  SafeAreaView,
+  Modal,
+  FlatList,
+  Image,
+  Platform,
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, User, Phone } from 'lucide-react-native';
+import { ArrowLeft, User, Phone, Contact } from 'lucide-react-native';
+import { Appbar } from 'react-native-paper';
+import ApiService from './components/ApiServices';
+import * as Contacts from 'expo-contacts';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AddSupplierScreen() {
   const [name, setName] = useState('');
-  const [mobileNumber, setMobileNumber] = useState('');
-  const [showMobileInput, setShowMobileInput] = useState(false);
+  const [contacts, setContacts] = useState([]);
+  const [mobile, setMobile] = useState('');
   const router = useRouter();
+  const [modalVisible, setModalVisible] = useState(false);
 
-  const handleConfirm = () => {
-    if (name.trim()) {
-      router.push({
-        pathname: '/transaction',
-        params: {
-          personName: name,
-          personType: 'supplier',
-          isNew: 'true'
+  const handleConfirm = async () => {
+    const userData=await AsyncStorage.getItem("userData");
+    const userId=JSON.parse(userData).id;
+    if (name.trim() && mobile.trim()) {
+      try {
+        const response = await ApiService.post("/supplier", {
+          userId:Number(userId),
+          name: name.trim(),
+          mobile: mobile.trim()
+        });
+
+        if (response.status === 200 || response.status === 201) {
+          alert('service added successfully');
+          router.push('/dashboard');
+        } else {
+          alert('Something went wrong while adding the customer.');
         }
-      });
+      } catch (error) {
+        console.error(error);
+        alert('API request failed. Check your server.');
+      }
     }
+  };
+
+  const openContacts = async () => {
+    const { status } = await Contacts.requestPermissionsAsync();
+
+    if (status === 'granted') {
+      const { data } = await Contacts.getContactsAsync({
+        fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Image],
+      });
+
+      if (data.length > 0) {
+        setContacts(data.filter(c => c.phoneNumbers && c.phoneNumbers.length > 0));
+        setModalVisible(true);
+      }
+    } else {
+      alert('Permission to access contacts was denied');
+    }
+  };
+
+  const handleContactSelect = (contact) => {
+    console.log("rrr ::", contact)
+    setName(contact.name);
+    setMobile(contact.phoneNumbers[0]?.number || '');
+    setModalVisible(false);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ArrowLeft size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add Supplier By Yourself</Text>
-      </View>
+      <Appbar.Header style={{ elevation: 5 }}>
+        <ArrowLeft size={24} color={'#2E7D32'} style={{ marginStart: 10 }} onPress={() => router.back()} />
+        <Appbar.Content title="Add Supplier" titleStyle={{ textAlign: 'center', color: '#333333', fontWeight: 'bold' }} />
+      </Appbar.Header>
 
       <View style={styles.content}>
         <View style={styles.inputContainer}>
@@ -46,39 +95,76 @@ export default function AddSupplierScreen() {
           </View>
         </View>
 
-        {!showMobileInput ? (
-          <TouchableOpacity 
-            style={styles.addMobileButton}
-            onPress={() => setShowMobileInput(true)}
-          >
-            <Phone size={20} color="#666" />
-            <Text style={styles.addMobileText}>+ Add Mobile Number (Optional)</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Mobile Number</Text>
-            <View style={styles.inputWrapper}>
-              <Phone size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                value={mobileNumber}
-                onChangeText={setMobileNumber}
-                placeholder="Enter mobile number"
-                keyboardType="numeric"
-                maxLength={10}
-              />
-            </View>
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Mobile Number</Text>
+          <View style={styles.inputWrapper}>
+            <Phone size={20} color="#666" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              value={mobile}
+              onChangeText={setMobile}
+              placeholder="Enter mobile number"
+              keyboardType="numeric"
+            />
           </View>
-        )}
+        </View>
+        <TouchableOpacity style={styles.contactsButton} onPress={openContacts}>
+          <Contact size={20} color="#2E7D32" />
+          <Text style={styles.contactsButtonText}>Choose from Contacts</Text>
+        </TouchableOpacity>
       </View>
 
-      <TouchableOpacity 
-        style={[styles.confirmButton, name.trim() ? styles.confirmButtonActive : styles.confirmButtonDisabled]}
+      <TouchableOpacity
+        style={[
+          styles.confirmButton,
+          name.trim() ? styles.confirmButtonActive : styles.confirmButtonDisabled,
+        ]}
         onPress={handleConfirm}
         disabled={!name.trim()}
       >
         <Text style={styles.confirmButtonText}>Confirm</Text>
       </TouchableOpacity>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Select a Contact</Text>
+            <FlatList
+              data={contacts}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.contactItem} onPress={() => handleContactSelect(item)}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {item.imageAvailable && item.image?.uri ? (
+                      <Image source={{ uri: item.image.uri }} style={styles.contactImage} />
+                    ) : (
+                      <View style={[styles.contactImage, styles.placeholderImage]}>
+                        <Text style={styles.initialText}>
+                          {item.name?.[0]?.toUpperCase() || '?'}
+                        </Text>
+                      </View>)}
+                    <View style={{ marginLeft: 10 }}>
+                      <Text style={styles.contactName}>{item.name}</Text>
+                      <Text style={styles.contactNumber}>
+                        {item.phoneNumbers[0]?.number || 'No number'}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setModalVisible(false)}>
+              <Text style={styles.modalCloseButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -86,82 +172,114 @@ export default function AddSupplierScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    backgroundColor: '#fff',
   },
   content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 32,
+    padding: 20,
+  },
+  contactImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#ccc',
+  },
+  initialText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 18,
+    textAlign: 'center',
+    lineHeight: 40, // should match the height of the image
+  },
+  placeholderImage: {
+    backgroundColor: '#999',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   inputContainer: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   inputLabel: {
-    fontSize: 14,
-    color: '#4CAF50',
-    marginBottom: 8,
-    fontWeight: '500',
+    marginBottom: 5,
+    fontWeight: 'bold',
+    color: '#333',
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#4CAF50',
+    borderColor: '#ccc',
+    borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
   },
   inputIcon: {
-    marginRight: 12,
+    marginRight: 10,
   },
   input: {
     flex: 1,
-    fontSize: 16,
-    paddingVertical: 16,
-    color: '#333',
-  },
-  addMobileButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  addMobileText: {
-    fontSize: 16,
-    color: '#666',
-    marginLeft: 12,
+    height: 40,
   },
   confirmButton: {
-    marginHorizontal: 24,
-    marginBottom: 32,
-    paddingVertical: 16,
+    marginHorizontal: 20,
+    padding: 15,
     borderRadius: 8,
     alignItems: 'center',
+    marginBottom: 30,
   },
   confirmButtonActive: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#2E7D32',
   },
   confirmButtonDisabled: {
-    backgroundColor: '#CCCCCC',
+    backgroundColor: '#ccc',
   },
   confirmButtonText: {
-    fontSize: 16,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  contactsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  contactsButtonText: {
+    marginLeft: 8,
+    color: '#2E7D32',
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  contactItem: {
+    paddingVertical: 10,
+    borderBottomColor: '#eee',
+    borderBottomWidth: 1,
+  },
+  contactName: {
     fontWeight: '600',
-    color: 'white',
+  },
+  contactNumber: {
+    color: '#666',
+    fontSize: 12,
+  },
+  modalCloseButton: {
+    marginTop: 15,
+    alignItems: 'center',
+  },
+  modalCloseButtonText: {
+    color: '#2E7D32',
+    fontWeight: 'bold',
   },
 });

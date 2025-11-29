@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Smartphone } from 'lucide-react-native';
 
@@ -20,54 +20,56 @@ export default function SplashScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.logoContainer}>
-          <View style={styles.logo}>
-            <Text style={styles.logoText}>OK</Text>
-          </View>
-          <Text style={styles.appName}>OK Credit</Text>
-          <Text style={styles.tagline}>Digital Khata for Business</Text>
-        </View>
-
-        <View style={styles.illustrationContainer}>
-          <Image
-            source={{ uri: 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=400&h=300' }}
-            style={styles.illustration}
-            resizeMode="contain"
-          />
-        </View>
-
-        <View style={styles.featuresContainer}>
-          <View style={styles.feature}>
-            <Smartphone size={24} color="#4CAF50" />
-            <Text style={styles.featureText}>Easy to use digital khata</Text>
-          </View>
-          <View style={styles.feature}>
-            <View style={styles.featureIcon}>
-              <Text style={styles.featureIconText}>₹</Text>
+    <ScrollView>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>
+          <View style={styles.logoContainer}>
+            <View style={styles.logo}>
+              <Text style={styles.logoText}>Aqua</Text>
             </View>
-            <Text style={styles.featureText}>Track all your transactions</Text>
+            <Text style={styles.appName}>Aqua Credit</Text>
+            <Text style={styles.tagline}>Digital Khata for Business</Text>
           </View>
-          <View style={styles.feature}>
-            <View style={styles.featureIcon}>
-              <Text style={styles.featureIconText}>🔒</Text>
+
+          <View style={styles.illustrationContainer}>
+            <Image
+              source={{ uri: 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=400&h=300' }}
+              style={styles.illustration}
+              resizeMode="contain"
+            />
+          </View>
+
+          <View style={styles.featuresContainer}>
+            <View style={styles.feature}>
+              <Smartphone size={24} color="#4CAF50" />
+              <Text style={styles.featureText}>Easy to use digital khata</Text>
             </View>
-            <Text style={styles.featureText}>100% secure and private</Text>
+            <View style={styles.feature}>
+              <View style={styles.featureIcon}>
+                <Text style={styles.featureIconText}>₹</Text>
+              </View>
+              <Text style={styles.featureText}>Track all your transactions</Text>
+            </View>
+            <View style={styles.feature}>
+              <View style={styles.featureIcon}>
+                <Text style={styles.featureIconText}>🔒</Text>
+              </View>
+              <Text style={styles.featureText}>100% secure and private</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      {showGetStarted && (
-        <TouchableOpacity style={styles.getStartedButton} onPress={handleGetStarted}>
-          <Text style={styles.getStartedText}>Get Started</Text>
-        </TouchableOpacity>
-      )}
+        {showGetStarted && (
+          <TouchableOpacity style={styles.getStartedButton} onPress={handleGetStarted}>
+            <Text style={styles.getStartedText}>Get Started</Text>
+          </TouchableOpacity>
+        )}
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Trusted by 10M+ businesses across India</Text>
-      </View>
-    </SafeAreaView>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Trusted by 10M+ businesses across India</Text>
+        </View>
+      </SafeAreaView>
+    </ScrollView>
   );
 }
 
@@ -150,7 +152,7 @@ const styles = StyleSheet.create({
   },
   getStartedButton: {
     backgroundColor: '#4CAF50',
-    marginHorizontal: 24,
+    margin: 24,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',

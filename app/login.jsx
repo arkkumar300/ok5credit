@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, Image, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Phone } from 'lucide-react-native';
 
@@ -11,59 +11,61 @@ export default function LoginScreen() {
     if (phoneNumber.length === 10) {
       router.push({
         pathname: '/otp',
-        params: { phoneNumber }
+        params: { mobile:phoneNumber }
       });
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.logoContainer}>
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>OK</Text>
-        </View>
-        <Text style={styles.appName}>OK Credit</Text>
-        <Text style={styles.tagline}>Digital Khata for Business</Text>
-      </View>
-
-      <View style={styles.content}>
-        <Text style={styles.title}>Enter your mobile number</Text>
-        <Text style={styles.subtitle}>We'll send you an OTP to verify</Text>
-
-        <View style={styles.phoneInputContainer}>
-          <View style={styles.countryCode}>
-            <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
+    <ScrollView style={{backgroundColor:'#fff'}}>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.logoContainer}>
+          <View style={styles.logo}>
+            <Text style={styles.logoText}>Aqua</Text>
           </View>
-          <TextInput
-            style={styles.phoneInput}
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            placeholder="Enter mobile number"
-            keyboardType="numeric"
-            maxLength={10}
-            autoFocus={true}
-          />
+          <Text style={styles.appName}>Aqua Credit</Text>
+          <Text style={styles.tagline}>Digital Khata for Business</Text>
         </View>
 
-        <TouchableOpacity 
-          style={[styles.continueButton, phoneNumber.length === 10 ? styles.continueButtonActive : styles.continueButtonDisabled]}
-          onPress={handleContinue}
-          disabled={phoneNumber.length !== 10}
-        >
-          <Text style={styles.continueButtonText}>Continue</Text>
-        </TouchableOpacity>
+        <View style={styles.content}>
+          <Text style={styles.title}>Enter your mobile number</Text>
+          <Text style={styles.subtitle}>We'll send you an OTP to verify</Text>
 
-        <Text style={styles.termsText}>
-          By continuing, you agree to our{' '}
-          <Text style={styles.linkText}>Terms of Service</Text> and{' '}
-          <Text style={styles.linkText}>Privacy Policy</Text>
-        </Text>
-      </View>
+          <View style={styles.phoneInputContainer}>
+            <View style={styles.countryCode}>
+              <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
+            </View>
+            <TextInput
+              style={styles.phoneInput}
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              placeholder="Enter mobile number"
+              keyboardType="numeric"
+              maxLength={10}
+              autoFocus={true}
+            />
+          </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Trusted by 10M+ businesses across India</Text>
-      </View>
-    </SafeAreaView>
+          <TouchableOpacity
+            style={[styles.continueButton, phoneNumber.length === 10 ? styles.continueButtonActive : styles.continueButtonDisabled]}
+            onPress={handleContinue}
+            disabled={phoneNumber.length !== 10}
+          >
+            <Text style={styles.continueButtonText}>Continue</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.termsText}>
+            By continuing, you agree to our{' '}
+            <Text style={styles.linkText}>Terms of Service</Text> and{' '}
+            <Text style={styles.linkText}>Privacy Policy</Text>
+          </Text>
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Trusted by 10M+ businesses across India</Text>
+        </View>
+      </SafeAreaView>
+    </ScrollView>
   );
 }
 
@@ -174,7 +176,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 24,
-    paddingBottom: 32,
+    paddingBottom: 32,marginVertical:24,
     alignItems: 'center',
   },
   footerText: {

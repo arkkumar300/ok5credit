@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, BackHandler, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Users, Search, Filter, TrendingUp, Settings, X } from 'lucide-react-native';
+import { MoreHorizontal, Users, Search, Filter, TrendingUp, Settings, X, Share } from 'lucide-react-native';
+import Modal from 'react-native-modal';
+import { Appbar, Avatar } from 'react-native-paper';
+import ApiService from './components/ApiServices';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import exportDataAsPDF from './components/downloadPDF';
 
-// Mock data storage
 let transactionData = {
   customers: [
     { id: 1, name: 'madhu', amount: 111, type: 'Advance', date: 'Today', initial: 'M', color: '#FFC107' },
@@ -16,14 +20,167 @@ let transactionData = {
   ]
 };
 
+const FILTER_CATEGORIES = ['Sort By', 'Name'];
+
+const SORT_OPTIONS = [
+  'Default',
+  'Amount: Low to High',
+  'Amount: High to Low',
+  'Oldest First',
+  'Newest First',
+];
+
+const NAME = ['A-Z', 'Z-A'];
+
 export default function DashboardScreen() {
   const [activeTab, setActiveTab] = useState('Customer');
+  const [netBalance, setNetBalance] = useState(0);
   const [customers, setCustomers] = useState(transactionData.customers);
   const [suppliers, setSuppliers] = useState(transactionData.suppliers);
-  const router = useRouter();
+  const [customersList, setCustomersList] = useState([]);
+  const [suppliersList, setSuppliersList] = useState([]);
+  const [isModalVisible, setModalVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('Sort By');
+  const [selectedOption, setSelectedOption] = useState('Default');
 
-  const currentData = activeTab === 'Customer' ? customers : suppliers;
+  const fetchDashboardData = async () => {
+    const userData = await AsyncStorage.getItem("userData");
+    const userId = JSON.parse(userData).id;
+    try {
 
+      const response = await ApiService.post("/dashboard/businessOwner", { userId });
+      if (response.data.success) {
+        const fetchedCustomers = response.data.Customers.map((c) => ({
+          id: c.id,
+          name: c.name,
+          amount: parseFloat(c.current_balance),
+          type: parseFloat(c.current_balance) >= 0 ? 'Due' : 'Advance',
+          date: new Date(c.created_at).toDateString(),
+          initial: c.name.charAt(0).toUpperCase(),
+          color: '#4CAF50', // Default color
+        }));
+
+        const fetchedSuppliers = response.data.Suppliers.map((s) => ({
+          id: s.id,
+          name: s.name,
+          amount: parseFloat(s.current_balance),
+          type: parseFloat(s.current_balance) >= 0 ? 'Due' : 'Advance',
+          date: new Date(s.created_at).toDateString(),
+          initial: s.name.charAt(0).toUpperCase(),
+          color: '#2196F3', // Differentiate from customers
+        }));
+
+        setCustomers(fetchedCustomers);
+        setSuppliers(fetchedSuppliers);
+        setCustomersList(response?.data?.Customers);
+        setSuppliersList(response?.data?.Suppliers);
+
+        calculateNetBalance(fetchedCustomers, fetchedSuppliers);
+      } else {
+        Alert.alert('Error', response.data.message || 'Something went wrong');
+      }
+    } catch (error) {
+      console.error('Dashboard API Error:', error.message);
+      Alert.alert('Network Error', 'Failed to load dashboard data.');
+    }
+  };
+  const calculateNetBalance = (customersList, suppliersList) => {
+    const totalCustomer = customersList.reduce((sum, c) => sum + c.amount, 0);
+    const totalSupplier = suppliersList.reduce((sum, s) => sum + s.amount, 0);
+    const balance = totalSupplier - totalCustomer;
+    setNetBalance(balance);
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const toggleModal = () => setModalVisible(!isModalVisible); const router = useRouter();
+
+  const getFilteredData = () => {
+    let data = activeTab === 'Customer' ? [...customers] : [...suppliers];
+
+    switch (selectedCategory) {
+      case 'Sort By':
+        if (selectedOption === 'Amount: High to Low') {
+          data.sort((a, b) => b.amount - a.amount);
+        } else if (selectedOption === 'Amount: Low to High') {
+          data.sort((a, b) => a.amount - b.amount);
+        } else if (selectedOption === 'Newest First') {
+          data.sort((a, b) => new Date(b.date) - new Date(a.date));
+        } else if (selectedOption === 'Oldest First') {
+          data.sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
+        break;
+
+      case 'Payment Status':
+        if (selectedOption === 'Due') {
+          data = data.filter(person => person.type === 'Due');
+        } else if (selectedOption === 'Advance') {
+          data = data.filter(person => person.type === 'Advance');
+        }
+        break;
+
+      case 'Name':
+        if (selectedOption === 'A-Z') {
+          data.sort((a, b) => a.name.localeCompare(b.name));
+        } else if (selectedOption === 'Z-A') {
+          data.sort((a, b) => b.name.localeCompare(a.name));
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    return data;
+  };
+
+
+  const currentData = getFilteredData();
+
+  const renderOptions = () => {
+    switch (selectedCategory) {
+      case 'Sort By':
+        return SORT_OPTIONS.map((option) => (
+          <TouchableOpacity
+            key={option}
+            style={styles.optionRow}
+            onPress={() => {
+              console.log("option:::", option)
+              setSelectedOption(option)
+            }}
+          >
+            <Text style={styles.optionText}>{option}</Text>
+            {selectedOption === option && <View style={styles.radioSelected} />}
+          </TouchableOpacity>
+        ));
+      case 'Payment Status':
+        return PAYMENT_STATUS.map((option) => (
+          <TouchableOpacity
+            key={option}
+            style={styles.optionRow}
+            onPress={() => setSelectedOption(option)}
+          >
+            <Text style={styles.optionText}>{option}</Text>
+            {selectedOption === option && <View style={styles.radioSelected} />}
+          </TouchableOpacity>
+        ));
+      case 'Name':
+        return NAME.map((option) => (
+          <TouchableOpacity
+            key={option}
+            style={styles.optionRow}
+            onPress={() => setSelectedOption(option)}
+          >
+            <Text style={styles.optionText}>{option}</Text>
+            {selectedOption === option && <View style={styles.radioSelected} />}
+          </TouchableOpacity>
+        ));
+      default:
+        return null;
+    }
+  };
   const handleAddCustomer = () => {
     router.push('/add-customer');
   };
@@ -33,14 +190,26 @@ export default function DashboardScreen() {
   };
 
   const handlePersonClick = (person) => {
-    router.push({
-      pathname: '/transaction',
-      params: {
-        personName: person.name,
-        personType: activeTab.toLowerCase(),
-        personId: person.id
-      }
-    });
+    if (activeTab.toLowerCase() === "customer") {
+      router.push({
+        pathname: '/customerDetails',
+        params: {
+          personName: person.name,
+          personType: activeTab.toLowerCase(),
+          personId: person.id
+        }
+      });
+    } else {
+      router.push({
+        pathname: '/supplierDetails',
+        params: {
+          personName: person.name,
+          personType: activeTab.toLowerCase(),
+          personId: person.id
+        }
+      });
+
+    }
   };
 
   const handleMyPlanPress = () => {
@@ -67,8 +236,8 @@ export default function DashboardScreen() {
       const existingCustomer = customers.find(c => c.name.toLowerCase() === personName.toLowerCase());
       if (existingCustomer) {
         // Update existing customer
-        setCustomers(prev => prev.map(c => 
-          c.id === existingCustomer.id 
+        setCustomers(prev => prev.map(c =>
+          c.id === existingCustomer.id
             ? { ...c, amount: newTransaction.amount, type: newTransaction.type, date: 'Today' }
             : c
         ));
@@ -80,8 +249,8 @@ export default function DashboardScreen() {
       const existingSupplier = suppliers.find(s => s.name.toLowerCase() === personName.toLowerCase());
       if (existingSupplier) {
         // Update existing supplier
-        setSuppliers(prev => prev.map(s => 
-          s.id === existingSupplier.id 
+        setSuppliers(prev => prev.map(s =>
+          s.id === existingSupplier.id
             ? { ...s, amount: newTransaction.amount, type: newTransaction.type, date: 'Today' }
             : s
         ));
@@ -100,17 +269,52 @@ export default function DashboardScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        // Confirm exit
+        Alert.alert('Exit App', 'Are you sure you want to exit?', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Exit', onPress: () => BackHandler.exitApp() },
+        ]);
+        return true; // prevent default back action
+      }
+    );
+
+    return () => backHandler.remove();
+  }, []);
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <ArrowLeft size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>OK Credit</Text>
-        <TouchableOpacity style={styles.shareButton}>
-          <Text style={styles.shareText}>Share</Text>
-        </TouchableOpacity>
-      </View>
+
+<Appbar.Header style={{ elevation: 5 }}>
+  <Avatar.Text
+    label="A"
+    size={45}
+    color="#ffffff"
+    style={{ backgroundColor: '#2E7D32', marginStart: 8 }}
+  />
+
+  <Appbar.Content
+    title="Aqua Credit"
+    titleStyle={{ textAlign: 'center', fontWeight: 'bold' }}
+  />
+
+<Appbar.Action
+  icon={() => <Share size={22} color="#2E7D32" />}
+  onPress={() => {
+   if (activeTab === 'Customer') {
+    
+     exportDataAsPDF(customersList, `${activeTab}`);
+    } else {
+     exportDataAsPDF(suppliersList, `${activeTab}`);
+    
+   }
+  }}
+  color="#2E7D32"
+/>
+
+</Appbar.Header>
 
       <View style={styles.verifyBanner}>
         <View style={styles.verifyIcon}>
@@ -125,7 +329,11 @@ export default function DashboardScreen() {
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'Customer' && styles.activeTab]}
-          onPress={() => setActiveTab('Customer')}
+          onPress={() => {
+            setActiveTab('Customer');
+            setSelectedCategory('Sort By');
+            setSelectedOption('Default');
+          }}
         >
           <Text style={[styles.tabText, activeTab === 'Customer' && styles.activeTabText]}>
             Customer
@@ -133,14 +341,18 @@ export default function DashboardScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'Supplier' && styles.activeTab]}
-          onPress={() => setActiveTab('Supplier')}
+          onPress={() => {
+            setActiveTab('Supplier');
+            setSelectedCategory('Sort By');
+            setSelectedOption('Default');
+          }}
         >
           <Text style={[styles.tabText, activeTab === 'Supplier' && styles.activeTabText]}>
             Supplier
           </Text>
         </TouchableOpacity>
         <View style={styles.tabActions}>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity style={styles.iconButton} onPress={toggleModal}>
             <Filter size={20} color="#666" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton}>
@@ -151,7 +363,7 @@ export default function DashboardScreen() {
 
       <View style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>Net Balance</Text>
-        <Text style={styles.balanceAmount}>₹100</Text>
+        <Text style={styles.balanceAmount}>₹ {netBalance}</Text>
         <Text style={styles.balanceSubtext}>{currentData.length} Accounts</Text>
         <Text style={styles.balanceType}>You Pay</Text>
       </View>
@@ -203,10 +415,70 @@ export default function DashboardScreen() {
           <Text style={styles.navText}>My Plan</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={handleMorePress}>
-          <Text style={[styles.navText, { fontSize: 24, marginTop: -4 }]}>⋯</Text>
+          <MoreHorizontal size={24} color="#666" />
           <Text style={styles.navText}>More</Text>
         </TouchableOpacity>
       </View>
+      <Modal
+        isVisible={isModalVisible}
+        animationIn="slideInLeft"
+        animationOut="slideOutLeft"
+        style={styles.modal}
+        onBackdropPress={toggleModal}
+      >
+        <View style={styles.modalContent}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Filter Bills</Text>
+            <TouchableOpacity onPress={toggleModal}>
+              <X size={24} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Tabs */}
+          <View style={styles.body}>
+            <View style={styles.sidebar}>
+              {FILTER_CATEGORIES.map((category) => (
+                <TouchableOpacity
+                  key={category}
+                  onPress={() => setSelectedCategory(category)}
+                  style={[
+                    styles.tabButton,
+                    selectedCategory === category && styles.tabButtonActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tabText,
+                      selectedCategory === category && styles.tabTextActive,
+                    ]}
+                  >
+                    {category}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.optionsContainer}>{renderOptions()}</View>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <TouchableOpacity
+              style={[styles.footerButton, { backgroundColor: '#E6F0E6' }]}
+              onPress={() => {
+                setSelectedOption('Default');
+                setSelectedCategory('Sort By');
+              }}
+            >
+              <Text style={{ color: '#2F4F2F' }}>Clear All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.footerButton, { backgroundColor: '#228B22' }]} onPress={toggleModal}>
+              <Text style={{ color: '#fff' }}>Apply</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -295,7 +567,12 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     backgroundColor: '#F1F8E9',
-    borderRadius: 6,
+    borderRadius: 6, elevation: 3,
+    shadowColor: '#2E7D32',       // Dark green
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+
   },
   tabText: {
     fontSize: 14,
@@ -416,7 +693,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 16,
     paddingVertical: 16,
-    borderRadius: 8,
+    borderRadius: 8, elevation: 5
   },
   addButtonText: {
     color: 'white',
@@ -439,5 +716,100 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 4,
+  },
+  filterButton: {
+    backgroundColor: '#228B22',
+    padding: 12,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  filterText: {
+    color: '#fff',
+    marginLeft: 8,
+  },
+  modal: {
+    margin: 0,
+    justifyContent: 'flex-start',
+  },
+  modalContent: {
+    flex: 1,
+    backgroundColor: 'white',
+    width: '90%',
+    paddingTop: 40,
+    paddingHorizontal: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  body: {
+    flexDirection: 'row',
+    flex: 1,
+  },
+  sidebar: {
+    width: '35%',
+    backgroundColor: '#F8F8F8',
+    paddingRight: 8,
+    borderRightWidth: 1,
+    borderRightColor: '#DDD',
+  },
+  tabButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+  },
+  tabButtonActive: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#228B22',
+    backgroundColor: '#E6F0E6',
+  },
+  tabText: {
+    fontSize: 14,
+    color: '#555',
+  },
+  tabTextActive: {
+    color: '#228B22',
+    fontWeight: 'bold',
+  },
+  optionsContainer: {
+    flex: 1,
+    padding: 12,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  radioSelected: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#228B22',
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#DDD',
+  },
+  footerButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 6,
+  },
+  placeholder: {
+    paddingVertical: 20,
   },
 });

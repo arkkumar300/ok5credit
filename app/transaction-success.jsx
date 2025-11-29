@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Share, Phone, MessageCircle, Calendar, PhoneCall } from 'lucide-react-native';
+import { Appbar } from 'react-native-paper';
 
 export default function TransactionSuccessScreen() {
   const router = useRouter();
@@ -29,7 +30,7 @@ export default function TransactionSuccessScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      <Appbar.Header style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackToDashboard}>
           <ArrowLeft size={24} color="#333" />
         </TouchableOpacity>
@@ -50,7 +51,7 @@ export default function TransactionSuccessScreen() {
             <Phone size={20} color="#666" />
           </TouchableOpacity>
         </View>
-      </View>
+      </Appbar.Header>
 
       <View style={styles.adBanner}>
         <Text style={styles.adText}>CoinDCX - Trade Without Limits. No Expiry. Just Opportunities.</Text>

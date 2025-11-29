@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Check, X, Smartphone, FileText, Headphones, Monitor, Image, Package } from 'lucide-react-native';
+import { ArrowLeft,Settings,TrendingUp, Check, X, Smartphone, FileText, Headphones, Monitor, Image, Package, DotIcon, MoreHorizontal, Share } from 'lucide-react-native';
+import { Appbar, Avatar } from 'react-native-paper';
 
 export default function MyPlanScreen() {
   const [selectedPlan, setSelectedPlan] = useState('ads-free');
@@ -59,13 +60,20 @@ export default function MyPlanScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ArrowLeft size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My plans</Text>
-        <View style={styles.placeholder} />
-      </View>
+      <Appbar.Header>
+        <Avatar.Text label='A' size={45} color='#ffffff' style={{ backgroundColor: '#2E7D32', marginStart: 8 }} />
+        <Appbar.Content title="My Plans" titleStyle={{ textAlign: 'center', fontWeight: 'bold' }} />
+        <Avatar.Icon icon={() => <Share size={22} color={'#2E7D32'} />} size={45} style={{
+          backgroundColor: '#F1F8E9', shadowColor: '#2E7D32',
+          shadowColor: '#2E7D32',       // Dark green
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 4,
+          elevation: 5, marginEnd: 8,                 // For Android
+          borderRadius: 8
+        }} />
+      </Appbar.Header>
+
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {plans.map((plan) => (
@@ -125,6 +133,21 @@ export default function MyPlanScreen() {
           <Text style={styles.continueButtonText}>Continue</Text>
         </TouchableOpacity>
       </View>
+      <View style={styles.bottomNav}>
+        <TouchableOpacity style={styles.navItem} onPress={()=> router.push('/dashboard')}>
+          <TrendingUp size={24} color="#4CAF50" />
+          <Text style={styles.navText}>Ledger</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem}>
+          <Settings size={24} color="#666" />
+          <Text style={styles.navText}>My Plan</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={()=> router.push('/more')}>
+        <MoreHorizontal size={24} color="#666" />
+        <Text style={styles.navText}>More</Text>
+        </TouchableOpacity>
+      </View>
+
     </SafeAreaView>
   );
 }
@@ -144,6 +167,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  navItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  navText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+
   backButton: {
     padding: 8,
   },

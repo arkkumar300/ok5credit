@@ -1,16 +1,30 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  SafeAreaView,
+  Alert,
+} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
+import ApiService from './components/ApiServices';
+import { ActivityIndicator } from 'react-native-paper';
 
 export default function OTPScreen() {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(30);
+  const [loading, setLoading] = useState(false);
   const inputRefs = useRef([]);
   const router = useRouter();
-  const { phoneNumber } = useLocalSearchParams();
+  const { mobile } = useLocalSearchParams();
 
+  // ✅ Send OTP when screen loads
   useEffect(() => {
+    sendOTP();
+
     const interval = setInterval(() => {
       setTimer((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
@@ -18,6 +32,58 @@ export default function OTPScreen() {
     return () => clearInterval(interval);
   }, []);
 
+  // ✅ Function to send OTP
+  const sendOTP = async () => {
+    try {
+      setLoading(true)
+      const response = await ApiService.post('otp/send', { mobile });
+
+      if (!response.data.success) {
+        throw new Error(response.message || 'Failed to send OTP');
+      }
+      if (response.data.otp && response.data.otp.length === 6) {
+        const otpArray = response.data.otp.split('');
+        setOtp(otpArray);
+        setLoading(false)
+      } else {
+        console.warn('⚠️ OTP not included in response or invalid');
+      }     
+      // You can now use response.Verification or response.userId
+    } catch (error) {
+      console.error('❌ Error sending OTP:', error.message || error);
+      // Optionally show alert:
+      // Alert.alert("Error", error.message || "Something went wrong");
+    }
+  };
+
+  // ✅ Function to resend OTP
+  const handleResendOTP = async () => {
+    setTimer(30);
+    setOtp(['', '', '', '', '', '']);
+    inputRefs.current[0]?.focus();
+
+    try {
+      const response = await ApiService.post('otp/resend', { mobile });
+    
+      // ✅ Since interceptor returns response.data directly:
+    
+      if (!response.data.success) {
+        throw new Error(response.message || 'Failed to send OTP');
+      }
+      if (response.data.otps && response.data.otps.length === 6) {
+        const otpArray = response.data.otps.split('');
+        setOtp(otpArray);
+      } else {
+        console.warn('⚠️ OTP not included in response or invalid');
+      }      console.log('✅ OTP resent successfully');
+      // You can now use response.Verification or response.userId
+    } catch (err) {
+      console.error('Resend OTP error:', err.message);
+      Alert.alert('Error', 'Failed to resend OTP. Please try again.');
+    }
+  };
+
+  // ✅ Handle OTP input change
   const handleOtpChange = (value, index) => {
     const newOtp = [...otp];
     newOtp[index] = value;
@@ -27,7 +93,7 @@ export default function OTPScreen() {
       inputRefs.current[index + 1]?.focus();
     }
 
-    if (newOtp.every(digit => digit !== '')) {
+    if (newOtp.every((digit) => digit !== '')) {
       handleVerify(newOtp.join(''));
     }
   };
@@ -38,17 +104,24 @@ export default function OTPScreen() {
     }
   };
 
-  const handleVerify = (otpCode = otp.join('')) => {
-    if (otpCode.length === 6) {
-      // Simulate OTP verification
-      router.replace('/dashboard');
-    }
-  };
+  // ✅ Handle OTP verification
+  const handleVerify = async (otpCode = otp.join('')) => {
+    if (otpCode.length !== 6) return;
 
-  const handleResendOTP = () => {
-    setTimer(30);
-    setOtp(['', '', '', '', '', '']);
-    inputRefs.current[0]?.focus();
+    try {
+      const response = await ApiService.post('otp/verify', { mobile, otp:otpCode });
+      const data = response.data;
+      if (!response.data.success) throw new Error(data.message || 'OTP verification failed');
+
+      console.log('OTP verified successfully',data.userId);
+      router.replace({
+        pathname: '/userData',
+        params: { USER_ID:data.userId }
+      });
+    } catch (err) {
+      console.error('OTP verify error:', err.message);
+      Alert.alert('Error', 'Invalid OTP. Please try again.');
+    }
   };
 
   return (
@@ -63,7 +136,7 @@ export default function OTPScreen() {
         <Text style={styles.title}>Enter OTP</Text>
         <Text style={styles.subtitle}>
           We've sent a 6-digit OTP to{'\n'}
-          <Text style={styles.phoneText}>+91 {phoneNumber}</Text>
+          <Text style={styles.phoneText}>+91 {mobile}</Text>
         </Text>
 
         <View style={styles.otpContainer}>
@@ -92,12 +165,18 @@ export default function OTPScreen() {
           )}
         </View>
 
-        <TouchableOpacity 
-          style={[styles.verifyButton, otp.every(digit => digit !== '') ? styles.verifyButtonActive : styles.verifyButtonDisabled]}
+        <TouchableOpacity
+          style={[
+            styles.verifyButton,
+            otp.every((digit) => digit !== '')
+              ? styles.verifyButtonActive
+              : styles.verifyButtonDisabled,
+          ]}
           onPress={() => handleVerify()}
-          disabled={!otp.every(digit => digit !== '')}
+          disabled={!otp.every((digit) => digit !== '')}
         >
           <Text style={styles.verifyButtonText}>Verify & Continue</Text>
+          {/* : <ActivityIndicator size={'small'} />} */}
         </TouchableOpacity>
       </View>
 
