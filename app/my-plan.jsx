@@ -1,129 +1,203 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft,Settings,TrendingUp, Check, X, Smartphone, FileText, Headphones, Monitor, Image, Package, DotIcon, MoreHorizontal, Share } from 'lucide-react-native';
+import { Smartphone, X, Check, FileText, Headphones, Monitor, Image, Package, Share, TrendingUp, Settings, MoreHorizontal } from "lucide-react-native";
 import { Appbar, Avatar } from 'react-native-paper';
+import RazorpayCheckout from 'react-native-razorpay';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import ApiService from './components/ApiServices';
+
+const YOUR_RAZORPAY_KEY_ID = "rzp_test_RfcfxfJ2sIZdao";
+
+// Icons (adjust import according to your setup)
 
 export default function MyPlanScreen() {
-  const [selectedPlan, setSelectedPlan] = useState('ads-free');
+  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [paymentResult, setPaymentResult] = useState(null);
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const router = useRouter();
 
-  const plans = [
-    {
-      id: 'basic',
-      name: 'Basic Plan',
-      price: 'Free',
-      duration: '',
-      isActive: false,
-      badge: 'Active Plan',
-      features: [
-        { icon: <Smartphone size={20} color="#666" />, text: 'Send transaction SMS from your phone (SIM)' },
-        { icon: <X size={20} color="#666" />, text: 'Contain Ads' }
-      ]
-    },
-    {
-      id: 'ads-free',
-      name: 'Ads Free++',
-      price: '₹75',
-      duration: 'for 30 days',
-      isRecommended: true,
-      features: [
-        { icon: <X size={20} color="#666" />, text: 'No Ads' },
-        { icon: <FileText size={20} color="#666" />, text: 'Create Bills (Normal Bills, GST Bills)' },
-        { icon: <Headphones size={20} color="#666" />, text: 'Priority customer support' },
-        { icon: <Monitor size={20} color="#666" />, text: 'Multi device enabled. Sign with same OkCredit number on multiple devices' },
-        { icon: <Image size={20} color="#666" />, text: 'Lifetime access to all transaction bills' },
-        { icon: <Monitor size={20} color="#666" />, text: 'Access on computer/desktop' },
-        { icon: <Package size={20} color="#666" />, text: 'Manage Stocks (Add items with transactions)' }
-      ]
-    },
-    {
-      id: 'premium',
-      name: 'Premium',
-      price: '₹99',
-      duration: 'for 30 days',
-      features: [
-        { icon: <Check size={20} color="#666" />, text: 'All benefits for Ads Free++' },
-        { icon: <Smartphone size={20} color="#666" />, text: 'Unlimited transaction SMS from OkCredit' }
-      ]
+  // 🔥 Fetch Plans from API
+  const fetchPlans = async () => {
+    try {
+      const res = await ApiService.get("/plans/",{
+        headers:{'Content-Type':'application/json'}
+      });
+      const data = res.data;
+      if (!data?.plans) {
+        Alert.alert("Error", "Unable to fetch plans");
+        return;
+      }
+
+      // Transform API response → UI-friendly list
+      const formattedPlans = data.plans.map((p) => ({
+        id: String(p.id),
+        name: p.name,
+        price: `₹${p.price}`,
+        duration: `for ${p.duration_days} days`,
+        isActive: p.is_active,
+        features: p.points.map((pt) => ({
+          icon: <Check size={12} color="#f3f3f3" />,
+          text: pt
+        }))
+      }));
+
+      setPlans(formattedPlans);
+
+      // Select first plan by default
+      if (formattedPlans.length > 0) {
+        setSelectedPlan(formattedPlans[0].id);
+      }
+
+    } catch (error) {
+      console.log("Fetch plan error:", error);
+      Alert.alert("Error", "Failed to load plans");
     }
-  ];
 
-  const handlePlanSelect = (planId) => {
-    setSelectedPlan(planId);
+    setLoading(false);
   };
 
-  const handleContinue = () => {
-    // Handle plan selection
-    console.log('Selected plan:', selectedPlan);
+  useEffect(() => {
+    fetchPlans();
+  }, []);
+
+  const handlePlanSelect = (planId) => setSelectedPlan(planId);
+
+  const startPayment = async () => {
+    try {
+      const userData = await AsyncStorage.getItem("userData");
+      if (!userData) {
+        Alert.alert("Error", "User not found");
+        return;
+      }
+      const userDetails = JSON.parse(userData);
+
+      const selected = plans.find((p) => p.id === selectedPlan);
+
+      if (!selected) {
+        Alert.alert("Error", "Plan not selected");
+        return;
+      }
+
+      const res = await ApiService.post(`/payment_rozarpay/create-order`, {
+        amount: Number(selected.price.replace("₹", "")),
+        currency: "INR",
+        subscriber_name: userDetails.name,
+        subscriber_email: userDetails.email,
+        subscriber_phone: userDetails.mobile,
+        subscribePlan: selected.id
+      }, {
+        headers: { "Content-Type": "application/json" }
+      });
+
+      const data = res.data;
+
+      if (!data.orderId) {
+        Alert.alert("Error", "Unable to create order");
+        return;
+      }
+
+      const options = {
+        description: "Payment for Aqua Services",
+        image: "../assets/images/icon.png",
+        currency: "INR",
+        key: YOUR_RAZORPAY_KEY_ID,
+        amount: data.amount,
+        order_id: data.orderId,
+        name: "Aqua Services",
+        prefill: {
+          name: userDetails.name,
+          email: userDetails.email,
+          contact: userDetails.mobile
+        },
+        theme: { color: "#0C8CE9" },
+       
+          // ⭐ Restrict only to UPI
+          method: {
+            netbanking: false,
+            card: false,
+            wallet: false,
+            emi: false,
+            paylater: false,
+            upi: true
+          },
+        
+          // ⭐ Optional: Force only UPI Apps  
+          "upi_app": "default",          
+      };
+
+      RazorpayCheckout.open(options)
+        .then(paymentResult => {
+          Alert.alert("Success", `Payment ID: ${paymentResult.razorpay_payment_id}`);
+          paymentVerify(options, paymentResult);
+        })
+        .catch(error => {
+          Alert.alert("Payment Failed", error.description || "Something went wrong");
+          console.log("Payment Failed:", error);
+        });
+
+    } catch (error) {
+      console.log("Error:", error);
+      Alert.alert("Error", "Something went wrong");
+    }
   };
+
+  const paymentVerify = (basicData, paymentData) => {
+    console.log("basicData::", basicData);
+    console.log("paymentData::", paymentData);
+  };
+
+  const handleContinue = () => startPayment();
+
+  if (loading) {
+    return (
+      <SafeAreaView>
+        <Text style={{ textAlign: "center", marginTop: 40 }}>Loading Plans...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <Appbar.Header>
-        <Avatar.Text label='A' size={45} color='#ffffff' style={{ backgroundColor: '#2E7D32', marginStart: 8 }} />
-        <Appbar.Content title="My Plans" titleStyle={{ textAlign: 'center', fontWeight: 'bold' }} />
-        <Avatar.Icon icon={() => <Share size={22} color={'#2E7D32'} />} size={45} style={{
-          backgroundColor: '#F1F8E9', shadowColor: '#2E7D32',
-          shadowColor: '#2E7D32',       // Dark green
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.2,
-          shadowRadius: 4,
-          elevation: 5, marginEnd: 8,                 // For Android
-          borderRadius: 8
-        }} />
-      </Appbar.Header>
-
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {plans.map((plan) => (
           <View key={plan.id} style={styles.planCard}>
+            
             <View style={styles.planHeader}>
               <View style={styles.planTitleContainer}>
                 <Text style={styles.planName}>{plan.name}</Text>
-                {plan.isRecommended && (
-                  <View style={styles.recommendedBadge}>
-                    <Text style={styles.recommendedText}>Recommended Plan</Text>
-                  </View>
-                )}
-                {plan.badge && (
+
+                {plan.isActive && (
                   <View style={styles.activeBadge}>
-                    <Text style={styles.activeText}>{plan.badge}</Text>
+                    <Text style={styles.activeText}>Active Plan</Text>
                   </View>
                 )}
               </View>
-              <TouchableOpacity
-                style={styles.radioButton}
-                onPress={() => handlePlanSelect(plan.id)}
-              >
-                <View style={[
-                  styles.radioOuter,
-                  selectedPlan === plan.id && styles.radioSelected
-                ]}>
-                  {selectedPlan === plan.id && (
-                    <View style={styles.radioInner} />
-                  )}
+
+              <TouchableOpacity style={styles.radioButton} onPress={() => handlePlanSelect(plan.id)}>
+                <View style={[styles.radioOuter, selectedPlan === plan.id && styles.radioSelected]}>
+                  {selectedPlan === plan.id && <View style={styles.radioInner} />}
                 </View>
               </TouchableOpacity>
             </View>
 
             <View style={styles.priceContainer}>
               <Text style={styles.price}>{plan.price}</Text>
-              {plan.duration && (
-                <Text style={styles.duration}> {plan.duration}</Text>
-              )}
+              {plan.duration && <Text style={styles.duration}> {plan.duration}</Text>}
             </View>
 
             <View style={styles.featuresContainer}>
               {plan.features.map((feature, index) => (
                 <View key={index} style={styles.featureItem}>
-                  <View style={styles.featureIcon}>
-                    {feature.icon}
-                  </View>
+                  <View style={styles.featureIcon}>{feature.icon}</View>
                   <Text style={styles.featureText}>{feature.text}</Text>
                 </View>
               ))}
             </View>
+
           </View>
         ))}
       </ScrollView>
@@ -133,191 +207,37 @@ export default function MyPlanScreen() {
           <Text style={styles.continueButtonText}>Continue</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={()=> router.push('/dashboard')}>
-          <TrendingUp size={24} color="#4CAF50" />
-          <Text style={styles.navText}>Ledger</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Settings size={24} color="#666" />
-          <Text style={styles.navText}>My Plan</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={()=> router.push('/more')}>
-        <MoreHorizontal size={24} color="#666" />
-        <Text style={styles.navText}>More</Text>
-        </TouchableOpacity>
-      </View>
 
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-  },
-  navItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  navText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-  },
-
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  placeholder: {
-    width: 40,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  planCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  planHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  planTitleContainer: {
-    flex: 1,
-  },
-  planName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  recommendedBadge: {
-    backgroundColor: '#E8F5E8',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-  },
-  recommendedText: {
-    fontSize: 12,
-    color: '#4CAF50',
-    fontWeight: '500',
-  },
-  activeBadge: {
-    backgroundColor: '#E8F5E8',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-  },
-  activeText: {
-    fontSize: 12,
-    color: '#4CAF50',
-    fontWeight: '500',
-  },
-  radioButton: {
-    padding: 4,
-  },
-  radioOuter: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#DDD',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioSelected: {
-    borderColor: '#4CAF50',
-  },
-  radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#4CAF50',
-  },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 16,
-  },
-  price: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  duration: {
-    fontSize: 14,
-    color: '#666',
-  },
-  featuresContainer: {
-    gap: 12,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  featureIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  featureText: {
-    fontSize: 14,
-    color: '#333',
-    flex: 1,
-  },
-  bottomContainer: {
-    padding: 16,
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-  },
-  continueButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  continueButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  content: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
+  planCard: { backgroundColor: 'white', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 2, borderColor: 'transparent' },
+  planHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
+  planTitleContainer: { flex: 1 },
+  planName: { fontSize: 18, fontWeight: '600', color: '#333', marginBottom: 4 },
+  recommendedBadge: { backgroundColor: '#E8F5E8', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start' },
+  recommendedText: { fontSize: 12, color: '#4CAF50', fontWeight: '500' },
+  activeBadge: { backgroundColor: '#E8F5E8', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start' },
+  activeText: { fontSize: 12, color: '#4CAF50', fontWeight: '500' },
+  radioButton: { padding: 4 },
+  radioOuter: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#DDD', alignItems: 'center', justifyContent: 'center' },
+  radioSelected: { borderColor: '#4CAF50' },
+  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#4CAF50' },
+  priceContainer: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 16 },
+  price: { fontSize: 24, fontWeight: 'bold', color: '#333' },
+  duration: { fontSize: 14, color: '#666' },
+  featuresContainer: { gap: 12 },
+  featureItem: { flexDirection: 'row', alignItems: 'center' },
+  featureIcon: { width: 24, height: 24, borderRadius: 16, backgroundColor: '#4CAF50', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  featureText: { fontSize: 14, color: '#333', flex: 1 },
+  bottomContainer: { padding: 16, backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#E0E0E0' },
+  continueButton: { backgroundColor: '#4CAF50', paddingVertical: 16, borderRadius: 8, alignItems: 'center' },
+  continueButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+  bottomNav: { flexDirection: 'row', backgroundColor: 'white', paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#E0E0E0' },
+  navItem: { flex: 1, alignItems: 'center' },
+  navText: { fontSize: 12, color: '#666', marginTop: 4 },
 });

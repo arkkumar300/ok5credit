@@ -1,11 +1,11 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
-const handleCustomerLedgerPDF = async (transactions) => {
-  const formattedRows = transactions.map(tx => `
-    <tr>
+const handleCustomerLedgerPDF = async (transactions,personName) => {
+  const formattedRows = transactions.map((tx,index) => `
+   <tr>
       <td>${tx.date}</td>
-      <td>${tx.type === 'payment' ? `₹${tx.amount}` : ''}</td>
+      <td>${tx.type === 'debit' ? `₹${tx.amount}` : ''}</td>
       <td>${tx.type === 'credit' ? `₹${tx.amount}` : ''}</td>
     </tr>
   `).join('');
@@ -22,8 +22,8 @@ const handleCustomerLedgerPDF = async (transactions) => {
       </style>
     </head>
     <body>
-      <h1>Customer Ledger Statement</h1>
-      <table>
+      <h1>${personName||""} Ledger Statement</h1>
+      <table border="1" cellspacing="0" cellpadding="5">
         <tr>
           <th>Date</th>
           <th>Payment</th>

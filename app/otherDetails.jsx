@@ -1,27 +1,111 @@
 // ProfileScreen.js
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Pressable, Platform, KeyboardAvoidingViewBase } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet,SafeAreaView, ScrollView, TouchableOpacity, Modal, Pressable, Platform, KeyboardAvoidingViewBase } from 'react-native';
 import { X, Pencil, UserRound, Share2, Store, Phone, FileText, Hash, Building2, MapPin, Mail, User, Delete, ChevronRight, ArrowLeft } from 'lucide-react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, router } from 'expo-router';
 import { Appbar, Avatar, TextInput } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { KeyboardAvoidingView } from 'react-native-web';
+import moment from 'moment';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import ApiService from './components/ApiServices';
 
 const OtherDetails = () => {
   // State to handle modals
   const [activeModal, setActiveModal] = useState(null);
+  const [billCustomer, setBillCustomer] = useState(null);
+  const [billNos, setBillNos] = useState("");
+  const [billTypes, setBillTypes] = useState(null);
+  const [userId, setUserId] = useState(null);
+  const [billDates, setBillDates] = useState(null);
   const router = useRouter();
+  const {
+    customerId = '',
+    customerName = '',
+    customerMobile = '',
+    billNo = '',
+    billDate = ''
+  } = useLocalSearchParams();
+  const [billLable, setBillLable] = useState('');
+  const [billNote, setBillNote] = useState('');
+  const [billStore, setBillStore] = useState(null);
+  const [billCreateDate, setBillCreateDate] = useState('');
+
+  useEffect(() => {
+    const customeData = async () => {
+      try {
+        const billCustomerStr = await AsyncStorage.getItem("billCustomer");
+        const billCustomer = billCustomerStr ? JSON.parse(billCustomerStr) : {};
+        setBillCustomer(billCustomer); // Assuming you want to store it as an object
+
+        const billNo = await AsyncStorage.getItem("billNo") || "";
+        setBillNos(billNo);
+
+        const billType = await AsyncStorage.getItem("billType") || "";
+        setBillTypes(billType);
+
+        const billDate = await AsyncStorage.getItem("billDate") || "";
+        setBillDates(billDate);
+
+        const billNotes = await AsyncStorage.getItem("billNote") || "";
+        setBillNote(billNotes);
+
+        const billStoresStr = await AsyncStorage.getItem("billStore");
+        const billStores = billStoresStr ? JSON.parse(billStoresStr) : {};
+        
+        setBillStore(billStores);
+
+      } catch (error) {
+        console.error("Error fetching bill data:", error);
+      }
+    };
+
+    customeData();
+  }, [billLable, billCreateDate,billNote]); // reactively update when props change
+
+
+
+  const handleSaveBillNo = async (value) => {
+    await AsyncStorage.setItem("billNo", value) || "";
+    setBillLable(value); // Save bill number to state
+  };
+
+  const handleSaveNote = async (value) => {
+    await AsyncStorage.setItem("billNote", value) || "";
+    setBillNote(value); // Save bill number to state
+  };
+
+  const handleSaveStore = async (value) => {
+    await AsyncStorage.setItem("billStore", JSON.stringify(value));
+    setBillStore(value); // Save bill number to state
+  };
+
+  const handleSaveBillData = async (value) => {
+    const dateStr = moment(value).format('DD MMM YYYY'); // Convert to string
+    await AsyncStorage.setItem("billDate", dateStr);
+    setBillCreateDate(dateStr);
+    setActiveModal(null); // Make sure modal closes
+  };
+
+  useEffect(() => {
+    const gerUserData = async () => {
+      const userData = await AsyncStorage.getItem("userData");
+      const userId = JSON.parse(userData).id;
+      setUserId(userId);
+    }
+    gerUserData();
+  }, [])
+
   const openModal = (key) => {
     setActiveModal(key);
   };
   const closeModal = () => setActiveModal(null);
-
   return (
     <SafeAreaView style={styles.container}>
-      <Appbar.Header style={{elevation:3, backgroundColor: "#f4f8f8", borderBottomWidth: 2, borderColor: '#f2f7f6' }}>
-        <ArrowLeft size={24} color={'#2E7D32'} style={{ marginStart: 10 }} onPress={() => router.back()} />
+      <Appbar.Header style={{ elevation: 3, backgroundColor: "#f4f8f8", borderBottomWidth: 2, borderColor: '#f2f7f6' }}>
+        <ArrowLeft size={24} color={'#2E7D32'} style={{ marginStart: 10 }} onPress={() => {
+          router.replace({ pathname: '/billGenaration', params: { customerId:billCustomer?.id || "", billNo: billLable||"", bill_date: billCreateDate,bill_type:billTypes} });
+        }} />
         <Appbar.Content title="Other Details" titleStyle={{ color: '#333333', fontWeight: 'bold', marginLeft: 20 }} />
       </Appbar.Header>
 
@@ -32,26 +116,26 @@ const OtherDetails = () => {
           <Avatar.Image
             source={{ uri: 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=400&h=300' }}
             size={80} color="#ccc" />
-          <TouchableOpacity style={styles.editIcon}>
+          {/* <TouchableOpacity style={styles.editIcon}>
             <Text style={styles.editText}>✎</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         {/* Business Info List */}
         <View style={styles.card}>
-          <ProfileItem label="Customer Details" subtitle={'Amma'} onPress={() => openModal('CustomerDetails')} />
-          <ProfileItem label="Bill Number" subtitle={'BILL-4'} onPress={() => openModal('bill')} />
-          <ProfileItem label="Bill Date" subtitle={'05 sep 2025'} onPress={() => openModal('billDate')} />
-          <ProfileItem label="Add" subtitle={'Notes'} onPress={() => openModal('notes')} />
-          <ProfileItem label="Business Details" subtitle={'Business name,GST,address'} onPress={() => openModal('BusinessDetails')} />
+          <ProfileItem label="Customer Details" subtitle={`${billCustomer?.name || "Name"},${billCustomer?.mobile || "PhoneNumber,GST,Address"}`} onPress={() => router.replace({ pathname: "add-bill-customer", params: { billNo: billNo, billDate: billDate } })} />
+          <ProfileItem label="Bill Number" subtitle={billNos || 'BILL-No'} onPress={() => openModal('bill')} />
+          <ProfileItem label="Bill Date" subtitle={billDates || '05 sep 2025'} onPress={() => openModal('billDate')} />
+          <ProfileItem label="Add" subtitle={billNote||'Notes'} onPress={() => openModal('notes')} />
+          <ProfileItem label="Business Details" subtitle={`${billStore?.name ||"Business name"},${billStore?.GST||"GST"},${billStore?.address||"address"}`} onPress={() => openModal('BusinessDetails')} />
         </View>
 
         {/* Modals (You can customize each one separately below) */}
         <CustomerModal visible={activeModal === 'CustomerDetails'} onClose={closeModal} />
-        <BillNumberModal visible={activeModal === 'bill'} onClose={closeModal} title="Phone Number" />
-        <BillDateModal visible={activeModal === 'billDate'} onClose={closeModal} />
-        <NotesModal visible={activeModal === 'notes'} onClose={closeModal} />
-        <BusinessDetailsModal visible={activeModal === 'BusinessDetails'} onClose={closeModal} />
+        <BillNumberModal visible={activeModal === 'bill'} onClose={closeModal} title="Phone Number" onSave={handleSaveBillNo} />
+        <BillDateModal visible={activeModal === 'billDate'} onClose={closeModal} onSave={handleSaveBillData} />
+        <NotesModal visible={activeModal === 'notes'} onClose={closeModal} onSave={handleSaveNote}/>
+        <BusinessDetailsModal visible={activeModal === 'BusinessDetails'} onClose={closeModal} onSave={handleSaveStore}/>
       </ScrollView>
     </SafeAreaView>
   );
@@ -77,6 +161,20 @@ const CustomerModal = ({ visible, onClose }) => {
   const [address, setAddress] = useState('');
   const [state, setState] = useState('');
 
+
+  useEffect(() => {
+    const customeData = async () => {
+
+      const billCustomerName = await AsyncStorage.getItem("billCustomerName");
+      setName(billCustomerName);
+      const billCustomerMobile = await AsyncStorage.getItem("billCustomerMobile");
+      setPhone(billCustomerMobile);
+
+    }
+    customeData();
+  }, []); // reactively update when props change
+
+
   const handleConfirm = () => {
     const customerData = {
       customerName,
@@ -86,7 +184,6 @@ const CustomerModal = ({ visible, onClose }) => {
       state,
     };
 
-    console.log('Customer Data:', customerData);
     // TODO: Handle saving logic here (API call, state update, etc.)
 
     onClose(); // Close modal after submission
@@ -168,12 +265,22 @@ const CustomerModal = ({ visible, onClose }) => {
     </Modal>)
 };
 
-const BillNumberModal = ({ visible, onClose }) => {
+const BillNumberModal = ({ visible, onClose, onSave }) => {
   const [billNo, setBillNo] = useState('');
+  useEffect(() => {
+    const loadBillNo = async () => {
+      const storedBillNo = await AsyncStorage.getItem("billNo");
+      if (storedBillNo) setBillNo(storedBillNo);
+    };
 
-  const handleConfirm = () => {
-    // Save the business Email logic here (e.g., update state or API call)
-    onClose();
+    if (visible) loadBillNo(); // only fetch if modal opens
+  }, [visible]);
+
+  const handleConfirm = async () => {
+    if (onSave) {
+      await onSave(billNo); // Save to parent
+    }
+    onClose(); // Close the modal
   };
 
   return (
@@ -196,7 +303,7 @@ const BillNumberModal = ({ visible, onClose }) => {
             outlineColor='#aaaaaa'
             activeOutlineColor='#333333'
             left={<TextInput.Icon icon="file" />}
-            right={<TextInput.Icon icon="check" color={'green'} onPress={handleConfirm} />}
+            right={<TextInput.Icon icon="check" color="green" onPress={handleConfirm} />}
             onChangeText={setBillNo}
             placeholder="Bill No."
           />
@@ -207,13 +314,40 @@ const BillNumberModal = ({ visible, onClose }) => {
   )
 };
 
-const BillDateModal = ({ visible, onClose }) => {
-  const [billDate, setBillDate] = useState(new Date()); // Use Date object
+const BillDateModal = ({ visible, onClose, onSave }) => {
+  const [billDate, setBillDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const handleConfirm = () => {
-    // Save the business Email logic here (e.g., update state or API call)
-    onClose();
+  // Load date from storage when modal is shown
+  useEffect(() => {
+    const loadBillDate = async () => {
+      const storedDate = await AsyncStorage.getItem("billDate");
+      if (storedDate) {
+      const rrr=moment(storedDate, 'DD MMM YYYY').toDate()
+        setBillDate(new Date(rrr)); // Convert from string to Date object
+      } else {
+        setBillDate(new Date());
+      }
+    };
+
+    if (visible) {
+      loadBillDate();
+    }
+  }, [visible]);
+
+  // Format date for display
+  const formatDateForDisplay = (date) => {
+    return moment(date).format('DD MMM YYYY');
+  };
+
+  // Save and close modal
+  const handleConfirm = async () => {
+    if (onSave) {
+      await onSave(billDate); // Pass Date object to parent
+    }
+    if (onClose) {
+      onClose(); // Close modal
+    }
   };
 
   return (
@@ -226,15 +360,15 @@ const BillDateModal = ({ visible, onClose }) => {
       <View style={styles.modalBackground}>
         <View style={styles.bottomSheet}>
           <Text style={styles.modalTitle}>Bill Date</Text>
-          <Text style={styles.subtitleText}>update Bill Date</Text>
+          <Text style={styles.subtitleText}>Update Bill Date</Text>
 
-          <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.textInput}>
-            <Text style={{ color: billDate ? '#000' : '#999' }}>
-              {billDate ? billDate.toDateString() : 'Select Bill Date'}
+          <TouchableOpacity
+            onPress={() => setShowDatePicker(true)}
+            style={styles.textInput}
+          >
+            <Text style={{ color: '#000' }}>
+              {formatDateForDisplay(billDate)}
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleConfirm} style={styles.submitButton}>
-            <Text style={styles.submitText}>Submit</Text>
           </TouchableOpacity>
 
           {showDatePicker && (
@@ -251,19 +385,26 @@ const BillDateModal = ({ visible, onClose }) => {
             />
           )}
 
-          {/* WhatsApp Share Button */}
+          <TouchableOpacity onPress={handleConfirm} style={styles.submitButton}>
+            <Text style={styles.submitText}>Submit</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
-  )
+  );
 };
 
-const NotesModal = ({ visible, onClose }) => {
+const NotesModal = ({ visible, onClose, onSave }) => {
   const [note, setNote] = useState('');
 
-  const handleConfirm = () => {
-    // Save the business name logic here (e.g., update state or API call)
-    onClose();
+  // Save and close modal
+  const handleConfirm = async () => {
+    if (onSave) {
+      await onSave(note); // Pass Date object to parent
+    }
+    if (onClose) {
+      onClose(); // Close modal
+    }
   };
 
   return (
@@ -298,24 +439,50 @@ const NotesModal = ({ visible, onClose }) => {
   )
 };
 
-const BusinessDetailsModal = ({ visible, onClose }) => {
+const BusinessDetailsModal = ({ visible, onClose,onSave }) => {
   const [storeName, setStoreName] = useState('');
+  const [userID, setUserID] = useState('');
   const [GST, setGST] = useState('');
   const [businessAddress, setBusinessAddress] = useState('');
-  const [state, setState] = useState('');
+  // const [state, setState] = useState('');
 
-  const handleConfirm = () => {
+  useEffect(()=>{
+const getUserDetails=async ()=>{
+  const userData=await AsyncStorage.getItem("userData");
+  const parsedUserData=JSON.parse(userData);
+  setUserID(parsedUserData.id);
+  setStoreName(parsedUserData.name);
+  setGST(parsedUserData.GST);
+  setBusinessAddress(parsedUserData.address);
+}
+getUserDetails()
+  },[])
+
+  const handleConfirm = async () => {
     const StoreData = {
-      storeName,
+      name:storeName,
       GST,
-      businessAddress,
-      state,
+      address:businessAddress,
+      // state,
     };
-
-    console.log('Store Data:', StoreData);
+if (onSave) {
+  onSave(StoreData);
+}
     // TODO: Handle saving logic here (API call, state update, etc.)
+    try {
+      const response = await ApiService.put(`/user/${userID}`, StoreData);
 
-    onClose(); // Close modal after submission
+      if (response.status === 200 || response.status === 201) {
+        alert('User updated successfully');
+      } else {
+        alert('Something went wrong while updating the user.');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('API request failed. Check your server.');
+    } finally{
+      onClose(); // Close modal after submission
+    }   
   };
 
   return (
@@ -332,7 +499,7 @@ const BusinessDetailsModal = ({ visible, onClose }) => {
             <Text style={styles.subtitleText}>Please fill out Store details</Text>
 
             <TextInput
-              label="Customer Name"
+              label="store Name"
               mode="outlined"
               value={storeName}
               onChangeText={setStoreName}
@@ -363,7 +530,7 @@ const BusinessDetailsModal = ({ visible, onClose }) => {
               style={styles.input}
             />
 
-            <TextInput
+            {/* <TextInput
               label="State"
               mode="outlined"
               value={state}
@@ -371,7 +538,7 @@ const BusinessDetailsModal = ({ visible, onClose }) => {
               placeholder="Enter state"
               left={<TextInput.Icon icon="map-marker" />}
               style={styles.input}
-            />
+            /> */}
 
             <TouchableOpacity onPress={handleConfirm} style={styles.submitButton}>
               <Text style={styles.submitText}>Submit</Text>
@@ -462,11 +629,10 @@ const styles = StyleSheet.create({
 
   label: {
     fontSize: 15,
-    fontWeight: '500',
     color: '#333',
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 14, fontWeight: '700',
     color: '#777',
   },
   editSymbol: {

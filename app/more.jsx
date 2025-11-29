@@ -1,12 +1,15 @@
-import React from 'react';
+import React,{useState,useCallback} from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { TrendingUp, User, FileText,MoreHorizontal, Package, Settings, CreditCard, Star, CircleHelp as HelpCircle, Share2, Share } from 'lucide-react-native';
+import { TrendingUp, User, FileText,MoreHorizontal, Package, Settings, CreditCard, Star, CircleHelp as HelpCircle, Share2, Share, LogOut } from 'lucide-react-native';
 import { Appbar, Avatar } from 'react-native-paper';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function MoreScreen() {
   const router = useRouter();
-
+  const [userData, setUserData] = useState(null);
+  const [initialsLetter, setInitialsLetter] = useState("");
   const menuItems = [
     {
       section: 'Account',
@@ -31,9 +34,29 @@ export default function MoreScreen() {
         // { icon: <Settings size={20} color="#666" />, title: 'Settings', subtitle: 'App preferences and configurations' },
         { icon: <Star size={20} color="#666" />, title: 'Rate App', subtitle: 'Rate Aqua Credit on app store' },
         { icon: <Share2 size={20} color="#666" />, title: 'Share App', subtitle: 'Invite friends to use Aqua Credit' },
+        { icon: <LogOut size={20} color="#666" />, title: 'LogOut', subtitle: 'Invite friends to use Aqua Credit',onPress: () => router.push('/login') },
       ]
     }
   ];
+
+  const fetchUserData = async () => {
+    const userDetails = await AsyncStorage.getItem("userData");
+    const rrr=JSON.parse(userDetails);
+    setUserData(rrr)
+    const name = rrr?.name?.trim() || '';
+    const initials = name
+    .split(' ')
+    .filter(Boolean)             // removes empty strings
+    .map(word => word[0]?.toUpperCase())
+    .join('');
+    setInitialsLetter(initials)
+  };
+
+  useFocusEffect(
+    useCallback(() => {       
+fetchUserData();
+  }, [])
+  )
 
   const handleItemPress = (item) => {
     if (item.onPress) {
@@ -46,15 +69,15 @@ export default function MoreScreen() {
   return (
     <SafeAreaView style={styles.container}>
             <Appbar.Header>
-        <Avatar.Text label='A' size={45} color='#ffffff' style={{ backgroundColor: '#2E7D32', marginStart: 8 }} />
-        <Appbar.Content title="My Plans" titleStyle={{ textAlign: 'center', fontWeight: 'bold' }} />
+        <Avatar.Text label={initialsLetter} size={45} color='#ffffff' style={{ backgroundColor: '#2E7D32', marginStart: 8 }} />
+        <Appbar.Content title="More Details" titleStyle={{ textAlign: 'center', fontWeight: 'bold' }} />
         <Avatar.Icon icon={() => <Share size={22} color={'#2E7D32'} />} size={45} style={{
           backgroundColor: '#F1F8E9', shadowColor: '#2E7D32',
           shadowColor: '#2E7D32',       // Dark green
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.2,
           shadowRadius: 4,
-          elevation: 5, marginEnd: 8,                 // For Android
+          elevation: 5, marginEnd: 8,  // For Android
           borderRadius: 8
         }} />
       </Appbar.Header>

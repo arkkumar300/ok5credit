@@ -11,35 +11,37 @@ import {
   Image,
   Platform,
 } from 'react-native';
-import { useRouter,useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, User, Phone, Contact } from 'lucide-react-native';
 import { Appbar } from 'react-native-paper';
 import * as Contacts from 'expo-contacts';
 import ApiService from './components/ApiServices';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import cleanMobileNumber from './components/cleanMobileNumber';
 
 export default function AddCustomerScreen() {
   const [name, setName] = useState('');
+  const [isExist, setIsExist] = useState(true);
   const [mobile, setMobile] = useState('');
   const [contacts, setContacts] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const router = useRouter();
-
+  
   const handleConfirm = async () => {
-    const userData=await AsyncStorage.getItem("userData");
-    const userId=JSON.parse(userData).id;
-console.log("rrr ::",userId)
+    const userData = await AsyncStorage.getItem("userData");
+    const userId = JSON.parse(userData).id;
+    console.log("rrr ::", userId)
     if (name.trim() && mobile.trim()) {
       try {
         const response = await ApiService.post("/customers", {
-          userId:Number(userId),
+          userId: Number(userId),
           name: name.trim(),
           mobile: mobile.trim()
         });
 
         if (response.status === 200 || response.status === 201) {
           alert('Customer added successfully');
-          router.push('/dashboard');
+          router.push('/dashboard'); 
         } else {
           alert('Something went wrong while adding the customer.');
         }
@@ -50,9 +52,38 @@ console.log("rrr ::",userId)
     }
   };
 
+  const handleSearch = async () => {
+    const userData = await AsyncStorage.getItem("userData");
+    const userId = JSON.parse(userData).id;
+    if (mobile.trim()) {
+      try {
+        const response = await ApiService.post("/customers/getCustomersByMobile/WithUserID", {
+          userId: Number(userId),
+          mobile: mobile
+        },{
+          headers:{
+            "Content-Type":"application/json"
+          }
+        });
+          if (response.data.data) {
+            alert('Customer Already Exists');
+            setMobile('');
+            setName('');
+            setIsExist(true)
+          } else {
+            setIsExist(false)
+          }
+        
+      } catch (error) {
+        console.error(error);
+        alert('API request failed. Check your server.');
+      }
+    }
+  };
+
   const openContacts = async () => {
     const { status } = await Contacts.requestPermissionsAsync();
-
+console.log("rrr:::",status)
     if (status === 'granted') {
       const { data } = await Contacts.getContactsAsync({
         fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Image],
@@ -68,10 +99,14 @@ console.log("rrr ::",userId)
   };
 
   const handleContactSelect = (contact) => {
+    const rawNumber = contact.phoneNumbers[0]?.number || "";
+    const cleanedNumber = cleanMobileNumber(rawNumber);
+  
     setName(contact.name);
-    setMobile(contact.phoneNumbers[0]?.number || '');
+    setMobile(cleanedNumber);
     setModalVisible(false);
   };
+  
 
   return (
     <SafeAreaView style={styles.container}>
@@ -81,7 +116,7 @@ console.log("rrr ::",userId)
       </Appbar.Header>
 
       <View style={styles.content}>
-        <View style={styles.inputContainer}>
+        {!isExist && <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Name</Text>
           <View style={styles.inputWrapper}>
             <User size={20} color="#666" style={styles.inputIcon} />
@@ -94,7 +129,7 @@ console.log("rrr ::",userId)
             />
           </View>
         </View>
-
+        }
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Mobile Number</Text>
           <View style={styles.inputWrapper}>
@@ -102,7 +137,8 @@ console.log("rrr ::",userId)
             <TextInput
               style={styles.input}
               value={mobile}
-              onChangeText={setMobile}
+              maxLength={10}
+              onChangeText={(text) => setMobile(cleanMobileNumber(text))}
               placeholder="Enter mobile number"
               keyboardType="numeric"
             />
@@ -115,16 +151,30 @@ console.log("rrr ::",userId)
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
-        style={[
-          styles.confirmButton,
-          name.trim() ? styles.confirmButtonActive : styles.confirmButtonDisabled,
-        ]}
-        onPress={handleConfirm}
-        disabled={!name.trim()}
-      >
-        <Text style={styles.confirmButtonText}>Confirm</Text>
-      </TouchableOpacity>
+      {isExist &&
+        <TouchableOpacity
+          style={[
+            styles.confirmButton,
+            mobile.trim() ? styles.confirmButtonActive : styles.confirmButtonDisabled,
+          ]}
+          onPress={handleSearch}
+          disabled={!mobile.trim()}
+        >
+          <Text style={styles.confirmButtonText}>search</Text>
+        </TouchableOpacity>
+      }
+
+      {!isExist &&
+        <TouchableOpacity
+          style={[
+            styles.confirmButton,
+            name.trim() ? styles.confirmButtonActive : styles.confirmButtonDisabled,
+          ]}
+          onPress={handleConfirm}
+          disabled={!name.trim()}
+        >
+          <Text style={styles.confirmButtonText}>Confirm</Text>
+        </TouchableOpacity>}
 
       {/* Modal for Contacts List */}
       <Modal
@@ -197,7 +247,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-    inputContainer: {
+  inputContainer: {
     marginBottom: 20,
   },
   inputLabel: {

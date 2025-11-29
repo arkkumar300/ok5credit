@@ -1,22 +1,26 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput, Alert, ScrollView, Image, Dimensions } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Camera, Paperclip as PaperclipIcon, Mic, X } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { ArrowLeft, Camera, Paperclip as PaperclipIcon, Mic, X, ArrowRight, ArrowRightIcon } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function TransactionScreen() {
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState("");
   const [note, setNote] = useState('');
-  const [selectedDate, setSelectedDate] = useState(moment().format('DD MMM YYYY'));
+  // const [selectedDate, setSelectedDate] = useState(moment().format('DD MMM YYYY'));
   const [activeType, setActiveType] = useState(null);
   const [images, setImages] = useState("");
   const [imageUri, setImageUri] = useState("");
   const [billID, setBillID] = useState("");
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
   const router = useRouter();
-  const { transactionType, transaction_for, id, personName } = useLocalSearchParams();
+  const { transactionType, transaction_for, id, personName, isSubscribe_user, transaction_limit } = useLocalSearchParams();
 
   const handleNumberPress = (num) => {
     if (amount === '0') {
@@ -24,6 +28,19 @@ export default function TransactionScreen() {
     } else {
       setAmount(amount + num);
     }
+  };
+
+  const onChangeDate = (event, date) => {
+    setShowCalendar(false);
+
+    if (event.type === "dismissed") return;
+
+    // if (date < new Date().setHours(0, 0, 0, 0)) {
+    //   Alert.alert("Invalid Date", "You cannot select a past date.");
+    //   return;
+    // }
+
+    setSelectedDate(date);
   };
 
   const uploadImage = async (uri) => {
@@ -46,7 +63,7 @@ export default function TransactionScreen() {
 
       const result = response.data;
       const rrr = `https://aquaservices.esotericprojects.tech/uploads/${result.file_info.filename}`;
-      console.log('Upload success:', rrr);
+      console.log('Upload success:', result);
       return rrr;
     } catch (error) {
       console.error('Upload failed:', error);
@@ -70,12 +87,13 @@ export default function TransactionScreen() {
     }
   };
 
+
+
   const addTransaction = async () => {
-    const date = moment().format('YYYY-MM-DD'); // Today's date
+    const date = moment(selectedDate).format('YYYY-MM-DD');
     const userData = await AsyncStorage.getItem("userData");
     const userId = JSON.parse(userData).id;
     const transactionFor = transaction_for === 'customer' ? 'customer' : 'supplier';
-
     const commonPayload = {
       userId: userId,
       transaction_type: transactionType,
@@ -98,7 +116,7 @@ export default function TransactionScreen() {
         : '/transactions/supplier';
 
     try {
-      console.log("transactionType ::", transaction_for);
+
       const response = await ApiService.post(url, payload);
       Alert.alert('Success', 'Transaction added successfully!');
       if (transactionFor === 'customer') {
@@ -110,6 +128,7 @@ export default function TransactionScreen() {
             personId: id
           }
         });
+
       } else if (transactionFor === 'supplier') {
         router.push({
           pathname: '/supplierDetails',
@@ -197,7 +216,7 @@ export default function TransactionScreen() {
   const openGallery = async () => {
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
-  
+
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -205,7 +224,7 @@ export default function TransactionScreen() {
         aspect: [4, 3],
         quality: 0.8,
       });
-  
+
       if (
         result &&
         !result.canceled &&
@@ -214,13 +233,13 @@ export default function TransactionScreen() {
         result.assets[0].uri
       ) {
         const localUri = result.assets[0].uri;
-  
+
         // Optional: preview the local image first
         setImageUri(localUri);
-  
+
         // Upload the image (assuming uploadImage returns a URL)
         const uploadedUrl = await uploadImage(localUri);
-  
+
         // Save the uploaded image URL
         setImageUri(uploadedUrl);
         setImages([uploadedUrl]); // Store it as an array with one image
@@ -258,59 +277,116 @@ export default function TransactionScreen() {
             <Text style={styles.lockIcon}>🔒</Text>
           </View>
         </View>
+        {isSubscribe_user === false &&
+          <>
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              margin: 10, paddingHorizontal: 20,
+              paddingVertical: 10,
+              backgroundColor: "#f3f3f3",
+              borderRadius: 20
+            }}>
+              {/* <Text style={[{
+                color: '#388E3C90',
+                fontWeight: '600',
+                fontSize: 14,
+                textTransform: 'capitalize', 
+                margin: 10
+              }]}>Basic Plan</Text> */}
+              {
+                transactionType === "you_gave" ? (
+                  <Text style={{ fontSize: 14, borderRadius: 5, fontWeight: 'bold', color: '#388E3C90' }}>Give   :    {transaction_limit} / 2</Text>
+
+                ) : (
+                  <Text style={{ fontSize: 14, borderRadius: 5, fontWeight: 'bold', color: '#33333390' }}>Receive :   {transaction_limit}  / 4 </Text>
+                )
+              }
+              <Text style={{ fontSize: 14, borderRadius: 5, fontWeight: 'bold', color: '#333333' }}>Daily Transaction Limit Left Basic Plan </Text>
+
+              <ArrowRight size={15} color="#666" />
+
+            </View>
+
+          </>}
 
         <View style={styles.amountContainer}>
           <Text style={styles.currencySymbol}>₹</Text>
           <Text style={styles.amountDisplay}>{amount}</Text>
         </View>
+        {amount && (
+          <>
+            <View style={styles.dateContainer}>
+              <Text style={styles.dateLabel}>Due Date</Text>
 
-        <View style={styles.dateContainer}>
-          <Text style={styles.dateLabel}>Date</Text>
-          <View style={styles.dateSelector}>
-            <Text style={styles.dateText}>{selectedDate}</Text>
-            <Text style={styles.dropdownArrow}>⌄</Text>
-          </View>
-        </View>
-        <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.addImagesButton} onPress={showImagePickerOptions}>
-            <Camera size={20} color="#4CAF50" />
-            <Text style={styles.addImagesText}>Add Images</Text>
-          </TouchableOpacity>
-          {transactionType === 'you_gave' && transaction_for === 'customer'&&
-            <TouchableOpacity
-              style={[styles.addImagesButton, styles.addBillButton, { marginLeft: 20 }]}
-              onPress={() => {
-                router.push({
-                  pathname: '/billGenaration',params:{customerId:id,bill_type:"BILL"}
-                });
-              }}
-            >
-              <PaperclipIcon size={20} color="#ffffff" />
-              <Text style={[styles.addImagesText, styles.addBillText]}>Add Bill</Text>
-            </TouchableOpacity>}
-        </View>
+              <TouchableOpacity
+                style={styles.dateSelector}
+                onPress={() => setShowCalendar(true)}
+              >
+                <Text style={styles.dateText}>
+                  {moment(selectedDate).format("DD MMM YYYY")}
+                </Text>
+                <Text style={styles.dropdownArrow}>⌄</Text>
+              </TouchableOpacity>
 
-        {images && (
-          <View style={styles.imagesContainer}>
-            <Text style={styles.imagesTitle}>Selected Images </Text>
-            <View style={styles.imageWrapper}>
-              <Image source={{ uri: imageUri }} style={styles.selectedImage} />
+              {showCalendar && (
+                <DateTimePicker
+                  value={selectedDate}
+                  mode="date"
+                  display="calendar"
+                  //  minimumDate={new Date()}   // 🚫 prevents past dates
+                  onChange={onChangeDate}
+                />
+              )}
             </View>
-          </View>
-        )}
 
-        <View style={styles.noteContainer}>
-          <TextInput
-            style={styles.noteInput}
-            placeholder="Add Note (Optional)"
-            value={note}
-            onChangeText={setNote}
-            multiline
-          />
-          <TouchableOpacity style={styles.micButton}>
-            <Mic size={20} color="#666" />
-          </TouchableOpacity>
-        </View>
+            <View style={styles.buttonRow}>
+
+              { transactionType === "you_gave" ?
+                <TouchableOpacity
+                  style={[styles.addImagesButton, styles.addBillButton, { marginLeft: 20 }]}
+                  onPress={() => {
+                    router.push({
+                      pathname: '/billGenaration', params: { Id: id, bill_type: "BILL", bill_date: moment(selectedDate).format('DD MMM YYYY'),transaction_for }
+                    });
+                  }}
+                >
+                  <PaperclipIcon size={20} color="#ffffff" />
+                  <Text style={[styles.addImagesText, styles.addBillText]}>Add Bill</Text>
+                </TouchableOpacity>
+                :
+                <TouchableOpacity style={styles.addImagesButton} onPress={showImagePickerOptions}>
+                  <Camera size={20} color="#4CAF50" />
+                  <Text style={styles.addImagesText}>Add Bill</Text>
+                </TouchableOpacity>
+              }
+            </View>
+
+            {images && (
+              <View style={styles.imagesContainer}>
+                <Text style={styles.imagesTitle}>Selected Images </Text>
+                <View style={styles.imageWrapper}>
+                  <Image source={{ uri: imageUri }} style={styles.selectedImage} />
+                </View>
+              </View>
+            )}
+
+            <View style={styles.noteContainer}>
+              <TextInput
+                style={styles.noteInput}
+                placeholder="Add Note (Optional)"
+                value={note}
+                onChangeText={setNote}
+                multiline
+              />
+              <TouchableOpacity style={styles.micButton}>
+                <Mic size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+          </>
+        )
+        }
 
         <View style={styles.calculator}>
           <View style={styles.calculatorRow}>

@@ -1,21 +1,22 @@
 // ProfileScreen.js
 
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, Alert, TouchableOpacity, Modal, Pressable } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, Text, TextInput, SafeAreaView, StyleSheet, ScrollView, Alert, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { Mic, X, Pencil, Paperclip as PaperclipIcon, Camera, Share2, Store, Phone, FileText, Hash, Building2, MapPin, Mail, ArrowLeft, User } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Avatar } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
+import { useFocusEffect } from '@react-navigation/native';
 
 const updateUserData = async (payload) => {
   const userData = await AsyncStorage.getItem("userData");
   const userId = JSON.parse(userData).id;
+  console.log("payload::",payload)
   const response = await ApiService.put(`/user/${userId}`, payload);
   if (response?.data) {
-    console.log('updated successfully')
+    console.log('updated successfully',response?.data)
   }
 }
 
@@ -23,8 +24,10 @@ const ProfileScreen = () => {
   // State to handle modals
   const [activeModal, setActiveModal] = useState(null);
   const [images, setImages] = useState('');
-  const [userData, setUserData] = useState(null);
   const [imageUri, setImageUri] = useState("");
+  const [userData, setUserData] = useState(null);
+  const [initialsLetter, setInitialsLetter] = useState("");
+
   const router = useRouter();
 
   const openModal = (key) => {
@@ -50,18 +53,28 @@ const ProfileScreen = () => {
     };
   }, [activeModal]);
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      const userData = await AsyncStorage.getItem("userData");
-      const userId = JSON.parse(userData).id;
-      const response = await ApiService.get(`/user/${userId}`);
-      console.log("aaa ::",response.data)
-      setUserData(response.data)
-      setImageUri(response?.data.photo)
+  useFocusEffect(
+    useCallback(() => {
+      const fetchUser = async () => {
+        const userData = await AsyncStorage.getItem("userData");
+        const userId = JSON.parse(userData).id;
+        const rrr = JSON.parse(userData);
+        setUserData(rrr)
+        const name = rrr?.name?.trim() || '';
+        const initials = name
+          .split(' ')
+          .filter(Boolean)             // removes empty strings
+          .map(word => word[0]?.toUpperCase())
+          .join('');
+        setInitialsLetter(initials)
+        const response = await ApiService.get(`/user/${userId}`);
+        setUserData(response.data)
+        setImageUri(response?.data.photo)
 
-    }
-    fetchUser() 
-  }, [activeModal]);
+      }
+      fetchUser()
+    }, [activeModal])
+  )
 
   const requestPermissions = async () => {
     const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
@@ -173,13 +186,13 @@ const ProfileScreen = () => {
 
       if (!result.canceled && result.assets) {
         const localUri = result.assets[0].uri;
-  
+
         // Optional: preview the local image first
         setImageUri(localUri);
-  
+
         // Upload the image (assuming uploadImage returns a URL)
         const uploadedUrl = await uploadImage(localUri);
-  
+
         // Save the uploaded image URL
         setImageUri(uploadedUrl);
         setImages([uploadedUrl]); // Store it as an array with one image
@@ -218,29 +231,29 @@ const ProfileScreen = () => {
         {/* Business Info List */}
         <View style={styles.card}>
           <ProfileItem icon={Share2} label="Share your business card" onPress={() => openModal('businessCard')} />
-          <ProfileItem icon={Store} label={userData?.name || "ARK STORES"} subtitle="Profile name will be visible to your customers" onPress={() => openModal('storeName')} />
-          <ProfileItem icon={Phone} label={userData?.mobile || "9494130839"} isEditable onPress={() => openModal('OTP')} />
+          <ProfileItem icon={Store} label={userData?.businessName || "ARK STORES"} subtitle="Profile name will be visible to your customers" onPress={() => openModal('storeName')} />
+          <ProfileItem icon={Phone} label={userData?.mobile || "9494130839"} isEditable />
           <ProfileItem icon={FileText} label={userData?.GST || "Enter your GST number"} onPress={() => openModal('gst')} />
           {/* <ProfileItem icon={Hash} label="Enter your Udyam number" onPress={() => openModal('udyam')} /> */}
           <ProfileItem icon={Building2} label={userData?.businessType || "Select your business type"} onPress={() => openModal('businessType')} />
           {/* <ProfileItem icon={Building2} label="Select your category" onPress={() => openModal('category')} /> */}
           <ProfileItem icon={User} label={userData?.name || "Enter your Name"} onPress={() => openModal('UserName')} />
-          <ProfileItem icon={Mail} label={userData?.email ||"Enter your Email" }onPress={() => openModal('Email')} />
-          <ProfileItem icon={MapPin} label={userData?.address ||"Enter your address"} onPress={() => openModal('address')} />
+          <ProfileItem icon={Mail} label={userData?.email || "Enter your Email"} onPress={() => openModal('Email')} />
+          <ProfileItem icon={MapPin} label={userData?.address || "Enter your address"} onPress={() => openModal('address')} />
         </View>
 
         {/* Modals (You can customize each one separately below) */}
-        <BusinessCardModal visible={activeModal === 'businessCard'} onClose={closeModal} />
-        <StoreNameModal visible={activeModal === 'storeName'} onClose={closeModal} />
-        <ProfileModal visible={activeModal === 'phone'} onClose={closeModal} title="Phone Number" />
-        <GSTModal visible={activeModal === 'gst'} onClose={closeModal} />
-        <ProfileModal visible={activeModal === 'udyam'} onClose={closeModal} title="Udyam Number" />
-        <BusinessTypeModal visible={activeModal === 'businessType'} onClose={closeModal} />
-        <ProfileModal visible={activeModal === 'category'} onClose={closeModal} title="Category" />
-        <UseNameModal visible={activeModal === 'UserName'} onClose={closeModal} />
-        <OTPModal visible={activeModal === 'OTP'} onClose={closeModal} onOpen={() => openModal('phone')} />
-        <UserEmailModal visible={activeModal === 'Email'} onClose={closeModal} />
-        <AddressModal visible={activeModal === 'address'} onClose={closeModal} />
+        <BusinessCardModal visible={activeModal === 'businessCard'} onClose={closeModal} userDetails={userData}/>
+        <StoreNameModal visible={activeModal === 'storeName'} onClose={closeModal} businessName={userData?.businessName || ""} />
+        {/* <ProfileModal visible={activeModal === 'phone'} onClose={closeModal} title="Phone Number" phone={userData?.mobile} /> */}
+        <GSTModal visible={activeModal === 'gst'} onClose={closeModal} userGST={userData?.GST || ""} />
+        {/* <ProfileModal visible={activeModal === 'udyam'} onClose={closeModal} title="Udyam Number" /> */}
+        <BusinessTypeModal visible={activeModal === 'businessType'} onClose={closeModal} businessType={userData?.businessType || ""} />
+        {/* <ProfileModal visible={activeModal === 'category'} onClose={closeModal} title="Category" /> */}
+        <UseNameModal visible={activeModal === 'UserName'} onClose={closeModal} name={userData?.name || ""} />
+        <OTPModal visible={activeModal === 'OTP'} onClose={closeModal}  />
+        <UserEmailModal visible={activeModal === 'Email'} onClose={closeModal} email={userData?.email || ""} />
+        <AddressModal visible={activeModal === 'address'} onClose={closeModal} userAddress={userData?.address || ""} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -260,7 +273,7 @@ const ProfileItem = ({ icon: Icon, label, subtitle, isEditable, onPress }) => (
 );
 
 
-const BusinessCardModal = ({ visible, onClose }) => (
+const BusinessCardModal = ({ visible, onClose,userDetails }) => (
   <Modal
     visible={visible}
     animationType="slide"
@@ -281,8 +294,8 @@ const BusinessCardModal = ({ visible, onClose }) => (
 
         {/* Card Preview */}
         <View style={styles.cardPreview}>
-          <Text style={[styles.cardNumber, { alignSelf: 'center' }]}>9494130830</Text>
-          <Text style={[styles.cardNumber, { alignSelf: 'center' }]}>ARK STORES</Text>
+          <Text style={[styles.cardNumber, { alignSelf: 'center' }]}>{userDetails?.mobile}</Text>
+          <Text style={[styles.cardNumber, { alignSelf: 'center' }]}>{userDetails?.businessName}</Text>
           <View style={styles.aquaCreditBadge}>
             <Text style={styles.aquaCreditText}>Verified User</Text>
             <Text style={styles.aquaCreditBrand}>AquaCredit</Text>
@@ -298,9 +311,12 @@ const BusinessCardModal = ({ visible, onClose }) => (
   </Modal>
 );
 
-const StoreNameModal = ({ visible, onClose }) => {
-  const [storeName, setStoreName] = useState('');
-  const payload = { name: storeName };
+const StoreNameModal = ({ visible, onClose, businessName }) => {
+  const [storeName, setStoreName] = useState();
+  useEffect(()=>{
+    setStoreName(businessName)
+  },[businessName])
+  const payload = { businessName: storeName };
   const handleConfirm = () => {
     updateUserData(payload)
     onClose();
@@ -339,8 +355,11 @@ const StoreNameModal = ({ visible, onClose }) => {
   )
 };
 
-const UseNameModal = ({ visible, onClose }) => {
+const UseNameModal = ({ visible, onClose,name }) => {
   const [userName, setUserName] = useState('');
+  useEffect(()=>{
+    setUserName(name)
+  },[name])
 
   const handleConfirm = () => {
     const payload = { name: userName }
@@ -473,8 +492,11 @@ const OTPModal = ({ visible, onClose, onOpen }) => {
   )
 };
 
-const UserEmailModal = ({ visible, onClose }) => {
+const UserEmailModal = ({ visible, onClose,email }) => {
   const [userEmail, setUserEmail] = useState('');
+  useEffect(()=>{
+    setUserEmail(email)
+  },[email])
 
   const handleConfirm = () => {
     const payload = { email: userEmail }
@@ -515,8 +537,11 @@ const UserEmailModal = ({ visible, onClose }) => {
   )
 };
 
-const AddressModal = ({ visible, onClose }) => {
+const AddressModal = ({ visible, onClose,userAddress }) => {
   const [address, setAddress] = useState('');
+  useEffect(()=>{
+    setAddress(userAddress)
+  },[userAddress])
 
   const handleConfirm = () => {
     const payload = { address: address }
@@ -557,9 +582,12 @@ const AddressModal = ({ visible, onClose }) => {
   )
 };
 
-const GSTModal = ({ visible, onClose }) => {
+const GSTModal = ({ visible, onClose,userGST }) => {
   const [GST, setGST] = useState('');
   const payload = { GST: GST }
+  useEffect(()=>{
+    setGST(userGST)
+  },[userGST])
 
   const handleConfirm = () => {
     updateUserData(payload)
@@ -599,10 +627,10 @@ const GSTModal = ({ visible, onClose }) => {
   )
 };
 
-const BusinessTypeModal = ({ visible, onClose }) => {
+const BusinessTypeModal = ({ visible, onClose, businessType }) => {
   const businessTypes = [
     'Retail Shop',
-    'Wholesale/Distributor',
+    'Wholesale/Distributor', 
     'Personal Use',
     'Online Services',
   ];
@@ -622,14 +650,20 @@ const BusinessTypeModal = ({ visible, onClose }) => {
     >
       <View style={styles.modalBackground}>
         <View style={styles.bottomSheet}>
+          <View style={{flexDirection:'row',justifyContent:'space-between'}}>
+
           <Text style={styles.modalTitle}>Select your business type</Text>
+          <TouchableOpacity onPress={onClose} style={styles.iconButton}>
+              <Text style={styles.cancelIcon}>✕</Text>
+            </TouchableOpacity>
+          </View>
           {businessTypes.map((type, index) => (
             <TouchableOpacity
               key={index}
               style={styles.optionItem}
               onPress={() => handleSelect(type)}
             >
-              <Text style={styles.optionText}>{type}</Text>
+              <Text style={businessType !== type ? styles.optionText : styles.selectOptionText}>{type}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -749,6 +783,13 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 16,
     color: '#333',
+  },
+
+  selectOptionText: {
+    fontSize: 16,borderRadius:5,
+    color: '#3A933A', padding: 8,
+    backgroundColor: "#E6FFE6",
+    fontWeight:'bold'
   },
 
   label: {

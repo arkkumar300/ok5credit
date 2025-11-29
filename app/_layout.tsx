@@ -1,3 +1,4 @@
+// import "../hooks/firebase";  // Ensure Firebase initializes first
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';

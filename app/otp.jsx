@@ -1,129 +1,207 @@
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  SafeAreaView,
-  Alert,
-} from 'react-native';
+import {View,Text,StyleSheet,TextInput,TouchableOpacity,SafeAreaView,Alert,Platform} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+// import { router } from 'expo-router';
+import * as Notifications from "expo-notifications";
 import { ArrowLeft } from 'lucide-react-native';
 import ApiService from './components/ApiServices';
 import { ActivityIndicator } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { sendSMS } from '../hooks/sendSMS';
+import { useFCM } from '../hooks/usePushNotification';
+import Constants from "expo-constants";
+import FirebasePermission from './components/firebasePermission';
 
 export default function OTPScreen() {
+  // const { fcmToken, notification } = useFCM();
+  const [fcmToken, setFcmToken] = useState(null);
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(30);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); 
+  const [verifying, setVerifying] = useState(false);
+  const [genrateOTP, setgenrateOTP] = useState("");
+
   const inputRefs = useRef([]);
   const router = useRouter();
   const { mobile } = useLocalSearchParams();
-
-  // ✅ Send OTP when screen loads
+  const cleanMobile = String(mobile).replace(/\D/g, "").slice(-10);
+  
+  
+  // --------------------------
+  //  SEND OTP ON SCREEN LOAD
+  // --------------------------
   useEffect(() => {
     sendOTP();
 
     const interval = setInterval(() => {
-      setTimer((prev) => (prev > 0 ? prev - 1 : 0));
+      setTimer(t => (t > 0 ? t - 1 : 0));
     }, 1000);
 
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ Function to send OTP
+  // --------------------------
+  //  SEND OTP (MAIN FUNCTION)
+  // --------------------------
   const sendOTP = async () => {
     try {
-      setLoading(true)
-      const response = await ApiService.post('otp/send', { mobile });
+      setLoading(true);
+      const response = await ApiService.post('otp/send',
+        { mobile},
+        { headers: { 'Content-Type': 'application/json' } }
+      );
 
-      if (!response.data.success) {
-        throw new Error(response.message || 'Failed to send OTP');
-      }
-      if (response.data.otp && response.data.otp.length === 6) {
-        const otpArray = response.data.otp.split('');
-        setOtp(otpArray);
-        setLoading(false)
-      } else {
-        console.warn('⚠️ OTP not included in response or invalid');
-      }     
-      // You can now use response.Verification or response.userId
-    } catch (error) {
-      console.error('❌ Error sending OTP:', error.message || error);
-      // Optionally show alert:
-      // Alert.alert("Error", error.message || "Something went wrong");
+      if (!response.data.success)
+        throw new Error(response.data.message || "Failed to send OTP");
+      const genrateOTP=response.data.otp
+      await sendSMS(cleanMobile, genrateOTP);
+
+      setOtp(Array(6).fill("")); // clear UI
+      inputRefs.current[0]?.focus();
+
+    } catch (error) { 
+      console.error("❌ Error sending OTP:", error);
+      Alert.alert("Error", "Could not send OTP. Try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ✅ Function to resend OTP
+  // --------------------------
+  // RESEND OTP
+  // --------------------------
   const handleResendOTP = async () => {
-    setTimer(30);
-    setOtp(['', '', '', '', '', '']);
-    inputRefs.current[0]?.focus();
-
     try {
-      const response = await ApiService.post('otp/resend', { mobile });
-    
-      // ✅ Since interceptor returns response.data directly:
-    
-      if (!response.data.success) {
-        throw new Error(response.message || 'Failed to send OTP');
-      }
-      if (response.data.otps && response.data.otps.length === 6) {
-        const otpArray = response.data.otps.split('');
-        setOtp(otpArray);
-      } else {
-        console.warn('⚠️ OTP not included in response or invalid');
-      }      console.log('✅ OTP resent successfully');
-      // You can now use response.Verification or response.userId
-    } catch (err) {
-      console.error('Resend OTP error:', err.message);
-      Alert.alert('Error', 'Failed to resend OTP. Please try again.');
+      setTimer(30);
+      setOtp(["", "", "", "", "", ""]);
+      inputRefs.current[0]?.focus();
+
+
+      const response = await ApiService.post(
+        'otp/resend',
+        { mobile },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+
+      if (!response.data.success)
+        throw new Error(response.data.message || "OTP resend failed");
+
+      const genrateOTP=response.data.otp
+      await sendSMS(cleanMobile, genrateOTP);
+
+    } catch (error) {
+      console.error("❌ Resend OTP error:", error);
+      Alert.alert("Error", "Failed to resend OTP.");
     }
   };
 
-  // ✅ Handle OTP input change
+  // --------------------------
+  // OTP TEXT INPUT HANDLING
+  // --------------------------
   const handleOtpChange = (value, index) => {
+    if (!/^\d*$/.test(value)) return; // Only allow digits
+
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
 
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
+    if (value && index < 5) inputRefs.current[index + 1]?.focus();
+    if (!value && index > 0) inputRefs.current[index - 1]?.focus();
 
-    if (newOtp.every((digit) => digit !== '')) {
-      handleVerify(newOtp.join(''));
-    }
+    if (newOtp.every(d => d !== "")) handleVerify(newOtp.join(""));
   };
 
   const handleKeyPress = (e, index) => {
-    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
+    if (e.nativeEvent.key === "Backspace" && otp[index] === "" && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
-  // ✅ Handle OTP verification
-  const handleVerify = async (otpCode = otp.join('')) => {
-    if (otpCode.length !== 6) return;
+  // --------------------------
+  // VERIFY OTP
+  // --------------------------
+  const handleVerify = async (otpCode = otp.join("")) => {
+    if (otpCode.length !== 6) {
+      Alert.alert("Invalid OTP", "Please enter all 6 digits.");
+      return;
+    }
 
     try {
-      const response = await ApiService.post('otp/verify', { mobile, otp:otpCode });
-      const data = response.data;
-      if (!response.data.success) throw new Error(data.message || 'OTP verification failed');
+      setVerifying(true);
 
-      console.log('OTP verified successfully',data.userId);
-      router.replace({
-        pathname: '/userData',
-        params: { USER_ID:data.userId }
-      });
-    } catch (err) {
-      console.error('OTP verify error:', err.message);
-      Alert.alert('Error', 'Invalid OTP. Please try again.');
+      const response = await ApiService.post("otp/verify",
+        { mobile, otp: otpCode },
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      if (!response.data.success)
+        throw new Error(response.data.message || "OTP verification failed");
+     
+      if (!fcmToken) { 
+        Alert.alert("Please wait", "Still generating device token...");
+        return;
+      }
+      await AsyncStorage.setItem("userData",JSON.stringify(response.data.user))
+      await addFCMToken(response.data.user);
+
+    } catch (error) {
+      console.error("❌ OTP Verification Error:", error);
+      Alert.alert("Error", error.message || "Invalid OTP. Try again.");
+    } finally {
+      setVerifying(false);
     }
   };
 
+  useEffect(() => {
+    const getToken = async () => {
+      await FirebasePermission();
+      const storedToken = await AsyncStorage.getItem("UserFCMToken");
+      console.log("🌟 Token after permission:", storedToken);
+  
+      if (storedToken) setFcmToken(storedToken);
+    };
+    
+    getToken(); 
+  }, []);
+
+
+    
+
+  // --------------------------
+  // SAVE FCM TOKEN
+  // --------------------------
+  const addFCMToken = async (userDetails) => {
+    try {
+      
+      const deviceType = Platform.OS;
+      const response = await ApiService.post(
+        "fcmToken/",
+        {
+          user_id: userDetails.id,
+          user_mobile: userDetails.mobile,
+          fcm_token: fcmToken,
+          device_type: deviceType
+        },
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      if (!response.data.success)
+        throw new Error(response.data.message || "Failed to register FCM");
+
+      router.replace({
+        pathname: "/userData",
+        params: { USER_ID: userDetails.id }
+      });
+
+    } catch (error) {
+      console.error("❌ FCM Error:", error);
+      Alert.alert("Error", "Something went wrong while saving FCM token.");
+    }
+  };
+
+  // --------------------------
+  // UI
+  // --------------------------
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -135,7 +213,7 @@ export default function OTPScreen() {
       <View style={styles.content}>
         <Text style={styles.title}>Enter OTP</Text>
         <Text style={styles.subtitle}>
-          We've sent a 6-digit OTP to{'\n'}
+          We have sent a 6-digit OTP to {"\n"}
           <Text style={styles.phoneText}>+91 {mobile}</Text>
         </Text>
 
@@ -143,11 +221,11 @@ export default function OTPScreen() {
           {otp.map((digit, index) => (
             <TextInput
               key={index}
-              ref={(ref) => (inputRefs.current[index] = ref)}
+              ref={ref => (inputRefs.current[index] = ref)}
               style={[styles.otpInput, digit && styles.otpInputFilled]}
               value={digit}
-              onChangeText={(value) => handleOtpChange(value, index)}
-              onKeyPress={(e) => handleKeyPress(e, index)}
+              onChangeText={value => handleOtpChange(value, index)}
+              onKeyPress={e => handleKeyPress(e, index)}
               keyboardType="numeric"
               maxLength={1}
               autoFocus={index === 0}
@@ -168,24 +246,23 @@ export default function OTPScreen() {
         <TouchableOpacity
           style={[
             styles.verifyButton,
-            otp.every((digit) => digit !== '')
-              ? styles.verifyButtonActive
-              : styles.verifyButtonDisabled,
+            otp.every(d => d) ? styles.verifyButtonActive : styles.verifyButtonDisabled
           ]}
           onPress={() => handleVerify()}
-          disabled={!otp.every((digit) => digit !== '')}
+          disabled={!otp.every(d => d) || verifying}
         >
-          <Text style={styles.verifyButtonText}>Verify & Continue</Text>
-          {/* : <ActivityIndicator size={'small'} />} */}
+          {verifying
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={styles.verifyButtonText}>Verify & Continue</Text>}
         </TouchableOpacity>
       </View>
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Didn't receive the OTP?{' '}
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={styles.linkText}>Change number</Text>
-          </TouchableOpacity>
+          Didn't receive the OTP?{" "}
+          <Text style={styles.linkText} onPress={() => router.back()}>
+            Change number
+          </Text>
         </Text>
       </View>
     </SafeAreaView>

@@ -1,14 +1,6 @@
 // App.js
 import React, { useRef, useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  SafeAreaView,
-} from 'react-native';
+import {View,Text,StyleSheet,TouchableOpacity,ScrollView,Alert,SafeAreaView} from 'react-native';
 import { Appbar, RadioButton, Divider } from 'react-native-paper';
 import { ArrowLeft, Download, FileText } from 'lucide-react-native';
 import { captureRef } from 'react-native-view-shot';
@@ -26,57 +18,80 @@ export default function BillDetails() {
   const [billDetails, setbillDetails] = useState(null);
   const [loading, setLoading] = useState(null);
   const [userDetails, setUserDetails] = useState(null);
-  const [customerData, setCustomerData] = useState(null);
+  const [supplierData, setSupplierData] = useState(null);
   const [items, setItems] = useState([]);
   const [totalPrice, setTotalPrice] = useState(0);
+  const [taxableAmount, setTaxableAmount] = useState(0);
+  const [chargesAmount, setChargesAmount] = useState(0);
+  const [itemsAmount, setItemsAmount] = useState(0);
+  const [extraCharges, setExtraCharges] = useState(0);
   const quoteRef = useRef();
   const router = useRouter();
-  const { billId, customerInfo, bill } = useLocalSearchParams()
+  const { billId, supplierInfo, bill,transaction_for } = useLocalSearchParams()
   useEffect(() => {
-    if (customerInfo) {
+    if (supplierInfo) {
       try {
-        const parsedData = JSON.parse(decodeURIComponent(customerInfo));
-        setCustomerData(parsedData);
-        console.log("Parsed customer info:", parsedData.mobile);
+        const parsedData = JSON.parse(decodeURIComponent(supplierInfo));
+        setSupplierData(parsedData);
+        console.log("Parsed supplier info:", parsedData.mobile);
       } catch (error) {
-        console.error("Failed to parse customerInfo:", error);
+        console.error("Failed to parse supplierInfo:", error);
       }
     }
-  }, [customerInfo]);
-  const handleDownload = async () => {
-    try {
-      if (format === 'pdf') {
-        const htmlContent = await billPDF(userDetails, customerInfo, bill, items, totalPrice);; // get html string
-        const { uri } = await Print.printToFileAsync({ html: htmlContent });
-        await Sharing.shareAsync(uri);
-      } else {
-        const uri = await captureRef(quoteRef, {
-          format: 'png',
-          quality: 1,
-        });
-        await Sharing.shareAsync(uri);
-      }
-    } catch (error) {
-      Alert.alert('Error', error.message);
-    }
-  };
+  }, [supplierInfo]);
 
+const handleDownload = async () => {
+  try {
+    if (format === 'pdf') {
+      const pdf = await billPDF(userDetails, supplierData, bill, items, extraCharges,totalPrice);
+
+      if (!pdf) {
+        Alert.alert("Error", "Could not generate PDF");
+        return;
+      }
+
+      await Sharing.shareAsync(pdf.uri);  // << direct share
+      return;
+    }
+
+    // PHOTO MODE
+    const uri = await captureRef(quoteRef, { format: 'png', quality: 1 });
+    await Sharing.shareAsync(uri);
+
+  } catch (error) {
+    Alert.alert('Error', error.message);
+  }
+};
+  
   useEffect(() => {
+    console.log("billId",billId)
+    console.log("supplierInfo", supplierInfo)
+    console.log("bill",  bill)
     const fetchBills = async () => {
       const userData = await AsyncStorage.getItem("userData");
       setUserDetails(JSON.parse(userData));
       try {
         setLoading(true);
         const response = await ApiService.post(`/bill/${billId}`);
-        console.log("response.data:::",response.data)
+        console.log("response.data:::",response.data.items)
         const result = response.data;
         setbillDetails(result)
-        setItems(JSON.parse(result?.items))
-        const totalAmount = JSON.parse(result?.items).reduce(
+        setItems(JSON.parse(result?.items));
+        setExtraCharges(JSON.parse(result?.ExtraCharges));
+        const totalItemAmount = result?.items.reduce(
           (sum, c) => sum + (parseFloat(c.price || 0) * parseFloat(c.quantity || 0)),
           0
         );
+        const totalChargesAmount_user = result?.ExtraCharges.reduce(
+          (sum, c) => sum + (parseFloat(c.finalAmount || 0)),
+          0
+        );
+        const TaxableAmount_user=parseFloat(result?.amount).toFixed(2)-parseFloat(totalItemAmount).toFixed(2)-parseFloat(totalChargesAmount_user).toFixed(2)
+        const totalAmount = result?.amount
+        setItemsAmount(totalItemAmount)
         setTotalPrice(totalAmount);
+        setTaxableAmount(TaxableAmount_user);
+        setChargesAmount(totalChargesAmount_user);
       } catch (error) {
         console.error('Error fetching bills:', error);
       } finally {
@@ -128,7 +143,7 @@ export default function BillDetails() {
     <SafeAreaView>
       <Appbar.Header style={{ backgroundColor: "#ffffff", borderBottomWidth: 2, borderColor: '#f2f7f6' }}>
         <ArrowLeft size={24} color={'#2E7D32'} style={{ marginStart: 10 }} onPress={() => {
-          router.push({ pathname: './customerDetails', params: { personName: customerData?.name, personType: "customer", personId: customerData?.id } })
+          router.push({ pathname: './supplierDetails', params: { personName: supplierData?.name, personType: "supplier", personId: supplierData?.id } })
         }}
         />
         <Appbar.Content title={billDetails?.bill_id} titleStyle={{ color: '#333333', fontWeight: 'bold', marginLeft: 20 }} />
@@ -143,13 +158,13 @@ export default function BillDetails() {
           <Text style={styles.mobile}>Mobile Number: {userDetails?.mobile}</Text>
           <Divider style={{ marginVertical: 5 }} />
           {
-            customerInfo && (
+            supplierInfo && (
               <>
-                <Text style={styles.heading}>{customerData?.name}</Text>
-                {customerData?.address && <Text style={styles.address}>
-                  {customerData?.address}
+                <Text style={styles.heading}>{supplierData?.name}</Text>
+                {supplierData?.address && <Text style={styles.address}>
+                  {supplierData?.address}
                 </Text>}
-                <Text style={styles.mobile}>Mobile Number: {customerData?.mobile}</Text>
+                <Text style={styles.mobile}>Mobile Number: {supplierData?.mobile}</Text>
 
               </>
             )
@@ -179,6 +194,18 @@ export default function BillDetails() {
                 <Text style={styles.cell}>{Number(item?.quantity || 0) * Number(item?.price || 0)}</Text>
               </View>)
           })}
+          <View style={[styles.tableRow, { borderTopWidth: 1 }]}>
+            <Text style={[styles.cell, { flex: 4, fontWeight: 'bold' }]}>Items Amount</Text>
+            <Text style={[styles.cell, { fontWeight: 'bold' }]}>₹ {itemsAmount}</Text>
+          </View>
+          <View style={[styles.tableRow, { borderTopWidth: 1 }]}>
+            <Text style={[styles.cell, { flex: 4, fontWeight: 'bold' }]}>TaxableAmount</Text>
+            <Text style={[styles.cell, { fontWeight: 'bold' }]}>₹ {taxableAmount}</Text>
+          </View>
+          <View style={[styles.tableRow, { borderTopWidth: 1 }]}>
+            <Text style={[styles.cell, { flex: 4, fontWeight: 'bold' }]}>ChargesAmount</Text>
+            <Text style={[styles.cell, { fontWeight: 'bold' }]}>₹ {chargesAmount}</Text>
+          </View>
           <View style={[styles.tableRow, { borderTopWidth: 1 }]}>
             <Text style={[styles.cell, { flex: 4, fontWeight: 'bold' }]}>TOTAL</Text>
             <Text style={[styles.cell, { fontWeight: 'bold' }]}>₹ {totalPrice}</Text>

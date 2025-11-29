@@ -1,11 +1,13 @@
 // App.js
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, SafeAreaView } from 'react-native';
 import { Provider as PaperProvider, Appbar, FAB, } from 'react-native-paper';
 import { ChevronDown, Search, FileText, Plus, Check, Clock, ArrowLeft, SearchCheck, } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import ApiService from './components/ApiServices';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import moment from 'moment';
+import { useFocusEffect } from '@react-navigation/native';
 
 const bills = [
     { id: '1', title: 'BILL-1', amount: 1005, date: '25 Aug 2025', customer: 'Amma' },
@@ -30,32 +32,42 @@ export default function Bills() {
 
     const addBill = async () => {
         await AsyncStorage.setItem("billType", activeTab === 'bill' ? 'BILL' : 'QUOTATION')
-        router.push({ pathname: './billGenaration', params: { bill_type: activeTab === 'bill' ? 'BILL' : 'QUOTATION' } })
+        router.replace({ pathname: './billGenaration', params: { bill_type: activeTab === 'bill' ? 'BILL' : 'QUOTATION', bill_date: moment().format('DD MMM YYYY') } })
     }
 
-    // You can hardcode or get from user context
-    useEffect(() => {
+    useFocusEffect(
+        useCallback(() => {
+            const removeBillData = async () => {
 
-        const fetchBills = async () => {
-            await AsyncStorage.removeItem("billType");
-            const userData = await AsyncStorage.getItem("userData");
-            const userId = JSON.parse(userData)?.id;
-
-            try {
-                setLoading(true);
-                const response = await ApiService.post(`/bill/getUser`, { userId });
-
-                const result = response.data;
-                setAllBills(result || []);
-            } catch (error) {
-                console.error('Error fetching bills:', error);
-            } finally {
-                setLoading(false);
+                await AsyncStorage.multiRemove(["billCustomer", "billNo", "billType", "billDate", "billNote", "billStore"]);
             }
-        };
+            removeBillData();
+        }, [])
+    )
+    // You can hardcode or get from user context
+    useFocusEffect(
+        useCallback(() => {
+            const fetchBills = async () => {
+                await AsyncStorage.removeItem("billType");
+                const userData = await AsyncStorage.getItem("userData");
+                const userId = JSON.parse(userData)?.id;
 
-        fetchBills();
-    }, []);
+                try {
+                    setLoading(true);
+                    const response = await ApiService.post(`/bill/getUser`, { userId });
+
+                    const result = response.data;
+                    setAllBills(result || []);
+                } catch (error) {
+                    console.error('Error fetching bills:', error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            fetchBills();
+        }, [])
+    )
 
     const data = useMemo(() => {
         return allBills.filter((bill) => bill.bill_type === (activeTab === 'bill' ? 'BILL' : 'QUOTATION'));

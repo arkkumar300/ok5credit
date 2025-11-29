@@ -53,7 +53,7 @@ export default function SupplierDetails() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-var rrr=0
+  var rrr = 0
   useEffect(() => {
     const fetchSupplier = async () => {
       const userData = await AsyncStorage.getItem("userData");
@@ -73,20 +73,59 @@ var rrr=0
     fetchSupplier();
   }, []);
 
-  const renderItem = ({ item }) => {
-    const isReceived = item.transaction_type === 'you_got';
-    let aaa='';
-    if (isReceived) {
-      rrr=Number(rrr)+Number(item.amount)
+  const isEligible = async (transactionType) => {
+    const userData = await AsyncStorage.getItem("userData");
+    const userId = JSON.parse(userData).id;
 
-    } else {
-      rrr=Number(rrr)-Number(item.amount)
+    const response = await ApiService.get(`/user/${userId}`);
+
+    if (!response.data) return false;
+
+    const {
+      isSubscribe,
+      subscribeEndAt,
+      credit_given_count,
+      payment_got_count
+    } = response.data;
+
+    console.log("isSubscribe::", isSubscribe);
+    console.log("transactionType::", transactionType);
+    console.log("subscribeEndAt::", subscribeEndAt);
+    console.log("credit_given_count::", credit_given_count);
+    console.log("payment_got_count::", payment_got_count);
+
+    if (isSubscribe) {
+      const today = new Date();
+      const endDate = new Date(subscribeEndAt);
+
+      return endDate >= today;
     }
 
-    if (rrr<0) {
-      aaa= `${Math.abs(rrr)} Advance`
+    if (transactionType === "you_got") {
+      return parseInt(payment_got_count) < 6;
+    }
+
+    if (transactionType === "you_gave") {
+      return parseInt(credit_given_count) < 3;
+    }
+
+    return false;
+  };
+
+  const renderItem = ({ item }) => {
+    const isReceived = item.transaction_type === 'you_got';
+    let aaa = '';
+    if (isReceived) {
+      rrr = Number(rrr) + Number(item.amount)
+
     } else {
-      aaa= `${rrr} Due`
+      rrr = Number(rrr) - Number(item.amount)
+    }
+
+    if (rrr < 0) {
+      aaa = `${Math.abs(rrr)} Advance`
+    } else {
+      aaa = `${rrr} Due`
     }
 
     return (
@@ -95,50 +134,50 @@ var rrr=0
           styles.transactionWrapper,
           isReceived ? styles.leftContainer : styles.rightContainer,
         ]} onPress={() => router.push({
-          pathname: '/transactionDetails',params:{transactionDetails:JSON.stringify(item),Name:personName}
+          pathname: '/transactionDetails', params: { transactionDetails: JSON.stringify(item), Name: personName }
         })}
       >
         <View style={{}}>
 
-        <View style={styles.transactionBox} >
-          <View style={styles.amountRow}>
-            {isReceived ? (
-              <ArrowDown size={24} color="green" />
-            ) : (
-              <ArrowUp size={24} color="red" />
-            )}
-            <Text style={styles.amountText}> ₹{item.amount}</Text>
-            <Text style={styles.timeText}> {moment(item.transaction_date).format('DD/MM/YYYY')}</Text>
-            <CheckIcon size={24} color="green" style={{ marginHorizontal: 5 }} />
+          <View style={styles.transactionBox} >
+            <View style={styles.amountRow}>
+              {isReceived ? (
+                <ArrowDown size={24} color="green" />
+              ) : (
+                <ArrowUp size={24} color="red" />
+              )}
+              <Text style={styles.amountText}> ₹{item.amount}</Text>
+              <Text style={styles.timeText}> {moment(item.transaction_date).format('DD/MM/YYYY')}</Text>
+              <CheckIcon size={24} color="green" style={{ marginHorizontal: 5 }} />
 
+            </View>
+            {item.bill_id &&
+              <>
+                <Divider style={{ marginVertical: 5 }} />
+                <TouchableOpacity style={[styles.amountRow, { marginVertical: 5, justifyContent: 'space-between' }]} onPress={() => router.push('./billDetails')}>
+                  <File size={24} color="green" />
+                  <Text style={styles.amountText}>{item.bill_id} ₹ {item.amount}</Text>
+                  <ChevronRight size={24} color="green" />
+                </TouchableOpacity>
+              </>}
+            {item.transaction_pic &&
+              <>
+                <Divider style={{ marginVertical: 5 }} />
+                <TouchableOpacity style={[styles.amountRow, { marginVertical: 5, justifyContent: 'space-between' }]}
+                  onPress={() => router.push({
+                    pathname: '/transactionDetails', params: { transactionDetails: JSON.stringify(item), Name: personName }
+                  })}>
+                  <Image
+                    source={{ uri: item.transaction_pic }}
+                    resizeMode="center"
+                    style={{ width: 100, height: 100 }}
+                  />
+                  <Text style={styles.amountText}>{item.bill_id} ₹ {item.amount}</Text>
+                  <ChevronRight size={24} color="green" />
+                </TouchableOpacity>
+              </>}
           </View>
-          {item.bill_id &&
-            <>
-              <Divider style={{ marginVertical: 5 }} />
-              <TouchableOpacity style={[styles.amountRow, { marginVertical: 5, justifyContent: 'space-between' }]} onPress={() => router.push('./billDetails')}>
-                <File size={24} color="green" />
-                <Text style={styles.amountText}>{item.bill_id} ₹ {item.amount}</Text>
-                <ChevronRight size={24} color="green" />
-              </TouchableOpacity>
-            </>}
-          {item.transaction_pic &&
-            <>
-              <Divider style={{ marginVertical: 5 }} />
-              <TouchableOpacity style={[styles.amountRow, { marginVertical: 5, justifyContent: 'space-between' }]} 
-              onPress={() => router.push({
-                pathname: '/transactionDetails', params: { transactionDetails: JSON.stringify(item), Name: personName }
-              })}>
-                <Image
-                  source={{ uri: item.transaction_pic }}
-                  resizeMode="center"
-                  style={{ width: 100, height: 100 }}
-                />
-                <Text style={styles.amountText}>{item.bill_id} ₹ {item.amount}</Text>
-                <ChevronRight size={24} color="green" />
-              </TouchableOpacity>
-            </>}
-        </View>
-        <Text style={styles.noteText}>{aaa}</Text>
+          <Text style={styles.noteText}>{aaa}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -150,7 +189,7 @@ var rrr=0
       <Appbar.Header style={{ backgroundColor: "#ffffff", borderBottomWidth: 2, justifyContent: 'space-between', borderColor: '#f2f7f6' }}>
         <ArrowLeft size={24} color={'#2E7D32'} style={{ marginStart: 10 }} onPress={() => router.push('./dashboard')} />
         <Appbar.Content title={personName} titleStyle={{ color: '#333333', fontSize: 18, fontWeight: 'bold', marginStart: 10 }} />
-        <Appbar.Content title="Supplier Profile"  titleStyle={{ color: '#388E3C', fontSize: 13, alignSelf: 'flex-end',marginRight:30 }} onPress={() => router.push({pathname:'/customerProfile',params:{ID:personId,profileType:'supplier'}})} />
+        <Appbar.Content title="Supplier Profile" titleStyle={{ color: '#388E3C', fontSize: 13, alignSelf: 'flex-end', marginRight: 30 }} onPress={() => router.push({ pathname: '/customerProfile', params: { ID: personId, profileType: 'supplier' } })} />
       </Appbar.Header>
 
       {/* Transaction List */}
@@ -169,7 +208,14 @@ var rrr=0
             <PhoneCall size={24} color="#555" />
             <Text style={styles.actionText}>Call</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/customerLedger')
+          <TouchableOpacity style={styles.actionButton} onPress={() => router.push({
+            pathname: '/customerLedger',
+            params: {
+              personId: personId,
+              personName: personName,
+              roleType: "SUPPLIER"
+            }
+          })
           }>
             <MessageSquare size={24} color="#555" />
             <Text style={styles.actionText}>Ledgers</Text>
@@ -178,26 +224,62 @@ var rrr=0
 
         {/* Balance Row */}
         <View style={[styles.balanceRow]}>
-          <Text style={[styles.balanceLabel,{fontSize:16,fontWeight:'bold'}]}>Balance Due</Text>
-          <Text style={[styles.balanceAmount,{color:supplier?.current_balance>0 ? '#388E3C' : "#d32f2f"}]}>₹ {Math.abs(supplier?.current_balance || 0)} {Number(supplier?.current_balance)>0 ? 'Advance' : "Due"}</Text>
+          <Text style={[styles.balanceLabel, { fontSize: 16, fontWeight: 'bold' }]}>Balance Due</Text>
+          <Text style={[styles.balanceAmount, { color: supplier?.current_balance > 0 ? '#388E3C' : "#d32f2f" }]}>₹ {Math.abs(supplier?.current_balance || 0)} {Number(supplier?.current_balance) > 0 ? 'Advance' : "Due"}</Text>
         </View>
 
         {/* Received and Given Buttons */}
         <View style={styles.bottomButtonsRow}>
-          <TouchableOpacity style={styles.receivedButton} onPress={() => {
-            router.push({
-              pathname: '/transaction',params:{transactionType:"you_got",transaction_for:"supplier",id:personId,personName:personName}
-            })
-          }}>
+
+          {/* YOU GOT (↓ Received) */}
+          <TouchableOpacity
+            style={styles.receivedButton}
+            onPress={async () => {
+              const eligible = await isEligible("you_got");
+
+              if (eligible) {
+                router.push({
+                  pathname: '/transaction',
+                  params: {
+                    transactionType: "you_got",
+                    transaction_for: "supplier",
+                    id: personId,
+                    personName: personName
+                  }
+                });
+              } else {
+                alert("You are not eligible for this transaction.");
+              }
+            }}
+          >
             <Text style={styles.receivedText}>↓ Received</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.givenButton} onPress={() => {
-            router.push({
-              pathname: '/transaction',params:{transactionType:"you_gave",transaction_for:"supplier",id:personId,personName:personName}
-            })
-          }}>
+
+
+          {/* YOU GAVE (↑ Given) */}
+          <TouchableOpacity
+            style={styles.givenButton}
+            onPress={async () => {
+              const eligible = await isEligible("you_gave");
+
+              if (eligible) {
+                router.push({
+                  pathname: '/transaction',
+                  params: {
+                    transactionType: "you_gave",
+                    transaction_for: "supplier",
+                    id: personId,
+                    personName: personName
+                  }
+                });
+              } else {
+                alert("You are not eligible for this transaction.");
+              }
+            }}
+          >
             <Text style={styles.givenText}>↑ Given</Text>
           </TouchableOpacity>
+
         </View>
       </View>
     </SafeAreaView >

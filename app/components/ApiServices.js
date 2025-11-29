@@ -1,9 +1,9 @@
-// src/services/ApiService.js
+// src/services/ApiService.jsj
 
 import axios from 'axios';
 
 const ApiService = axios.create({
-  // baseURL: 'http://192.168.0.9:3000/9023/api/', // Change for production/testing
+  // baseURL: 'http://192.168.0.8:3000/9023/api/', // Change for production/testing
   baseURL: 'https://aquaservices.esotericprojects.tech/9023/api/', // Change for production/testing
 });
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
 import { Text, TextInput, Button, Card, Avatar } from 'react-native-paper';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { User, Smartphone, Wallet } from 'lucide-react-native';
@@ -13,21 +13,23 @@ export default function UserInfo() {
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
   const { USER_ID } = useLocalSearchParams();
-  // Fetch user data on screen load
+  const [fcmToken, setFcmToken] = useState(null);
+
+  // Fetch user data on mount
   useEffect(() => {
-    fetchUserData();
-  }, []);
+    if (USER_ID) fetchUserData();
+  }, [USER_ID]);
 
   const fetchUserData = async () => {
     try {
       setIsLoading(true);
       const response = await ApiService.get(`user/${USER_ID}`);
-
       setUserData(response.data);
-      await AsyncStorage.setItem("userData",JSON.stringify(response.data))
       setNameInput(response.data.name || '');
+      await AsyncStorage.setItem("userData", JSON.stringify(response.data));
     } catch (err) {
       console.error('Failed to fetch user:', err.message);
+      Alert.alert('Error', 'Failed to fetch user data.');
     } finally {
       setIsLoading(false);
     }
@@ -38,13 +40,50 @@ export default function UserInfo() {
 
     try {
       setSubmitting(true);
-      const response = await ApiService.put(`user/${USER_ID}`,{ name: nameInput.trim() });
-      console.log("rrr ::",response)
-      await fetchUserData(); // refresh with updated name
+      const response = await ApiService.put(`user/${USER_ID}`, { name: nameInput.trim() });
+
+      // Update local state without refetching
+      setUserData(prev => ({ ...prev, name: response.data.name }));
+      await AsyncStorage.setItem("userData", JSON.stringify(response.data.user));
+      sendWelcomePushNotification();
     } catch (err) {
       console.error('Failed to update name:', err.message);
+      Alert.alert('Error', 'Failed to update name.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    const getToken = async () => {
+      await FirebasePermission();
+      const storedToken = await AsyncStorage.getItem("UserFCMToken");  
+      if (storedToken) setFcmToken(storedToken);
+    };
+    
+    getToken(); 
+  }, []);
+
+
+  const sendWelcomePushNotification = async () => {
+    const userData = await AsyncStorage.getItem("userData");
+    const fcmToken_stored = await AsyncStorage.getItem("UserFCMToken");
+    console.log("🌟 Token after permission:", fcmToken_stored);
+    const userMobile = JSON.parse(userData).mobile;
+try {
+      const response = await ApiService.post('fcmToken/pushNotification', {
+        fcm_token: fcmToken_stored,
+        title: "Welcome!",
+        message: "Welcome to the app!",
+        user_mobile:userMobile
+      });
+
+      if (!response.data.success) throw new Error(response.data.message || 'Failed to send notification');
+
+      router.replace('/dashboard');
+    } catch (error) {
+      console.error('❌ FCM token registration error:', error.message);
+      Alert.alert('Error', error.message || 'Something went wrong while sending push notification.');
     }
   };
 
@@ -110,7 +149,7 @@ export default function UserInfo() {
         <Button
           mode="contained-tonal"
           style={styles.continueButton}
-          onPress={() => router.replace('/dashboard')}
+          onPress={sendWelcomePushNotification}
         >
           Continue to Dashboard
         </Button>

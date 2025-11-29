@@ -1,9 +1,8 @@
 // CustomerStatementScreen.js
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, ScrollView, } from 'react-native';
 import { Appbar, DataTable, FAB } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     ArrowDown, ArrowLeft, ArrowUp, Download, Share2
 } from 'lucide-react-native';
@@ -32,15 +31,16 @@ export default function CustomerLedger() {
     const [filteredData, setFilteredData] = useState(transactions);
     const [allTransactions, setAllTransactions] = useState([]);
     const [customer, setCustomer] = useState(null);
+    const [result, setResult] = useState("NO-DUE");
     const [totalPayment, setTotalPayment] = useState(0);
     const [totalPaymentCount, setTotalPaymentCount] = useState(0);
     const [totalCraditCount, setTotalCraditCount] = useState(0);
     const [totalCradit, setTotalCradit] = useState(0);
     const [fromDateRange, setFromDateRange] = useState(moment().subtract(1, 'days').format('DD MMM, YYYY'));
     const [toDateRange, setToDateRange] = useState(moment().format('DD MMM, YYYY'));
-    
 
-    const { personId, personName } = useLocalSearchParams();
+
+    const { personId, personName, roleType } = useLocalSearchParams();
 
     useEffect(() => {
         fetchData();
@@ -58,8 +58,10 @@ export default function CustomerLedger() {
     const fetchData = async () => {
         const userData = await AsyncStorage.getItem("userData");
         const userId = JSON.parse(userData).id;
+
+        const url = roleType === "CUSTOMER" ? `/customers/${personId}` : `/supplier/${personId}`
         try {
-            const response = await ApiService.post(`/customers/${personId}`, { userId });
+            const response = await ApiService.post(url, { userId });
 
             const json = JSON.stringify(response.data);
             const parsedTransactions = JSON.parse(json).transactions.map(tx => ({
@@ -77,15 +79,20 @@ export default function CustomerLedger() {
                 .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
             const countYouGave = JSON.parse(json).transactions.filter(tx => tx.transaction_type === 'you_gave').length;
             const countYouGot = JSON.parse(json).transactions.filter(tx => tx.transaction_type === 'you_got').length;
+            const Details = roleType === "CUSTOMER" ? JSON.parse(json).customer : JSON.parse(json).supplier
 
-
-            setCustomer(JSON.parse(json).customer);
+            setCustomer(Details);
             setTotalPayment(totalYouGot)
             setTotalPaymentCount(countYouGot)
             setTotalCradit(totalYouGave)
             setTotalCraditCount(countYouGave)
             setFilteredData(parsedTransactions);
             setAllTransactions(parsedTransactions);
+            if (totalYouGot <= totalYouGave) {
+                setResult("DUE")
+            } else {
+                setResult("NO-DUE")
+            }
         } catch (error) {
             console.error('Failed to fetch customer data:', error);
         }
@@ -122,29 +129,29 @@ export default function CustomerLedger() {
     const filterThisMonth = () => {
         const startOfMonth = moment().startOf('month');
         const endOfMonth = moment();
-    
+
         const results = allTransactions.filter(tx => {
             const txDate = moment(tx.date, 'DD MMM');
             return txDate.isSameOrAfter(startOfMonth, 'day') && txDate.isSameOrBefore(endOfMonth, 'day');
         });
-    
+
         setFilteredData(results);
-setFromDateRange(startOfMonth.format('DD MMM, YYYY')) ;
-setToDateRange(endOfMonth.format('DD MMM, YYYY')) ;
-   };
+        setFromDateRange(startOfMonth.format('DD MMM, YYYY'));
+        setToDateRange(endOfMonth.format('DD MMM, YYYY'));
+    };
 
-const filterLastMonth = () => {
-    const startOfLastMonth = moment().subtract(1, 'month').startOf('month');
-    const endOfLastMonth = moment().subtract(1, 'month').endOf('month');
+    const filterLastMonth = () => {
+        const startOfLastMonth = moment().subtract(1, 'month').startOf('month');
+        const endOfLastMonth = moment().subtract(1, 'month').endOf('month');
 
-    const results = allTransactions.filter(tx => {
-        const txDate = moment(tx.date, 'DD MMM');
-        return txDate.isSameOrAfter(startOfLastMonth, 'day') && txDate.isSameOrBefore(endOfLastMonth, 'day');
-    });
+        const results = allTransactions.filter(tx => {
+            const txDate = moment(tx.date, 'DD MMM');
+            return txDate.isSameOrAfter(startOfLastMonth, 'day') && txDate.isSameOrBefore(endOfLastMonth, 'day');
+        });
 
-    setFilteredData(results);
-    setFromDateRange(startOfLastMonth.format('DD MMM, YYYY')) ;
-    setToDateRange(endOfLastMonth.format('DD MMM, YYYY')) ;
+        setFilteredData(results);
+        setFromDateRange(startOfLastMonth.format('DD MMM, YYYY'));
+        setToDateRange(endOfLastMonth.format('DD MMM, YYYY'));
     };
 
     const filterOverall = () => {
@@ -156,10 +163,10 @@ const filterLastMonth = () => {
             {/* Header */}
             <Appbar.Header style={{ backgroundColor: "#ffffff", borderBottomWidth: 2, borderColor: '#f2f7f6' }}>
                 <ArrowLeft size={24} color={'#2E7D32'} style={{ marginStart: 10 }} onPress={() => router.back()} />
-                <Appbar.Content title="Customer Statement" titleStyle={{ color: '#333333', fontWeight: 'bold', marginLeft: 20 }} />
+                <Appbar.Content title={`${personName} Statement ${roleType === "CUSTOMER"? "(C)":"(S)"}`} titleStyle={{ color: '#333333', fontWeight: 'bold', marginLeft: 20 }} />
             </Appbar.Header>
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-                <Text style={[styles.subText, { marginTop: 20 }]}>Current Balance <Text style={{ color: 'red' }}>₹900</Text></Text>
+                <Text style={[styles.subText, { marginTop: 20 }]}>Current Balance <Text style={{ color: result === "NO-DUE" ? "green" : 'red' }}>₹ {Math.abs(Number(customer?.current_balance))}</Text>{result === "DUE" && <Text style={{ color: 'red' }}>  {`(due)`}</Text>}</Text>
 
                 {/* Filters */}
                 <View style={[styles.filterRow]}>
@@ -176,8 +183,8 @@ const filterLastMonth = () => {
 
                 {/* Summary */}
                 <View style={styles.balanceBlock}>
-                    <Text style={styles.balanceAmount}>₹ {customer?.current_balance}</Text>
-                    <Text style={styles.balanceDate}>Balance | {fromDateRange }- {toDateRange}</Text>
+                    <Text style={[styles.balanceAmount, { color: result === "NO-DUE" ? "green" : 'red' }]}>₹ {Math.abs(Number(customer?.current_balance))}</Text>
+                    <Text style={styles.balanceDate}>Balance | {fromDateRange}- {toDateRange}</Text>
                 </View>
 
                 {/* Summary Table Header */}
@@ -215,7 +222,8 @@ const filterLastMonth = () => {
                     icon={({ size, color }) => (
                         <Download size={size} color={color} />
                     )}
-                    onPress={() => handleCustomerLedgerPDF(filteredData)} style={styles.fab}
+                    onPress={() => handleCustomerLedgerPDF(filteredData,personName)} 
+                    style={styles.fab}
                     color="#007B83" // Icon color
                     customSize={60} // optional, for resizing FAB
                 />

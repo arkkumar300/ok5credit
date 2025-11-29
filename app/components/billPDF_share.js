@@ -1,13 +1,13 @@
 import * as Print from 'expo-print';
 import * as FileSystem from 'expo-file-system';
 
-const billPDF = async (userDetails, customerInfo, bill, items,charges, totalAmount) => {
+const billPDF = async (userDetails, customerInfo, bill,charges, items, totalAmount) => {
   const currentDate = new Date().toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric'
   });
-console.log("charges:::",charges)
+
   const itemsHtml = items.map((item, i) => `
     <tr>
       <td style="padding: 8px; border: 1px solid #ccc;">${item.name || item.itemName}</td>
@@ -16,14 +16,16 @@ console.log("charges:::",charges)
       <td style="padding: 8px; border: 1px solid #ccc;">${Number(item.price) * Number(item.quantity)}</td>
     </tr>
   `).join('');
-  const chargesHtml = charges.map((item, i) => `
+
+  const chargesHtml = items.map((item, i) => `
     <tr>
     <td style="padding: 8px; border: 1px solid #ccc;">${item.type}</td>
       <td style="padding: 8px; border: 1px solid #ccc;">${item.name || item.itemName}</td>
-      <td style="padding: 8px; border: 1px solid #ccc;">${Number(item.discountType==="charge"? " Rs " :  " % "), Number(item.enteredValue)}</td>
+      <td style="padding: 8px; border: 1px solid #ccc;">${Number(item.discountType==="charge"? " Rs " :  " % "), Number(item.discountType)}</td>
       <td style="padding: 8px; border: 1px solid #ccc;">${item.finalAmount}</td>
     </tr>
   `).join('');
+
   const htmlContent = `
     <html>
     <head>
@@ -86,7 +88,7 @@ console.log("charges:::",charges)
           <tbody>
             ${itemsHtml}
           </tbody>
-           <tbody>
+          <tbody>
             ${chargesHtml}
           </tbody>
         </table>

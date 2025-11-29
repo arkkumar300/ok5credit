@@ -8,16 +8,19 @@
     "icon": "./assets/images/icon.png",
     "scheme": "aquacredit",
     "userInterfaceStyle": "automatic",
+    "useNextNotificationsApi": true,
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sureshpentapilli.aquacredit"
+      "bundleIdentifier": "com.sureshpentapilli.aquacredit",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "plugins": [
       "expo-router",
       "expo-font",
       "expo-web-browser",
-      "expo-build-properties"
+      "expo-build-properties",
+      "@react-native-firebase/app"
     ],
     "web": {
       "bundler": "metro",
@@ -34,7 +37,9 @@
       }
     },
     "android": {
-      "package": "com.sureshpentapilli.aquacredit"
+      "package": "com.sureshpentapilli.aquacredit",
+      "googleServicesFile": "./android/app/google-services.json",
+      "useNextNotificationsApi": true
     }
   }
 }

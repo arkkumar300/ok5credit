@@ -2,10 +2,9 @@
 
 import React,{useState,useEffect} from 'react';
 import {
-    View, Text, FlatList, TouchableOpacity, StyleSheet
+    View, Text, FlatList,SafeAreaView, TouchableOpacity, StyleSheet
 } from 'react-native';
 import { Appbar, FAB } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import {BookOpenText, Truck, User2, Download, ArrowLeft} from 'lucide-react-native';
 import handleDownloadPDF from './components/ledgerPDF';
 import { useRouter } from 'expo-router';

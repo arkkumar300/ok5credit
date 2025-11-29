@@ -51,7 +51,7 @@ export default function QuotePreview() {
       });
 
       const uploadJson = await response.data;
-      const uploadedPath = `http://localhost:3000/uploads/${uploadJson.file_info.filename}`;
+      const uploadedPath = `https://aquaservices.esotericprojects.tech/uploads/${uploadJson.file_info.filename}`;
       handleSave(uploadedPath)
     } catch (error) {
       console.log("error ::", error)

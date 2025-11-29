@@ -1,8 +1,7 @@
 // ProfileScreen.js
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, TextInput,SafeAreaView, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
 import { X, Pencil, UserRound, Share2, Store, Phone, FileText, Hash, Building2, MapPin, Mail, User, Delete, ChevronRight, ArrowLeft } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Avatar } from 'react-native-paper';
@@ -24,6 +23,7 @@ const updateData = async (payload, ID,profileType) => {
   const URL = profileType === 'customer' ? `/customers/${ID}` : `/supplier/${ID}`
 
   const response = await ApiService.put(URL, payload);
+  console.log("response::",response.data)
   if (response?.data) {
     Alert.alert('updated successfully')
   }
@@ -115,7 +115,7 @@ const OtherProfile = () => {
       });
 
       const result = response.data;
-      console.log('Upload success:', result);
+
       const rrr = `https://aquaservices.esotericprojects.tech/uploads/${result.file_info.filename}`;
       return rrr;
     } catch (error) {
@@ -214,7 +214,7 @@ const OtherProfile = () => {
           <ProfileItem icon={Phone} label={profile?.mobile || "9494130830"} isEditable onPress={() => openModal('phone')} />
           <ProfileItem icon={MapPin} label={profile?.address || "Enter your address"} onPress={() => openModal('address')} />
           <ProfileItem icon={Mail} label={profile?.email || "Enter your Email"} onPress={() => openModal('Email')} />
-          <TouchableOpacity style={styles.item} >
+          <TouchableOpacity style={styles.item} onPress={() => openModal('DeleteCustomer')}>
             <View style={styles.iconContainer}>
               <Delete size={24} color="red" />
             </View>
@@ -227,6 +227,7 @@ const OtherProfile = () => {
 
         {/* Modals (You can customize each one separately below) */}
         <UseNameModal visible={activeModal === 'UserName'} onClose={closeModal} ID={ID} profileType={profileType} value={profile?.name} />
+        <DeleteCustomerModal visible={activeModal === 'DeleteCustomer'} onClose={closeModal} ID={ID} profileType={profileType} />
         <ProfileModal visible={activeModal === 'phone'} onClose={closeModal} title="Phone Number" profileType={profileType} value={profile?.mobile}/>
         <AddressModal visible={activeModal === 'address'} onClose={closeModal} ID={ID} profileType={profileType} value={profile?.address} />
         <UserEmailModal visible={activeModal === 'Email'} onClose={closeModal} ID={ID} profileType={profileType} value={profile?.email}/>
@@ -285,6 +286,47 @@ const UseNameModal = ({ visible, onClose, ID,profileType,value }) => {
             </TouchableOpacity>
             <TouchableOpacity onPress={handleConfirm} style={styles.iconButton}>
               <Text style={styles.confirmIcon}>✔</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        {/* WhatsApp Share Button */}
+      </View>
+    </Modal>
+  )
+};
+
+const DeleteCustomerModal = ({ visible, onClose, ID,profileType }) => {
+
+    const payload = { status: 'Inactive' };
+  const handleConfirm = () => {
+    updateData(payload, ID,profileType)
+    onClose();
+  };
+
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalBackground}>
+        <View style={styles.bottomSheet}>
+          <Text style={styles.modalTitle}>Delete Customer</Text>
+          <Text style={styles.subtitleText}>Are you sure you want to delete customer</Text>
+
+          <View style={{
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+  }}>
+            <TouchableOpacity onPress={onClose} style={styles.iconButton}>
+              <Text style={styles.cancelIcon}>✕ Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleConfirm} style={styles.iconButton}>
+              <Text style={styles.confirmIcon}>✔ Delete</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, BackHandler, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView, ScrollView, BackHandler, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MoreHorizontal, Users, Search, Filter, TrendingUp, Settings, X, Share } from 'lucide-react-native';
 import Modal from 'react-native-modal';
@@ -7,6 +7,9 @@ import { Appbar, Avatar } from 'react-native-paper';
 import ApiService from './components/ApiServices';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import exportDataAsPDF from './components/downloadPDF';
+import { useFocusEffect } from '@react-navigation/native';
+import LottieView from 'lottie-react-native';
+
 
 let transactionData = {
   customers: [
@@ -35,17 +38,29 @@ const NAME = ['A-Z', 'Z-A'];
 export default function DashboardScreen() {
   const [activeTab, setActiveTab] = useState('Customer');
   const [netBalance, setNetBalance] = useState(0);
-  const [customers, setCustomers] = useState(transactionData.customers);
-  const [suppliers, setSuppliers] = useState(transactionData.suppliers);
+  const [customers, setCustomers] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [customersList, setCustomersList] = useState([]);
+  const [userData, setUserData] = useState(null);
+  const [initialsLetter, setInitialsLetter] = useState("");
   const [suppliersList, setSuppliersList] = useState([]);
   const [isModalVisible, setModalVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('Sort By');
   const [selectedOption, setSelectedOption] = useState('Default');
+  const [isVerified, setIsVerified] = useState(null); // null = loading state
 
+  useEffect(() => {
+    checkEligibility();
+  }, [])
   const fetchDashboardData = async () => {
-    const userData = await AsyncStorage.getItem("userData");
-    const userId = JSON.parse(userData).id;
+    const userDetails = await AsyncStorage.getItem("userData");
+    const userId = JSON.parse(userDetails).id;
+    const rrr = JSON.parse(userDetails);
+    setUserData(rrr)
+    const name = rrr?.name?.trim() || '';
+    const initials = name.trim()[0]?.toUpperCase() || '';
+setInitialsLetter(initials);
+
     try {
 
       const response = await ApiService.post("/dashboard/businessOwner", { userId });
@@ -54,7 +69,7 @@ export default function DashboardScreen() {
           id: c.id,
           name: c.name,
           amount: parseFloat(c.current_balance),
-          type: parseFloat(c.current_balance) >= 0 ? 'Due' : 'Advance',
+          type: parseFloat(c.current_balance) <= 0 ? 'Due' : 'Advance',
           date: new Date(c.created_at).toDateString(),
           initial: c.name.charAt(0).toUpperCase(),
           color: '#4CAF50', // Default color
@@ -91,11 +106,34 @@ export default function DashboardScreen() {
     setNetBalance(balance);
   };
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
+  useFocusEffect(
+    useCallback(() => {
+      fetchDashboardData();
+    }, [])
+  )
   const toggleModal = () => setModalVisible(!isModalVisible); const router = useRouter();
+
+
+  // --- CHECK ELIGIBILITY ---
+  const checkEligibility = async () => {
+    try {
+      const userData = await AsyncStorage.getItem("userData");
+      const userId = JSON.parse(userData).id;
+
+      const response = await ApiService.get(`/user/${userId}`);
+
+      if (!response.data) return setIsVerified(false);
+
+      const { is_verified } = response.data;
+
+      console.log("is_verified::", is_verified);
+
+      setIsVerified(is_verified); // store result in state
+    } catch (error) {
+      console.log("Error checking eligibility:", error);
+      setIsVerified(false);
+    }
+  };
 
   const getFilteredData = () => {
     let data = activeTab === 'Customer' ? [...customers] : [...suppliers];
@@ -191,7 +229,7 @@ export default function DashboardScreen() {
 
   const handlePersonClick = (person) => {
     if (activeTab.toLowerCase() === "customer") {
-      router.push({
+      router.navigate({
         pathname: '/customerDetails',
         params: {
           personName: person.name,
@@ -269,62 +307,85 @@ export default function DashboardScreen() {
     };
   }, []);
 
-  useEffect(() => {
-    const backHandler = BackHandler.addEventListener(
-      'hardwareBackPress',
-      () => {
-        // Confirm exit
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
         Alert.alert('Exit App', 'Are you sure you want to exit?', [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Exit', onPress: () => BackHandler.exitApp() },
         ]);
-        return true; // prevent default back action
-      }
-    );
+        return true; // Prevent default back behavior
+      };
 
-    return () => backHandler.remove();
-  }, []);
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove(); // Clean up on blur
+    }, [])
+  );
+
   return (
     <SafeAreaView style={styles.container}>
 
-<Appbar.Header style={{ elevation: 5 }}>
-  <Avatar.Text
-    label="A"
-    size={45}
-    color="#ffffff"
-    style={{ backgroundColor: '#2E7D32', marginStart: 8 }}
-  />
+      <Appbar.Header style={{ elevation: 5 }}>
+        <TouchableOpacity onPress={()=>{
+          router.push('/profile')
+        }}>
+        <Avatar.Text
+          label={initialsLetter}
+          size={38} 
+          color="#ffffff" 
+          style={{ backgroundColor: '#2E7D32', marginStart: 8,elevation:3 }}
+        />
+        </TouchableOpacity>
 
-  <Appbar.Content
-    title="Aqua Credit"
-    titleStyle={{ textAlign: 'center', fontWeight: 'bold' }}
-  />
+        <Appbar.Content
+          title="Aqua Credit"
+          titleStyle={{ textAlign: 'center', fontWeight: 'bold' }}
+        />
 
-<Appbar.Action
-  icon={() => <Share size={22} color="#2E7D32" />}
-  onPress={() => {
-   if (activeTab === 'Customer') {
-    
-     exportDataAsPDF(customersList, `${activeTab}`);
-    } else {
-     exportDataAsPDF(suppliersList, `${activeTab}`);
-    
-   }
-  }}
-  color="#2E7D32"
-/>
+        <Appbar.Action
+          icon={() => <Share size={22} color="#2E7D32" />}
+          onPress={() => {
+            if (activeTab === 'Customer') {
 
-</Appbar.Header>
+              exportDataAsPDF(customersList, `${activeTab}`);
+            } else {
+              exportDataAsPDF(suppliersList, `${activeTab}`);
+
+            }
+          }}
+          color="#2E7D32"
+        />
+
+      </Appbar.Header>
 
       <View style={styles.verifyBanner}>
-        <View style={styles.verifyIcon}>
-          <Text style={styles.verifyIconText}>✓</Text>
+        <View
+          style={[
+            styles.verifyIcon,
+            { backgroundColor: isVerified ? "#4CAF50" : "#FF6F00" } // green / red
+          ]}
+        >
+          <Text style={styles.verifyIconText}>
+            {isVerified ? "✓" : "✕"}
+          </Text>
         </View>
-        <Text style={styles.verifyText}>Verify Your Business</Text>
-        <TouchableOpacity>
+
+
+        {/* SHOW STATUS BASED ON isVerified */}
+        {isVerified === null ? (
+          <Text style={styles.verifyText}>Checking verification...</Text>
+        ) : isVerified ? (
+          <Text style={styles.verifyText}>Verified Business</Text>
+        ) : (
+          <Text style={styles.unverifyText}>Not yet verified</Text>
+        )}
+
+        <TouchableOpacity onPress={() => router.push('/profile')}>
           <Text style={styles.verifyArrow}>›</Text>
         </TouchableOpacity>
       </View>
+
 
       <View style={styles.tabContainer}>
         <TouchableOpacity
@@ -355,46 +416,61 @@ export default function DashboardScreen() {
           <TouchableOpacity style={styles.iconButton} onPress={toggleModal}>
             <Filter size={20} color="#666" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
+          {/* <TouchableOpacity style={styles.iconButton}>
             <Search size={20} color="#666" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </View>
 
       <View style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>Net Balance</Text>
-        <Text style={styles.balanceAmount}>₹ {netBalance}</Text>
+        <Text style={selectedOption=== 'Advance'?styles.balanceAmount_advance :styles.balanceAmount_due}>₹ {netBalance}</Text>
         <Text style={styles.balanceSubtext}>{currentData.length} Accounts</Text>
         <Text style={styles.balanceType}>You Pay</Text>
       </View>
 
       <ScrollView style={styles.listContainer}>
-        {currentData.map((person) => (
-          <TouchableOpacity
-            key={person.id}
-            style={styles.personCard}
-            onPress={() => handlePersonClick(person)}
-          >
-            <View style={[styles.avatar, { backgroundColor: person.color }]}>
-              <Text style={styles.avatarText}>{person.initial}</Text>
-            </View>
-            <View style={styles.personInfo}>
-              <Text style={styles.personName}>{person.name}</Text>
-              <View style={styles.paymentInfo}>
-                <Text style={styles.checkMark}>✓</Text>
-                <Text style={styles.paymentText}>
-                  ₹{person.amount} {person.type === 'Advance' ? 'Payment Added' : 'Credit Added'} {person.date}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.amountContainer}>
-              <Text style={[styles.amount, person.type === 'Due' ? styles.dueAmount : styles.advanceAmount]}>
-                ₹{person.amount}
-              </Text>
-              <Text style={styles.amountType}>{person.type}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        {Array.isArray(currentData) && currentData.length > 0 ? (
+          <>
+            {currentData.map((person) => (
+              <TouchableOpacity
+                key={person.id}
+                style={styles.personCard}
+                onPress={() => handlePersonClick(person)}
+              >
+                <View style={[styles.avatar, { backgroundColor: person.color }]}>
+                  <Text style={styles.avatarText}>{person.initial}</Text>
+                </View>
+                <View style={styles.personInfo}>
+                  <Text style={styles.personName}>{person.name}</Text>
+                  <View style={styles.paymentInfo}>
+                    <Text style={styles.checkMark}>✓</Text>
+                    <Text style={styles.paymentText}>
+                      ₹{person.amount} {person.type === 'Advance' ? 'Payment Added' : 'Credit Added'} {person.date}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.amountContainer}>
+                  <Text style={[styles.amount, person.type === 'Due' ? styles.dueAmount : styles.advanceAmount]}>
+                    ₹{person.amount}
+                  </Text>
+                  <Text style={styles.amountType}>{person.type}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </>
+        ) : (
+          <View style={styles.emptyContainer}>
+            <LottieView
+              source={require('../assets/animations/noData.json')} // 👈 local JSON file
+              autoPlay
+              loop
+              style={{ width: 200, height: 150, alignSelf: 'center' }}
+            />
+            <Text style={styles.emptyText}>No data found</Text>
+
+          </View>
+        )}
       </ScrollView>
 
       <TouchableOpacity
@@ -501,6 +577,20 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
   },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  image: {
+    width: 250, justifyContent: 'center',
+    height: 250, alignSelf: 'center'
+  },
+  emptyText: {
+    fontSize: 16, fontWeight: '700',
+    color: '#666',
+    textAlign: 'center',
+  },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -538,10 +628,16 @@ const styles = StyleSheet.create({
   },
   verifyIconText: {
     color: 'white',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: 'bold',
   },
   verifyText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#4CAF50',
+    fontWeight: '500',
+  },
+  unverifyText: {
     flex: 1,
     fontSize: 14,
     color: '#FF6F00',
@@ -602,10 +698,16 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 4,
   },
-  balanceAmount: {
+  balanceAmount_advance: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#4CAF50',
+    marginBottom: 4,
+  },
+  balanceAmount_due: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FF6F00',
     marginBottom: 4,
   },
   balanceSubtext: {

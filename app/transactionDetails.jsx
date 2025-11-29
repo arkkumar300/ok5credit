@@ -1,8 +1,7 @@
 // components/BillSummaryScreen.tsx
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet,SafeAreaView, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { Calendar, Check, MessageSquare, FileText, HelpCircle, ArrowLeft } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as SMS from 'expo-sms';

@@ -27,14 +27,14 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>myapp</string>
-          <string>com.sureshpentapilli.boltexponativewind</string>
+          <string>aquacredit</string>
+          <string>com.sureshpentapilli.aquacredit</string>
         </array>
       </dict>
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>exp+bolt-expo-nativewind</string>
+          <string>exp+aquacredit</string>
         </array>
       </dict>
     </array>

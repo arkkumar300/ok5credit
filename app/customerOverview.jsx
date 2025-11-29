@@ -4,7 +4,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { ArrowDownCircle, ArrowLeft, ArrowUpCircle, Download } from 'lucide-react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { Appbar } from 'react-native-paper';
+import { Appbar, FAB } from 'react-native-paper';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
@@ -21,6 +21,7 @@ export default function CustomerOverview() {
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
   const [showStart, setShowStart] = useState(false);
+  const [userDetails, setUserDetails] = useState(false);
   const [showEnd, setShowEnd] = useState(false);
   const [data, setData] = useState([]);
   const [paymentCount, setPaymentCount] = useState(0);
@@ -29,7 +30,7 @@ export default function CustomerOverview() {
   const [credit, setCredit] = useState(0);
   const [balance, setBalance] = useState(0);
   const [filteredTransactions, setFilteredTransactions] = useState(false);
-const {transaction_for}=useLocalSearchParams()
+  const { transaction_for } = useLocalSearchParams()
   const router = useRouter();
   const formatDate = (isoDate) => {
     const date = new Date(isoDate);
@@ -44,12 +45,13 @@ const {transaction_for}=useLocalSearchParams()
       try {
         const userData = await AsyncStorage.getItem("userData");
         const userId = JSON.parse(userData)?.id;
-
+        const rrr = JSON.parse(userData)
+        setUserDetails(rrr)
         if (!userId) {
           return Alert.alert("Error", "User ID not found");
         }
 
-        const response = await ApiService.post(`/transactions/userLedger`, { userId,transaction_for });
+        const response = await ApiService.post(`/transactions/userLedger`, { userId, transaction_for });
         const json = response.data;
 
         if (json.transactions && json.summary) {
@@ -57,10 +59,10 @@ const {transaction_for}=useLocalSearchParams()
           const parsedTransactions = json.transactions.map(tx => ({
             id: tx.id.toString(),
             date: formatDate(tx.transaction_date),
-            transaction_date:tx.transaction_date,
+            transaction_date: tx.transaction_date,
             type: mapTransactionType(tx.transaction_type),
             amount: parseFloat(tx.amount),
-            customerName:tx.customer? tx.customer?.name : tx.supplier?.name,
+            customerName: tx.customer ? tx.customer?.name : tx.supplier?.name,
             customerId: tx.customer ? tx.customer?.id : tx.supplier?.id,
             customerMobile: tx.customer ? tx.customer?.mobile : tx.supplier?.mobile,
             runningBalance: tx.running_balance
@@ -69,10 +71,10 @@ const {transaction_for}=useLocalSearchParams()
           setData(parsedTransactions);
           const filtered = parsedTransactions.filter(tx => {
             const txDate = new Date(tx.transaction_date);
-            console.log("aaa ::",txDate)
+            console.log("aaa ::", txDate)
             return txDate >= startDate && txDate <= endDate;
           });
-          console.log("rrr ::",filtered)
+          console.log("rrr ::", filtered)
           setFilteredTransactions(filtered);
           // Count 'you_got' and 'you_gave' types
           const paymentCount = parsedTransactions.filter(item => item.type === 'debit').length;
@@ -133,8 +135,8 @@ const {transaction_for}=useLocalSearchParams()
           </style>
         </head>
         <body>
-          <h1>My Company Name</h1>
-          <h2>123 Main Street, City, Country</h2>
+          <h1>${userDetails?.name || "My Company Name"}</h1>
+          <h2>${userDetails?.address || "123 Main Street, City, Country"}</h2>
           <h3>Statement: ${startDate.toDateString()} to ${endDate.toDateString()}</h3>
 
           <div class="summary">
@@ -174,7 +176,7 @@ const {transaction_for}=useLocalSearchParams()
       const txDate = new Date(tx.transaction_date);
       return txDate >= startDate && txDate <= endDate;
     });
-  
+
     setFilteredTransactions(filtered);
   }, [startDate, endDate, data]);
 
@@ -201,8 +203,8 @@ const {transaction_for}=useLocalSearchParams()
         <Appbar.BackAction onPress={() => router.back()} icon={() => <ArrowLeft size={22} />} />
         <Appbar.Content title="Account Statement" />
       </Appbar.Header>
-      <View style={{ padding: 16 }}>
 
+      <View style={{ flex: 1, padding: 16 }}>
         <View style={styles.dateRow}>
           <TouchableOpacity onPress={() => setShowStart(true)} style={styles.datePicker}>
             <Text>From: {startDate.toDateString()}</Text>
@@ -220,7 +222,6 @@ const {transaction_for}=useLocalSearchParams()
             onChange={(event, date) => {
               setShowStart(Platform.OS === 'ios');
               if (date) setStartDate(date);
-
             }}
           />
         )}
@@ -254,13 +255,20 @@ const {transaction_for}=useLocalSearchParams()
           data={filteredTransactions}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ paddingBottom: 100 }} // Add some bottom padding
         />
-
-        <TouchableOpacity style={styles.downloadButton} onPress={downloadPDF}>
-          <Download color="white" />
-        </TouchableOpacity>
       </View>
+
+      {/* Move FAB outside scrollable area */}
+      <FAB
+        icon={({ size, color }) => (
+          <Download size={size} color={color} />
+        )}
+        onPress={downloadPDF}
+        style={styles.fab}
+        color="#007B83"
+        customSize={60}
+      />
     </View>
 
   );
@@ -283,6 +291,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     borderRadius: 10,
   },
+  fab: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    backgroundColor: '#ffffff',
+    elevation: 6,
+    zIndex: 999, // Ensure it's on top
+  },
   summaryItem: { alignItems: 'center' },
   green: { color: 'green', fontWeight: 'bold' },
   red: { color: 'red', fontWeight: 'bold' },
@@ -299,10 +315,10 @@ const styles = StyleSheet.create({
   downloadButton: {
     flexDirection: 'row',
     backgroundColor: '#2196f3',
-    paddingVertical: 14,position:'absolute',
-    borderRadius: 10,bottom:10,right:5,
-    justifyContent: 'center',elevation:10,
-    marginTop: 12,zIndex:99,width:50
+    paddingVertical: 14, position: 'absolute',
+    borderRadius: 10, bottom: 10, right: 5,
+    justifyContent: 'center', elevation: 10,
+    marginTop: 12, zIndex: 99, width: 50
   },
   downloadText: { color: '#fff', fontWeight: 'bold', marginLeft: 8 },
 });

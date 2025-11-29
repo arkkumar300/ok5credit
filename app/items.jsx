@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-    View,
-    Text,
-    FlatList,
-    StyleSheet,
-    TouchableOpacity,
-    Modal,
-    Alert,
-} from 'react-native';
+import {View,Text,FlatList,StyleSheet,TouchableOpacity,Modal,Alert} from 'react-native';
 import { Appbar, FAB } from 'react-native-paper';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Delete, Eye, Pencil, Plus, Trash2 } from 'lucide-react-native';
@@ -330,11 +322,6 @@ const styles = StyleSheet.create({
     cardLabel: {
         fontWeight: '600',
         color: '#666',
-    },
-
-    cardValue: {
-        fontWeight: 'bold',
-        color: '#222',
     },
     gridContainer: {
         flexDirection: 'row',

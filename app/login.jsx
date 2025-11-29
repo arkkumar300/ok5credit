@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, Image, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Phone } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const router = useRouter();
+
+  useEffect(()=>{
+    const dataClear=async ()=>{
+      await AsyncStorage.clear()
+    }
+    dataClear()
+  },[])
 
   const handleContinue = () => {
     if (phoneNumber.length === 10) {
