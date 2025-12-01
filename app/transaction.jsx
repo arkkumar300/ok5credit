@@ -7,18 +7,24 @@ import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Modal } from 'react-native-paper';
+import ProgressButton from './components/ProgressButton';
 
 export default function TransactionScreen() {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState('');
   // const [selectedDate, setSelectedDate] = useState(moment().format('DD MMM YYYY'));
   const [activeType, setActiveType] = useState(null);
-  const [images, setImages] = useState("");
   const [imageUri, setImageUri] = useState("");
+  const [images, setImages] = useState([]);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
   const [billID, setBillID] = useState("");
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
-
+  const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [success, setSuccess] = useState(false);
   const router = useRouter();
   const { transactionType, transaction_for, id, personName, isSubscribe_user, transaction_limit } = useLocalSearchParams();
 
@@ -91,7 +97,12 @@ export default function TransactionScreen() {
 
   const addTransaction = async () => {
     const date = moment(selectedDate).format('YYYY-MM-DD');
-    const userData = await AsyncStorage.getItem("userData");
+    if (loading) return; // Prevent double submission
+
+    setLoading(true);        // Disable submit button
+    setUploadProgress(0);    // Reset progress bar
+    setSuccess(false); 
+       const userData = await AsyncStorage.getItem("userData");
     const userId = JSON.parse(userData).id;
     const transactionFor = transaction_for === 'customer' ? 'customer' : 'supplier';
     const commonPayload = {
@@ -116,29 +127,37 @@ export default function TransactionScreen() {
         : '/transactions/supplier';
 
     try {
-
-      const response = await ApiService.post(url, payload);
-      Alert.alert('Success', 'Transaction added successfully!');
-      if (transactionFor === 'customer') {
-        router.push({
-          pathname: '/customerDetails',
-          params: {
-            personName: personName,
-            personType: transaction_for,
-            personId: id
-          }
-        });
-
-      } else if (transactionFor === 'supplier') {
-        router.push({
-          pathname: '/supplierDetails',
-          params: {
-            personName: personName,
-            personType: transaction_for,
-            personId: id
-          }
-        });
-      }
+      const response = await ApiService.post(url, payload,{
+        onUploadProgress: (e) => {
+          setUploadProgress(e.loaded / e.total);
+        }
+      });
+      setSuccess(true);    // show check animation
+      setLoading(false);   // stop progress
+  
+      setTimeout(() => {
+        if (transactionFor === 'customer') {
+          router.push({
+            pathname: '/customerDetails',
+            params: {
+              personName: personName,
+              personType: transaction_for,
+              personId: id
+            }
+          });
+  
+        } else if (transactionFor === 'supplier') {
+          router.push({
+            pathname: '/supplierDetails',
+            params: {
+              personName: personName,
+              personType: transaction_for,
+              personId: id
+            }
+          });
+        }
+  
+      }, 1000);      
     } catch (error) {
       console.error('Error:', error);
       Alert.alert('Error', 'Failed to add transaction');
@@ -165,95 +184,57 @@ export default function TransactionScreen() {
       'Add Images',
       'Choose an option',
       [
-        { text: 'Camera', onPress: openCamera },
-        { text: 'Gallery', onPress: openGallery },
+        { text: 'Camera', onPress: handleCamera },
+        { text: 'Gallery', onPress: handleGallery },
         { text: 'Cancel', style: 'cancel' }
       ],
       { cancelable: true }
     );
   };
 
-  const openCamera = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
+  const handleCamera = () => {
+    launchCamera(
+      {
+        mediaType: 'photo',
+        saveToPhotos: true
+      },
+      response => {
+        if (response.didCancel || response.errorCode) return;
 
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-        cameraType: ImagePicker.CameraType.back,
-      });
+        const newImage = response.assets[0].uri;
 
-      if (
-        result &&
-        !result.canceled &&
-        Array.isArray(result.assets) &&
-        result.assets.length > 0 &&
-        result.assets[0].uri
-      ) {
-        const localUri = result.assets[0].uri;
-
-        // Optional: preview the local image first
-        setImageUri(localUri);
-
-        // Upload the image (assuming uploadImage returns a URL)
-        const uploadedUrl = await uploadImage(localUri);
-
-        // Save the uploaded image URL
-        setImageUri(uploadedUrl);
-        setImages([uploadedUrl]); // Store it as an array with one image
-      } else {
-        console.log('Camera cancelled or no image captured');
+        setImages(prev => [...prev, newImage]);
       }
-    } catch (error) {
-      console.error('Camera error:', error);
-      Alert.alert('Error', 'Failed to open camera');
-    }
+    );
   };
 
-  const openGallery = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
+  const handleGallery = () => {
+    launchImageLibrary(
+      {
+        mediaType: 'photo',
+        selectionLimit: 0 // MULTIPLE IMAGES
+      },
+      response => {
+        if (response.didCancel || response.errorCode) return;
 
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
+        const selectedImages = response.assets.map(item => item.uri);
 
-      if (
-        result &&
-        !result.canceled &&
-        Array.isArray(result.assets) &&
-        result.assets.length > 0 &&
-        result.assets[0].uri
-      ) {
-        const localUri = result.assets[0].uri;
-
-        // Optional: preview the local image first
-        setImageUri(localUri);
-
-        // Upload the image (assuming uploadImage returns a URL)
-        const uploadedUrl = await uploadImage(localUri);
-
-        // Save the uploaded image URL
-        setImageUri(uploadedUrl);
-        setImages([uploadedUrl]); // Store it as an array with one image
-      } else {
-        console.log('Gallery cancelled or no image selected');
+        setImages(prev => [...prev, ...selectedImages]);
       }
-    } catch (error) {
-      console.error('Gallery error:', error);
-      Alert.alert('Error', 'Failed to open gallery');
-    }
+    );
   };
 
-  const removeImage = (indexToRemove) => {
-    setImages(prevImages => prevImages.filter((_, index) => index !== indexToRemove));
+  const deleteImage = (index) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const openPreview = (imgUri) => {
+    setSelectedImage(imgUri);
+    setPreviewVisible(true);
+  };
+  const closePreview = () => {
+    setPreviewVisible(false);
+    setSelectedImage(null);
   };
 
   return (
@@ -288,13 +269,6 @@ export default function TransactionScreen() {
               backgroundColor: "#f3f3f3",
               borderRadius: 20
             }}>
-              {/* <Text style={[{
-                color: '#388E3C90',
-                fontWeight: '600',
-                fontSize: 14,
-                textTransform: 'capitalize', 
-                margin: 10
-              }]}>Basic Plan</Text> */}
               {
                 transactionType === "you_gave" ? (
                   <Text style={{ fontSize: 14, borderRadius: 5, fontWeight: 'bold', color: '#388E3C90' }}>Give   :    {transaction_limit} / 2</Text>
@@ -318,7 +292,7 @@ export default function TransactionScreen() {
         {amount && (
           <>
             <View style={styles.dateContainer}>
-              <Text style={styles.dateLabel}>Due Date</Text>
+              <Text style={styles.dateLabel}>New Bill Date</Text>
 
               <TouchableOpacity
                 style={styles.dateSelector}
@@ -343,12 +317,12 @@ export default function TransactionScreen() {
 
             <View style={styles.buttonRow}>
 
-              { transactionType === "you_gave" ?
+              {transactionType === "you_gave" ?
                 <TouchableOpacity
                   style={[styles.addImagesButton, styles.addBillButton, { marginLeft: 20 }]}
                   onPress={() => {
                     router.push({
-                      pathname: '/billGenaration', params: { Id: id, bill_type: "BILL", bill_date: moment(selectedDate).format('DD MMM YYYY'),transaction_for }
+                      pathname: '/billGenaration', params: { Id: id, bill_type: "BILL", bill_date: moment(selectedDate).format('DD MMM YYYY'), transaction_for }
                     });
                   }}
                 >
@@ -362,15 +336,40 @@ export default function TransactionScreen() {
                 </TouchableOpacity>
               }
             </View>
-
-            {images && (
+            {images.length > 0 && (
               <View style={styles.imagesContainer}>
-                <Text style={styles.imagesTitle}>Selected Images </Text>
-                <View style={styles.imageWrapper}>
-                  <Image source={{ uri: imageUri }} style={styles.selectedImage} />
+                <Text style={styles.imagesTitle}>Selected Images</Text>
+
+                <View style={styles.imagesList}>
+                  {images.map((img, index) => (
+                    <View key={index} style={styles.imageWrapper}>
+                      <Image
+                        source={{ uri: img }}
+                        style={styles.selectedImage}
+                      />
+                      {/* Delete Button */}
+                      <TouchableOpacity
+                        onPress={() => deleteImage(uri)}
+                        style={{
+                          position: 'absolute',
+                          top: -8,
+                          right: -8,
+                          backgroundColor: 'red',
+                          width: 24,
+                          height: 24,
+                          borderRadius: 12,
+                          justifyContent: 'center',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <Text style={{ color: 'white', fontSize: 16 }}>×</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
                 </View>
               </View>
             )}
+
 
             <View style={styles.noteContainer}>
               <TextInput
@@ -451,15 +450,41 @@ export default function TransactionScreen() {
         </View>
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={styles.receivedButton}
-            onPress={() => addTransaction()}
-          >
-            <Text style={styles.receivedText}>Submit</Text>
-          </TouchableOpacity>
+
+<ProgressButton
+  title="Submit"
+  loading={loading}
+  progress={uploadProgress}   // 0 → 1
+  success={success}
+  onPress={addTransaction}
+/>
+
 
         </View>
       </ScrollView>
+      <Modal visible={previewVisible} transparent>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.9)',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}
+        >
+          <Image
+            source={{ uri: selectedImage }}
+            style={{ width: '90%', height: '70%', resizeMode: 'contain' }}
+          />
+
+          <TouchableOpacity
+            onPress={() => setPreviewVisible(false)}
+            style={{ marginTop: 20 }}
+          >
+            <Text style={{ color: 'white', fontSize: 18 }}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -502,6 +527,19 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  imagesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 10,
+  },
+  imageWrapper: {
+    margin: 5,
+  },
+  selectedImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
   },
   personName: {
     fontSize: 16,

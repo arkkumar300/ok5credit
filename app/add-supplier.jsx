@@ -1,35 +1,47 @@
-import React, { useState } from 'react';
-import {View,Text,StyleSheet,TextInput,TouchableOpacity,SafeAreaView,Modal,FlatList,Image,Platform} from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  SafeAreaView,
+  Modal,
+  FlatList,
+  Image,
+  Platform,
+} from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, User, Phone, Contact } from 'lucide-react-native';
 import { Appbar } from 'react-native-paper';
-import ApiService from './components/ApiServices';
 import * as Contacts from 'expo-contacts';
+import ApiService from './components/ApiServices';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import cleanMobileNumber from './components/cleanMobileNumber';
 
 export default function AddSupplierScreen() {
   const [name, setName] = useState('');
-  const [contacts, setContacts] = useState([]);
-  const [mobile, setMobile] = useState('');
-  const router = useRouter();
-  const [modalVisible, setModalVisible] = useState(false);
   const [isExist, setIsExist] = useState(true);
-
+  const [mobile, setMobile] = useState('');
+  const [contacts, setContacts] = useState([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const router = useRouter();
+  
   const handleConfirm = async () => {
-    const userData=await AsyncStorage.getItem("userData");
-    const userId=JSON.parse(userData).id;
+    const userData = await AsyncStorage.getItem("userData");
+    const userId = JSON.parse(userData).id;
+    console.log("rrr ::", userId)
     if (name.trim() && mobile.trim()) {
       try {
         const response = await ApiService.post("/supplier", {
-          userId:Number(userId),
+          userId: Number(userId),
           name: name.trim(),
           mobile: mobile.trim()
         });
 
         if (response.status === 200 || response.status === 201) {
           alert('Supplier added successfully');
-          router.push('/dashboard');
+          router.push('/dashboard'); 
         } else {
           alert('Something went wrong while adding the supplier.');
         }
@@ -42,32 +54,26 @@ export default function AddSupplierScreen() {
 
   const handleSearch = async () => {
     const userData = await AsyncStorage.getItem("userData");
-    const userId = JSON.parse(userData)?.id;
-    console.log('Sending:', {
-      userId: Number(userId),
-      mobile: mobile.trim()
-    });
-    
-    if (!userId || isNaN(userId)) {
-      alert("Invalid user ID");
-      return;
-    }
+    const userId = JSON.parse(userData).id;
     if (mobile.trim()) {
       try {
         const response = await ApiService.post("/supplier/getSupplierByMobile/WithUserID", {
           userId: Number(userId),
-          mobile: mobile.trim()
+          mobile: mobile
+        },{
+          headers:{
+            "Content-Type":"application/json"
+          }
         });
-
-        if (response.data.data) {
-          alert('Supplier Already Exists');
-          setMobile('');
-          setName('');
-          setIsExist(true)
-        } else { 
-          setIsExist(false)
-        }
-      
+          if (response.data.data) {
+            alert('Supplier Already Exists');
+            setMobile('');
+            setName('');
+            setIsExist(true)
+          } else {
+            setIsExist(false)
+          }
+        
       } catch (error) {
         console.error(error);
         alert('API request failed. Check your server.');
@@ -77,34 +83,26 @@ export default function AddSupplierScreen() {
 
   const openContacts = async () => {
     const { status } = await Contacts.requestPermissionsAsync();
-  
-    if (status !== 'granted') {
-      alert('Permission to access contacts denied');
-      return;
+console.log("rrr:::",status)
+    if (status === 'granted') {
+      const { data } = await Contacts.getContactsAsync({
+        fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Image],
+      });
+
+      if (data.length > 0) {
+        setContacts(data.filter(c => c.phoneNumbers && c.phoneNumbers.length > 0));
+        setModalVisible(true);
+      }
+    } else {
+      alert('Permission to access contacts was denied');
     }
-  
-    const { data } = await Contacts.getContactsAsync({
-      fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Image],
-    });
-  
-    const validContacts = data.filter(
-      c => c.phoneNumbers && c.phoneNumbers.length > 0
-    );
-  
-    setContacts(validContacts);
-    setModalVisible(true);
   };
-  
+
   const handleContactSelect = (contact) => {
-    if (!contact.phoneNumbers || contact.phoneNumbers.length === 0) {
-      alert("This contact has no phone number");
-      return;
-    }
-  
-    const rawNumber = contact.phoneNumbers[0]?.number ?? "";
+    const rawNumber = contact.phoneNumbers[0]?.number || "";
     const cleanedNumber = cleanMobileNumber(rawNumber);
   
-    setName(contact.name || "");
+    setName(contact.name);
     setMobile(cleanedNumber);
     setModalVisible(false);
   };
@@ -118,7 +116,7 @@ export default function AddSupplierScreen() {
       </Appbar.Header>
 
       <View style={styles.content}>
-        {!isExist &&<View style={styles.inputContainer}>
+        {!isExist && <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Name</Text>
           <View style={styles.inputWrapper}>
             <User size={20} color="#666" style={styles.inputIcon} />
@@ -130,8 +128,8 @@ export default function AddSupplierScreen() {
               autoFocus={true}
             />
           </View>
-        </View>}
-
+        </View>
+        }
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Mobile Number</Text>
           <View style={styles.inputWrapper}>
@@ -139,13 +137,14 @@ export default function AddSupplierScreen() {
             <TextInput
               style={styles.input}
               value={mobile}
-              maxLength={15}
+              maxLength={10}
               onChangeText={(text) => setMobile(cleanMobileNumber(text))}
               placeholder="Enter mobile number"
               keyboardType="numeric"
             />
           </View>
         </View>
+
         <TouchableOpacity style={styles.contactsButton} onPress={openContacts}>
           <Contact size={20} color="#2E7D32" />
           <Text style={styles.contactsButtonText}>Choose from Contacts</Text>
@@ -177,6 +176,7 @@ export default function AddSupplierScreen() {
           <Text style={styles.confirmButtonText}>Confirm</Text>
         </TouchableOpacity>}
 
+      {/* Modal for Contacts List */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -199,7 +199,8 @@ export default function AddSupplierScreen() {
                         <Text style={styles.initialText}>
                           {item.name?.[0]?.toUpperCase() || '?'}
                         </Text>
-                      </View>)}
+                      </View>
+                    )}
                     <View style={{ marginLeft: 10 }}>
                       <Text style={styles.contactName}>{item.name}</Text>
                       <Text style={styles.contactNumber}>
@@ -216,7 +217,6 @@ export default function AddSupplierScreen() {
           </View>
         </View>
       </Modal>
-
     </SafeAreaView>
   );
 }

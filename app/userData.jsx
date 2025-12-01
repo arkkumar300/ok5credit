@@ -68,22 +68,25 @@ export default function UserInfo() {
   const sendWelcomePushNotification = async () => {
     const userData = await AsyncStorage.getItem("userData");
     const fcmToken_stored = await AsyncStorage.getItem("UserFCMToken");
-    console.log("🌟 Token after permission:", fcmToken_stored);
+    console.log("🌟 Token after permissionsss:", fcmToken_stored);
     const userMobile = JSON.parse(userData).mobile;
-try {
+    
+    try {
       const response = await ApiService.post('fcmToken/pushNotification', {
         fcm_token: fcmToken_stored,
         title: "Welcome!",
         message: "Welcome to the app!",
         user_mobile:userMobile
       });
+      console.log("FCM response:", response);
 
       if (!response.data.success) throw new Error(response.data.message || 'Failed to send notification');
 
-      router.replace('/dashboard');
     } catch (error) {
       console.error('❌ FCM token registration error:', error.message);
-      Alert.alert('Error', error.message || 'Something went wrong while sending push notification.');
+    }finally{
+      router.replace('/dashboard');
+
     }
   };
 

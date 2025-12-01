@@ -20,12 +20,17 @@ import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import billPDF from './components/billPDF';
 import ApiService from './components/ApiServices';
+import ProgressButton from './components/ProgressButton';
 
 
 export default function BillPreview() {
   const [format, setFormat] = useState('unpaid');
   const [userDetails, setUserDetails] = useState(null);
   const [supplierInfo, setCustomerInfo] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [success, setSuccess] = useState(false);
+
   const router = useRouter();
   const { items, totalAmount, bill, extraCharges, supplierData, transaction_for } = useLocalSearchParams();
   const parsedItems = items ? JSON.parse(items) : [];
@@ -36,15 +41,17 @@ export default function BillPreview() {
   }, [])
   const saveBill = async () => {
     const pdfFile = await billPDF(userDetails, supplierInfo, bill, parsedItems, parsedExtraCharges, totalAmount);
+    setLoading(true);
+    setUploadProgress(0);
+    setSuccess(false);
     try {
-
       const uploadData = new FormData();
       uploadData.append('file', {
         uri: pdfFile.uri,
         name: pdfFile.name,
         type: pdfFile.type
       });
-      console.log("uploadData ::", uploadData)
+      setUploadProgress(0.33); // 33% complete
       const response = await ApiService.post(`/upload`, uploadData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -60,7 +67,8 @@ export default function BillPreview() {
   }
 
   const handleSave = async (uploadedPath) => {
-    console.log("uploadedPath :", uploadedPath)
+    setUploadProgress(0.66); // 66% complete
+
     try {
 
       // 2. upload PDF
@@ -100,29 +108,34 @@ export default function BillPreview() {
 
       const billResponse = await ApiService.post(`/bill`, payload);
 
-      // if (billResponse.data) {   
-      // if (billResponse?.data?.bill?.payment_status === 'paid') {
-        addTransaction(billResponse?.data?.bill);
-        // }else{
-        //   const unpaidBillData=billResponse?.data?.bill   
-        //   const encodedUnpaidCustomerData = encodeURIComponent(JSON.stringify(supplierInfo));      
-        //   router.push({
-        //     pathname: '/billDetails',
-        //     params: {
-        //       billId: unpaidBillData?.id,
-        //       supplierInfo: encodedUnpaidCustomerData,
-        //       bill: bill,
-        //       charges:parsedExtraCharges
-        //     }
-        //   });
-        // }
-      // } else {
-      //   Alert.alert("bill can't generate")
-      // }
+      if (billResponse.data) {
+        if (billResponse?.data?.bill?.payment_status === 'paid') {
+          setUploadProgress(0.9);
+         await addTransaction(billResponse?.data?.bill);
+         setUploadProgress(1); // 100%
+         setSuccess(true);     
+        } else {
+          const unpaidBillData = billResponse?.data?.bill
+          const encodedUnpaidCustomerData = encodeURIComponent(JSON.stringify(supplierInfo));
+          router.push({
+            pathname: '/billDetails',
+            params: {
+              billId: unpaidBillData?.id,
+              supplierInfo: encodedUnpaidCustomerData,
+              bill: bill,
+              charges: parsedExtraCharges
+            }
+          });
+        }
+      } else {
+        Alert.alert("bill can't generate")
+      }
 
     } catch (error) {
       console.error("handleSave error", error);
       ToastAndroid.show("An unexpected error occurred", ToastAndroid.LONG);
+    }finally{
+      setLoading(false)
     }
   };
 
@@ -262,10 +275,18 @@ export default function BillPreview() {
             </View>
           </RadioButton.Group>
         </View>
-        <TouchableOpacity style={styles.downloadBtn} onPress={saveBill}>
+        <ProgressButton
+          title="Submit"
+          loading={loading}
+          progress={uploadProgress}   // 0 → 1
+          success={success}
+          onPress={saveBill}
+        />
+
+        {/* <TouchableOpacity style={styles.downloadBtn} onPress={saveBill}>
           <Download size={18} color="#000" />
           <Text style={styles.downloadText}>Save</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </ScrollView>
     </SafeAreaView>
   );

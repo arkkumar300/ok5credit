@@ -1,29 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  SafeAreaView,
-  TouchableOpacity,
-  Image,
-  ActivityIndicator,
-} from 'react-native';
-import {
-  PhoneCall,
-  MessageSquare,
-  ArrowDown,
-  ArrowUp,
-  ArrowLeft,
-  CheckIcon,
-  File,
-  ChevronRight,
-} from 'lucide-react-native';
+import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking } from 'react-native';
+import { PhoneCall, MessageSquare, ArrowDown, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Divider } from 'react-native-paper';
 import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
+import ErrorModal from './components/ErrorModal';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import DateModal from './components/DateModal';
 
 const transactions = [
   {
@@ -52,8 +37,20 @@ export default function SupplierDetails() {
   const [supplier, setSupplier] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isModelView, setIsModelView] = useState(false);
   const [error, setError] = useState(null);
+  const [supplierMobile, setSupplierMobile] = useState('');
+  const [isSubscribe_user, setIsSubscribe_user] = useState(null);
+  const [subscribeEndAt_user, setSubscribeEndAt_user] = useState(null);
+  const [credit_given_count_user, setCredit_given_count_user] = useState(0);
+  const [payment_got_count_user, setPayment_got_count_user] = useState(0);
+  const [subscribePlan, setSubscribePlan_user] = useState("");
   var rrr = 0
+  const [dueDate, setDueDate] = useState(
+    supplier?.due_date ? new Date(supplier?.due_date) : null
+  );
+  const [showPicker, setShowPicker] = useState(false);  
+
   useEffect(() => {
     const fetchSupplier = async () => {
       const userData = await AsyncStorage.getItem("userData");
@@ -61,7 +58,13 @@ export default function SupplierDetails() {
       try {
         const response = await ApiService.post(`/supplier/${personId}`, { userId });
         const data = response.data;
+
         setSupplier(data.supplier);
+        const supplierPhone = data.supplier.mobile;
+        const supplierDueDate = data.supplier.due_date;
+
+        setDueDate(supplierDueDate);
+        setSupplierMobile(supplierPhone);
         setTransactions(data.transactions);
       } catch (err) {
         console.error(err);
@@ -73,7 +76,19 @@ export default function SupplierDetails() {
     fetchSupplier();
   }, []);
 
-  const isEligible = async (transactionType) => {
+  const handleCall = () => {
+    if (!supplierMobile) {
+      alert("Phone number not available");
+      return;
+    }
+    Linking.openURL(`tel:${supplierMobile}`);
+  };
+
+  useEffect(() => {
+    isEligible()
+  }, [])
+
+  const isEligible = async () => {
     const userData = await AsyncStorage.getItem("userData");
     const userId = JSON.parse(userData).id;
 
@@ -85,31 +100,30 @@ export default function SupplierDetails() {
       isSubscribe,
       subscribeEndAt,
       credit_given_count,
+      subscribePlan,
       payment_got_count
     } = response.data;
 
+    setIsSubscribe_user(isSubscribe)
+    setSubscribeEndAt_user(subscribeEndAt)
+    setCredit_given_count_user(credit_given_count)
+    setPayment_got_count_user(payment_got_count)
+    setSubscribePlan_user(subscribePlan)
+
     console.log("isSubscribe::", isSubscribe);
-    console.log("transactionType::", transactionType);
     console.log("subscribeEndAt::", subscribeEndAt);
     console.log("credit_given_count::", credit_given_count);
     console.log("payment_got_count::", payment_got_count);
+    console.log("subscribePlan::", subscribePlan);
 
-    if (isSubscribe) {
-      const today = new Date();
-      const endDate = new Date(subscribeEndAt);
+    // if (isSubscribe) {
+    //   const today = new Date();
+    //   const endDate = new Date(subscribeEndAt);
 
-      return endDate >= today;
-    }
+    //   return endDate >= today;
+    // }
 
-    if (transactionType === "you_got") {
-      return parseInt(payment_got_count) < 6;
-    }
 
-    if (transactionType === "you_gave") {
-      return parseInt(credit_given_count) < 3;
-    }
-
-    return false;
   };
 
   const renderItem = ({ item }) => {
@@ -123,17 +137,17 @@ export default function SupplierDetails() {
     }
 
     if (rrr < 0) {
-      aaa = `${Math.abs(rrr)} Advance`
+      aaa = `${Math.abs(rrr)} Due`
     } else {
-      aaa = `${rrr} Due`
+      aaa = `${rrr} Advance`
     }
-
     return (
       <TouchableOpacity
         style={[
           styles.transactionWrapper,
           isReceived ? styles.leftContainer : styles.rightContainer,
-        ]} onPress={() => router.push({
+        ]}
+        onPress={() => router.push({
           pathname: '/transactionDetails', params: { transactionDetails: JSON.stringify(item), Name: personName }
         })}
       >
@@ -154,9 +168,22 @@ export default function SupplierDetails() {
             {item.bill_id &&
               <>
                 <Divider style={{ marginVertical: 5 }} />
-                <TouchableOpacity style={[styles.amountRow, { marginVertical: 5, justifyContent: 'space-between' }]} onPress={() => router.push('./billDetails')}>
+                <TouchableOpacity style={[styles.amountRow, { marginVertical: 5, justifyContent: 'space-between' }]}
+                  onPress={() => {
+                    const encodedUnpaidSupplierData = encodeURIComponent(JSON.stringify(supplier));
+
+                    router.push({
+                      pathname: '/billDetails',
+                      params: {
+                        billId: item.bill_id,
+                        supplierInfo: encodedUnpaidSupplierData,
+                        bill: item.bill_id
+                      }
+                    })
+                  }}>
                   <File size={24} color="green" />
-                  <Text style={styles.amountText}>{item.bill_id} ₹ {item.amount}</Text>
+                  {item.bill_id && <Text style={styles.amountText}>{item.bill_id}</Text>}
+                  <Text style={[styles.amountText, { fontWeight: '600' }]}>₹ {item.amount}</Text>
                   <ChevronRight size={24} color="green" />
                 </TouchableOpacity>
               </>}
@@ -166,13 +193,15 @@ export default function SupplierDetails() {
                 <TouchableOpacity style={[styles.amountRow, { marginVertical: 5, justifyContent: 'space-between' }]}
                   onPress={() => router.push({
                     pathname: '/transactionDetails', params: { transactionDetails: JSON.stringify(item), Name: personName }
-                  })}>
+                  })}
+                >
                   <Image
-                    source={{ uri: item.transaction_pic }}
-                    resizeMode="center"
+                    source={{ uri: item.transaction_pic || "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=400&h=300" }}
+                    resizeMode="stretch" alt={item.transaction_pic}
                     style={{ width: 100, height: 100 }}
                   />
-                  <Text style={styles.amountText}>{item.bill_id} ₹ {item.amount}</Text>
+                  {item.bill_id && <Text style={styles.amountText}>{item.bill_id}</Text>}
+                  <Text style={[styles.amountText, { fontWeight: '600' }]}>₹ {item.amount}</Text>
                   <ChevronRight size={24} color="green" />
                 </TouchableOpacity>
               </>}
@@ -193,18 +222,47 @@ export default function SupplierDetails() {
       </Appbar.Header>
 
       {/* Transaction List */}
-      <FlatList
-        data={transactions}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: 180, paddingTop: 30, paddingHorizontal: 10 }}
-      />
-
+      {Array.isArray(transactions) && transactions.length > 0 ? (
+        <FlatList
+          data={transactions}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id?.toString()}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Image
+            source={require('../assets/images/DataCaution.png')}
+            style={styles.image}
+            resizeMode="contain" blurRadius={5}
+          />
+          <Text style={styles.emptyText}>supplier transactions data is pravite and secure</Text>
+        </View>
+      )}
       {/* Bottom Material Block */}
       <View style={styles.bottomContainer}>
         {/* Actions */}
         <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.actionButton}>
+          {Number(supplier?.current_balance) < 0 &&
+            <TouchableOpacity style={styles.actionButton} onPress={()=>setShowPicker(true)}>
+<View style={{ flexDirection: 'row', alignItems: 'center' }}>
+  <Calendar size={18} color={dueDate ? "red" : "green" }/>
+  <Text style={{
+  marginLeft: 6,
+  fontSize: 14,fontWeight:'bold',
+  color: dueDate ? "red" : "green"
+}}>
+  {dueDate ? "Due Date" : "Change Date"}
+</Text>
+</View>
+              <Text style={styles.actionText}>
+                {dueDate  ? new Date(dueDate).toDateString() : "Due Date"}
+              </Text>
+
+            </TouchableOpacity>
+          }
+          <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
             <PhoneCall size={24} color="#555" />
             <Text style={styles.actionText}>Call</Text>
           </TouchableOpacity>
@@ -213,7 +271,7 @@ export default function SupplierDetails() {
             params: {
               personId: personId,
               personName: personName,
-              roleType: "SUPPLIER"
+              roleType: "CUSTOMER"
             }
           })
           }>
@@ -221,68 +279,169 @@ export default function SupplierDetails() {
             <Text style={styles.actionText}>Ledgers</Text>
           </TouchableOpacity>
         </View>
+        {isSubscribe_user === false &&
+          <>
+            <Divider style={{ height: 0.5, width: '100%', marginVertical: 3, backgroundColor: '#388E3C90' }} />
 
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <Text style={[{
+                color: '#388E3C90',
+                fontWeight: '600',
+                fontSize: 12,
+                textTransform: 'capitalize', margin: 5
+              }]}>{isSubscribe_user === false ? "Basic Plan" : subscribePlan}</Text>
+              <Text style={{ fontSize: 12, borderRadius: 5, fontWeight: 'bold', color: '#d3d3d3' }}>Receive :   {payment_got_count_user}  / 4</Text>
+              <Text style={{ fontSize: 12, borderRadius: 5, fontWeight: 'bold', color: '#d3d3d3' }}>Give       :    {credit_given_count_user} / 2</Text>
+            </View>
+
+            <Divider style={{ height: 0.5, width: '100%', marginVertical: 3, backgroundColor: '#388E3C90' }} />
+          </>}
         {/* Balance Row */}
-        <View style={[styles.balanceRow]}>
-          <Text style={[styles.balanceLabel, { fontSize: 16, fontWeight: 'bold' }]}>Balance Due</Text>
+        <View style={styles.balanceRow}>
+          <Text style={[styles.balanceLabel, { fontWeight: 'bold' }]}>Balance Due</Text>
           <Text style={[styles.balanceAmount, { color: supplier?.current_balance > 0 ? '#388E3C' : "#d32f2f" }]}>₹ {Math.abs(supplier?.current_balance || 0)} {Number(supplier?.current_balance) > 0 ? 'Advance' : "Due"}</Text>
         </View>
 
         {/* Received and Given Buttons */}
         <View style={styles.bottomButtonsRow}>
-
-          {/* YOU GOT (↓ Received) */}
           <TouchableOpacity
             style={styles.receivedButton}
-            onPress={async () => {
-              const eligible = await isEligible("you_got");
-
-              if (eligible) {
-                router.push({
-                  pathname: '/transaction',
-                  params: {
-                    transactionType: "you_got",
-                    transaction_for: "supplier",
-                    id: personId,
-                    personName: personName
-                  }
-                });
+            onPress={async () => {          // MAKE ASYNC
+              if (isSubscribe_user) {
+                const today = new Date();
+                const endDate = new Date(subscribeEndAt_user);
+                if (endDate >= today) {
+                  router.push({
+                    pathname: '/transaction',
+                    params: {
+                      transactionType: "you_got",
+                      transaction_for: "supplier",
+                      id: personId,
+                      personName: personName,
+                      isSubscribe_user,
+                      transaction_limit: payment_got_count_user || 0
+                    }
+                  });
+                } else {
+                  setError("You are in Basic plan so son't have eligiblity to add recived transaction");
+                  // setIsModelView(true)
+                }
               } else {
-                alert("You are not eligible for this transaction.");
+                if (payment_got_count_user < 4) {
+                  router.push({
+                    pathname: '/transaction',
+                    params: {
+                      transactionType: "you_got",
+                      transaction_for: "supplier",
+                      id: personId,
+                      personName: personName,
+                      isSubscribe_user,
+                      transaction_limit: payment_got_count_user || 0
+                    }
+                  });
+                } else {
+                  setError("You are in Basic plan and limit has Crossed so you don't have eligiblity to add recived transaction");
+                  // setIsModelView(true)
+                }
               }
             }}
           >
             <Text style={styles.receivedText}>↓ Received</Text>
           </TouchableOpacity>
 
-
-          {/* YOU GAVE (↑ Given) */}
           <TouchableOpacity
             style={styles.givenButton}
             onPress={async () => {
-              const eligible = await isEligible("you_gave");
+              if (isSubscribe_user) {
+                const today = new Date();
+                const endDate = new Date(subscribeEndAt_user);
+                if (endDate >= today) {
+                  router.push({
+                    pathname: '/transaction',
+                    params: {
+                      transactionType: "you_gave",
+                      transaction_for: "supplier",
+                      id: personId,
+                      personName: personName,
+                      isSubscribe_user,
+                      transaction_limit: credit_given_count_user || 0
 
-              if (eligible) {
-                router.push({
-                  pathname: '/transaction',
-                  params: {
-                    transactionType: "you_gave",
-                    transaction_for: "supplier",
-                    id: personId,
-                    personName: personName
-                  }
-                });
+                    }
+                  });
+                } else {
+                  setError("You are in Basic plan so you don't have eligiblity to give amount");
+                  // setIsModelView(true)
+                }
               } else {
-                alert("You are not eligible for this transaction.");
+                if (credit_given_count_user < 20) {
+                  router.push({
+                    pathname: '/transaction',
+                    params: {
+                      transactionType: "you_gave",
+                      transaction_for: "supplier",
+                      id: personId,
+                      personName: personName,
+                      isSubscribe_user,
+                      transaction_limit: credit_given_count_user || 0
+                    }
+                  });
+                } else {
+                  setError("You are in Basic plan and limit has Crossed so you don't have eligiblity to give amount");
+                  // setIsModelView(true)
+                }
               }
             }}
           >
             <Text style={styles.givenText}>↑ Given</Text>
           </TouchableOpacity>
-
         </View>
       </View>
+      <ErrorModal
+        visible={!!error}
+        message={error}
+        onClose={() => setError(null)}
+      />
+
+<DateModal
+  visible={showPicker}
+  initialDate={dueDate}
+  onClose={() => setShowPicker(false)}
+
+  onConfirm={async (selectedDate) => {
+    setDueDate(selectedDate); // update UI immediately
+    setShowPicker(false);     // close modal
+
+    try {
+      const userData = await AsyncStorage.getItem("userData");
+      const userId = JSON.parse(userData)?.id;
+
+      const response = await ApiService.put(
+        `/supplier/${supplier.id}`,
+        {
+          userId: Number(userId),
+          due_date: selectedDate.toISOString(),
+        }
+      );
+
+      if (response.status === 200) {
+        alert("Due date updated successfully");
+      } else {
+        alert("Failed to update due date");
+      }
+
+    } catch (error) {
+      console.error(error);
+      alert("Error updating due date");
+    }
+  }}
+/>
+
     </SafeAreaView >
+
   );
 }
 
@@ -334,8 +493,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   amountText: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: 18,
     color: '#333',
   },
   timeText: {
@@ -374,6 +532,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 14,
   },
+  listContent: {
+    paddingBottom: 180,
+    paddingTop: 30,
+    paddingHorizontal: 10,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  image: {
+    width: '95%', justifyContent: 'center',
+    height: 200, top: -100, alignSelf: 'center'
+  },
+  emptyText: {
+    fontSize: 14, fontWeight: '700',
+    color: '#666', top: -50,
+    textAlign: 'center', marginBottom: 50
+  },
   actionButton: {
     alignItems: 'center',
     flex: 1,
@@ -392,11 +570,11 @@ const styles = StyleSheet.create({
   balanceLabel: {
     fontSize: 14,
     color: '#777',
-    marginRight: 6,
+    marginRight: 6, marginTop: 8
   },
   balanceAmount: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: 'bold', marginTop: 8,
     color: '#d32f2f',
   },
   bottomButtonsRow: {

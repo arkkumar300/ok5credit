@@ -6,9 +6,9 @@ import { Appbar, Divider } from 'react-native-paper';
 import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
-import { } from 'react-native';
 import ErrorModal from './components/ErrorModal';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import DateModal from './components/DateModal';
 
 const transactions = [
   {
@@ -49,43 +49,8 @@ export default function CustomerDetails() {
   const [dueDate, setDueDate] = useState(
     customer?.due_date ? new Date(customer?.due_date) : null
   );
-    const [showPicker, setShowPicker] = useState(false);
-  
-  const handleDueDate = () => {
-    setShowPicker(true);
-  };
-  
-  const onDateChange = async (event, selectedDate) => {
-    setShowPicker(false);
-  
-    if (!selectedDate) return;
-  
-    setDueDate(selectedDate); // selectedDate is always a Date object
-  
-    try {
-      const userData = await AsyncStorage.getItem("userData");
-      const userId = JSON.parse(userData)?.id;
-  
-      const response = await ApiService.put(
-        `/customers/${customer.id}`,
-        {
-          userId: Number(userId),
-          due_date: selectedDate.toISOString(),  // <-- correct SQL date format
-        }
-      );
-  
-      if (response.status === 200) {
-        alert("Due date updated successfully");
-      } else {
-        alert("Failed to update due date");
-      }
-  
-    } catch (error) {
-      console.error(error);
-      alert("Error updating due date");
-    }
-  };
-    
+  const [showPicker, setShowPicker] = useState(false);  
+
   useEffect(() => {
     const fetchCustomer = async () => {
       const userData = await AsyncStorage.getItem("userData");
@@ -93,13 +58,13 @@ export default function CustomerDetails() {
       try {
         const response = await ApiService.post(`/customers/${personId}`, { userId });
         const data = response.data;
-        console.log("customerDetails::",data)
+        console.log("customerDetails::", data)
         setCustomer(data.customer);
         const customerPhone = data.customer.mobile;
         const customerDueDate = data.customer.due_date;
-        console.log("customerPhone::",data.customer.mobile)
-setDueDate(customerDueDate);
-        setCustomerMobile(customerPhone);  
+        console.log("customerPhone::", data.customer.mobile)
+        setDueDate(customerDueDate);
+        setCustomerMobile(customerPhone);
         setTransactions(data.transactions);
       } catch (err) {
         console.error(err);
@@ -279,27 +244,15 @@ setDueDate(customerDueDate);
       <View style={styles.bottomContainer}>
         {/* Actions */}
         <View style={styles.actionsRow}>
-        {Number(customer?.current_balance) < 0 && 
-  <TouchableOpacity style={styles.actionButton} onPress={handleDueDate}>
-    <Calendar size={24} color="#555" />
-    <Text style={styles.actionText}>
-  {dueDate instanceof Date ? dueDate.toDateString() : new Date(dueDate).toDateString()}
-</Text>
+          {Number(customer?.current_balance) < 0 &&
+            <TouchableOpacity style={styles.actionButton} onPress={()=>setShowPicker(true)}>
+              <Calendar size={24} color="#555" />
+              <Text style={styles.actionText}>
+                {dueDate  ? new Date(dueDate).toDateString() : "Due Date"}
+              </Text>
 
-  </TouchableOpacity>
-}
-
-{showPicker && (
-  <DateTimePicker
-  value={dueDate instanceof Date ? dueDate : new Date(dueDate)}
-    mode="date"
-    display="default"
-    onChange={onDateChange}
-  />
-)}
-
-
-          
+            </TouchableOpacity>
+          }
           <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
             <PhoneCall size={24} color="#555" />
             <Text style={styles.actionText}>Call</Text>
@@ -340,12 +293,12 @@ setDueDate(customerDueDate);
           </>}
         {/* Balance Row */}
         <View style={styles.balanceRow}>
-          <Text style={[styles.balanceLabel, {  fontWeight: 'bold' }]}>Balance Due</Text>
+          <Text style={[styles.balanceLabel, { fontWeight: 'bold' }]}>Balance Due</Text>
           <Text style={[styles.balanceAmount, { color: customer?.current_balance > 0 ? '#388E3C' : "#d32f2f" }]}>₹ {Math.abs(customer?.current_balance || 0)} {Number(customer?.current_balance) > 0 ? 'Advance' : "Due"}</Text>
         </View>
 
         {/* Received and Given Buttons */}
-        <View style={styles.bottomButtonsRow}> 
+        <View style={styles.bottomButtonsRow}>
           <TouchableOpacity
             style={styles.receivedButton}
             onPress={async () => {          // MAKE ASYNC
@@ -415,7 +368,7 @@ setDueDate(customerDueDate);
                   // setIsModelView(true)
                 }
               } else {
-                if (credit_given_count_user < 2) {
+                if (credit_given_count_user < 20) {
                   router.push({
                     pathname: '/transaction',
                     params: {
@@ -443,6 +396,40 @@ setDueDate(customerDueDate);
         message={error}
         onClose={() => setError(null)}
       />
+
+<DateModal
+  visible={showPicker}
+  initialDate={dueDate}
+  onClose={() => setShowPicker(false)}
+
+  onConfirm={async (selectedDate) => {
+    setDueDate(selectedDate); // update UI immediately
+    setShowPicker(false);     // close modal
+
+    try {
+      const userData = await AsyncStorage.getItem("userData");
+      const userId = JSON.parse(userData)?.id;
+
+      const response = await ApiService.put(
+        `/customers/${customer.id}`,
+        {
+          userId: Number(userId),
+          due_date: selectedDate.toISOString(),
+        }
+      );
+
+      if (response.status === 200) {
+        alert("Due date updated successfully");
+      } else {
+        alert("Failed to update due date");
+      }
+
+    } catch (error) {
+      console.error(error);
+      alert("Error updating due date");
+    }
+  }}
+/>
 
     </SafeAreaView >
 
@@ -574,11 +561,11 @@ const styles = StyleSheet.create({
   balanceLabel: {
     fontSize: 14,
     color: '#777',
-    marginRight: 6,marginTop:8
+    marginRight: 6, marginTop: 8
   },
   balanceAmount: {
     fontSize: 16,
-    fontWeight: 'bold',marginTop:8,
+    fontWeight: 'bold', marginTop: 8,
     color: '#d32f2f',
   },
   bottomButtonsRow: {
