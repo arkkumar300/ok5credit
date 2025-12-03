@@ -27,7 +27,7 @@ export default function SplashScreen() {
   useEffect(() => {
     const unsubscribe = messaging().onMessage(async remoteMessage => {
       console.log("📩 Foreground Message:", remoteMessage);
-      Alert.alert(remoteMessage.notification?.title || "Notification", remoteMessage.notification?.body || "");
+      console.log(remoteMessage.notification?.title || "Notification", remoteMessage.notification?.body || "");
     });
     return unsubscribe;
   }, []);
@@ -36,7 +36,7 @@ export default function SplashScreen() {
   useEffect(() => {
     const unsubscribe = messaging().onNotificationOpenedApp(remoteMessage => {
       console.log("📌 Notification opened from background:", remoteMessage);
-      Alert.alert(remoteMessage.notification?.title || "Notification", remoteMessage.notification?.body || "");
+      console.log(remoteMessage.notification?.title || "Notification", remoteMessage.notification?.body || "");
     });
     return unsubscribe;
   }, []);
@@ -48,7 +48,7 @@ export default function SplashScreen() {
       .then(remoteMessage => {
         if (remoteMessage) {
           console.log("🚀 App opened from quit:", remoteMessage);
-          Alert.alert(remoteMessage.notification?.title || "Notification", remoteMessage.notification?.body || "");
+          console.log(remoteMessage.notification?.title || "Notification", remoteMessage.notification?.body || "");
         }
       });
   }, []);
@@ -59,7 +59,14 @@ export default function SplashScreen() {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleGetStarted = () => router.push("/login");
+  const handleGetStarted = async () => {
+const isLogin=await AsyncStorage.getItem("isLogin")
+if (isLogin) {
+  router.replace('/dashboard');
+} else {
+  router.push("/login");
+}
+  }
 
   return (
     <ScrollView contentContainerStyle={{ flexGrow: 1 }}>

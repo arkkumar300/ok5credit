@@ -4,9 +4,9 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    StyleSheet,
+    StyleSheet,ScrollView,
     FlatList,
-    Dimensions
+    Dimensions,KeyboardAvoidingView, Platform
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
@@ -122,8 +122,8 @@ export default function ExtraChargesForm({ setItem, setNewItem, totalAmount }) {
                     item.type === "charge"
                         ? "Enter Amount"
                         : item.discountType === "percent"
-                        ? "Enter % value"
-                        : "Enter discount amount"
+                            ? "Enter % value"
+                            : "Enter discount amount"
                 }
                 style={styles.input}
                 keyboardType="numeric"
@@ -141,6 +141,15 @@ export default function ExtraChargesForm({ setItem, setNewItem, totalAmount }) {
     );
 
     return (
+        <KeyboardAvoidingView
+    behavior={Platform.OS === "ios" ? "padding" : "height"}
+    keyboardVerticalOffset={80} // adjust as needed
+  >
+    <ScrollView
+      style={styles.container}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{ paddingBottom: 120 }}
+    >
         <View style={styles.container}>
             <Text style={styles.header}>Charges & Discounts</Text>
 
@@ -148,21 +157,34 @@ export default function ExtraChargesForm({ setItem, setNewItem, totalAmount }) {
                 data={items}
                 renderItem={renderItem}
                 keyExtractor={(_, i) => i.toString()}
+                ListFooterComponent={()=>{
+                    return(
+                        <TouchableOpacity style={styles.addMoreBtn} onPress={addMore}>
+                        <Text style={styles.addMoreTxt}>+ Add More</Text>
+                    </TouchableOpacity>                    )
+                }}
             />
 
-            <TouchableOpacity style={styles.addMoreBtn} onPress={addMore}>
-                <Text style={styles.addMoreTxt}>+ Add More</Text>
-            </TouchableOpacity>
+           
+            <View style={{ flexDirection: 'row', justifyContent: 'space-around',width:"100%" }}>
 
-            <TouchableOpacity style={styles.saveBtn} onPress={save}>
-                <Text style={styles.saveTxt}>Save</Text>
-            </TouchableOpacity>
+                <TouchableOpacity style={styles.saveBtn} onPress={() => setItem(false)}>
+                    <Text style={styles.saveTxt}>Close</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.saveBtn} onPress={save}>
+                    <Text style={styles.saveTxt}>Save</Text>
+                </TouchableOpacity>
+            </View>
+
         </View>
+        </ScrollView>
+  </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { height: Dimensions.get("screen").height, padding: 15,backgroundColor:"#f3f3f3" },
+    container: { height: Dimensions.get("screen").height, padding: 15,paddingVertical: 60, backgroundColor: "#f3f3f3" },
     header: { fontSize: 20, fontWeight: "bold", marginBottom: 10 },
 
     card: {
@@ -228,18 +250,16 @@ const styles = StyleSheet.create({
     addMoreBtn: {
         marginTop: 15,
         padding: 12,
-        backgroundColor: "#E0FBE5",
         borderRadius: 15,
-        alignItems: "center",
     },
     addMoreTxt: { color: "#00A050", fontWeight: "bold" },
 
     saveBtn: {
         marginTop: 15,
         backgroundColor: "#00B050",
-        padding: 15,
-        borderRadius: 25,
-        alignItems: "center",
+        width:"25%",paddingVertical:10,
+        borderRadius: 25,paddingHorizontal:15,
+        alignItems: "center",justifyContent:'center'
     },
     saveTxt: { color: "#fff", fontWeight: "bold", fontSize: 18 },
 });

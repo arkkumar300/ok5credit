@@ -49,7 +49,7 @@ export default function CustomerDetails() {
   const [dueDate, setDueDate] = useState(
     customer?.due_date ? new Date(customer?.due_date) : null
   );
-  const [showPicker, setShowPicker] = useState(false);  
+  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     const fetchCustomer = async () => {
@@ -165,7 +165,7 @@ export default function CustomerDetails() {
               <CheckIcon size={24} color="green" style={{ marginHorizontal: 5 }} />
 
             </View>
-            {item.bill_id &&
+            {item?.bill_id &&
               <>
                 <Divider style={{ marginVertical: 5 }} />
                 <TouchableOpacity style={[styles.amountRow, { marginVertical: 5, justifyContent: 'space-between' }]}
@@ -187,24 +187,54 @@ export default function CustomerDetails() {
                   <ChevronRight size={24} color="green" />
                 </TouchableOpacity>
               </>}
-            {item.transaction_pic &&
+            {item?.transaction_pic?.length > 0 && (
               <>
                 <Divider style={{ marginVertical: 5 }} />
-                <TouchableOpacity style={[styles.amountRow, { marginVertical: 5, justifyContent: 'space-between' }]}
-                  onPress={() => router.push({
-                    pathname: '/transactionDetails', params: { transactionDetails: JSON.stringify(item), Name: personName }
-                  })}
+                <TouchableOpacity
+                  style={[styles.amountRow, { marginVertical: 5, justifyContent: 'space-between' }]}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/transactionDetails',
+                      params: { transactionDetails: JSON.stringify(item), Name: personName }
+                    })
+                  }
                 >
-                  <Image
-                    source={{ uri: item.transaction_pic || "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=400&h=300" }}
-                    resizeMode="stretch" alt={item.transaction_pic}
-                    style={{ width: 100, height: 100 }}
-                  />
-                  {item.bill_id && <Text style={styles.amountText}>{item.bill_id}</Text>}
+                  {(() => {
+                    let pics = item?.transaction_pic;
+
+                    // Normalize transaction_pic to ALWAYS be an array
+                    try {
+                      if (typeof pics === "string") {
+                        pics = JSON.parse(pics); // If backend returns string
+                      }
+                    } catch (err) {
+                      console.log("Failed to parse transaction_pic:", err);
+                    }
+
+                    // Ensure it's an array
+                    if (!Array.isArray(pics)) {
+                      pics = [];
+                    }
+
+                    const url =
+                      pics.length > 0
+                        ? pics[0]
+                        : "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg";
+
+                    return (
+                      <Image
+                        source={{ uri: url }}
+                        style={{ width: 100, height: 100 }}
+                        resizeMode="cover"
+                      />
+                    );
+                  })()}
                   <Text style={[styles.amountText, { fontWeight: '600' }]}>₹ {item.amount}</Text>
                   <ChevronRight size={24} color="green" />
                 </TouchableOpacity>
-              </>}
+              </>
+            )}
+
           </View>
           <Text style={styles.noteText}>{aaa}</Text>
         </View>
@@ -222,37 +252,80 @@ export default function CustomerDetails() {
       </Appbar.Header>
 
       {/* Transaction List */}
-      {Array.isArray(transactions) && transactions.length > 0 ? (
-        <FlatList
-          data={transactions}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id?.toString()}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        />
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Image
-            source={require('../assets/images/DataCaution.png')}
-            style={styles.image}
-            resizeMode="contain" blurRadius={5}
-          />
-          <Text style={styles.emptyText}>customer transactions data is pravite and secure</Text>
-        </View>
-      )}
+      <FlatList
+        data={transactions}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id?.toString()}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={() => {
+          return (
+            <View style={styles.emptyContainer}>
+              <Image
+                source={require('../assets/images/DataCaution.png')}
+                style={styles.image}
+                resizeMode="contain" blurRadius={5}
+              />
+              <Text style={styles.emptyText}>customer transactions data is pravite and secure</Text>
+            </View>
+          )
+        }}
+      />
       {/* Bottom Material Block */}
       <View style={styles.bottomContainer}>
         {/* Actions */}
         <View style={styles.actionsRow}>
-          {Number(customer?.current_balance) < 0 &&
-            <TouchableOpacity style={styles.actionButton} onPress={()=>setShowPicker(true)}>
-              <Calendar size={24} color="#555" />
-              <Text style={styles.actionText}>
-                {dueDate  ? new Date(dueDate).toDateString() : "Due Date"}
-              </Text>
+          {Number(customer?.current_balance) < 0 && (
+            <>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => setShowPicker(true)}
+              >
+                <Calendar size={24} color="#555" />
+                <Text style={styles.actionText}>
+                  {dueDate ? new Date(dueDate).toDateString() : "Due Date"}
+                </Text>
+              </TouchableOpacity>
 
-            </TouchableOpacity>
-          }
+              {showPicker && (
+                <DateTimePicker
+                  value={dueDate instanceof Date ? dueDate : new Date()}
+                  mode="date"
+                  display="spinner"
+                  onChange={async (event, date) => {
+                    setShowPicker(false); // close picker immediately
+                    if (date) {
+                      setDueDate(date); // update local state
+
+                      try {
+                        const userData = await AsyncStorage.getItem("userData");
+                        const userId = JSON.parse(userData)?.id;
+
+                        // Use the selected date (date), NOT dueDate
+                        const response = await ApiService.put(
+                          `/customers/${customer.id}`,
+                          {
+                            userId: Number(userId),
+                            due_date: date.toISOString(),
+                          }
+                        );
+
+                        if (response.status === 200) {
+                          alert("Due date updated successfully");
+                        } else {
+                          alert("Failed to update due date");
+                        }
+                      } catch (error) {
+                        console.error(error);
+                        alert("Error updating due date");
+                      }
+                    }
+                  }}
+                  style={{ width: "100%" }}
+                />
+              )}
+            </>
+          )}
           <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
             <PhoneCall size={24} color="#555" />
             <Text style={styles.actionText}>Call</Text>
@@ -397,7 +470,7 @@ export default function CustomerDetails() {
         onClose={() => setError(null)}
       />
 
-<DateModal
+      {/* <DateModal
   visible={showPicker}
   initialDate={dueDate}
   onClose={() => setShowPicker(false)}
@@ -406,30 +479,8 @@ export default function CustomerDetails() {
     setDueDate(selectedDate); // update UI immediately
     setShowPicker(false);     // close modal
 
-    try {
-      const userData = await AsyncStorage.getItem("userData");
-      const userId = JSON.parse(userData)?.id;
-
-      const response = await ApiService.put(
-        `/customers/${customer.id}`,
-        {
-          userId: Number(userId),
-          due_date: selectedDate.toISOString(),
-        }
-      );
-
-      if (response.status === 200) {
-        alert("Due date updated successfully");
-      } else {
-        alert("Failed to update due date");
-      }
-
-    } catch (error) {
-      console.error(error);
-      alert("Error updating due date");
-    }
   }}
-/>
+/> */}
 
     </SafeAreaView >
 

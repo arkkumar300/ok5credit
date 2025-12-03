@@ -26,6 +26,7 @@ export default function UserInfo() {
       const response = await ApiService.get(`user/${USER_ID}`);
       setUserData(response.data);
       setNameInput(response.data.name || '');
+      await AsyncStorage.setItem("isLogin", "true");
       await AsyncStorage.setItem("userData", JSON.stringify(response.data));
     } catch (err) {
       console.error('Failed to fetch user:', err.message);
@@ -44,6 +45,7 @@ export default function UserInfo() {
 
       // Update local state without refetching
       setUserData(prev => ({ ...prev, name: response.data.name }));
+      await AsyncStorage.setItem("isLogin", "true");
       await AsyncStorage.setItem("userData", JSON.stringify(response.data.user));
       sendWelcomePushNotification();
     } catch (err) {

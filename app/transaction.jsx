@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput, Alert, ScrollView, Image, Dimensions } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { ArrowLeft, Camera, Paperclip as PaperclipIcon, Mic, X, ArrowRight, ArrowRightIcon } from 'lucide-react-native';
@@ -9,13 +9,13 @@ import ApiService from './components/ApiServices';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Modal } from 'react-native-paper';
 import ProgressButton from './components/ProgressButton';
+import DateModal from './components/DateModal';
 
 export default function TransactionScreen() {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState('');
   // const [selectedDate, setSelectedDate] = useState(moment().format('DD MMM YYYY'));
   const [activeType, setActiveType] = useState(null);
-  const [imageUri, setImageUri] = useState("");
   const [images, setImages] = useState([]);
   const [previewVisible, setPreviewVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -25,6 +25,7 @@ export default function TransactionScreen() {
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [success, setSuccess] = useState(false);
+
   const router = useRouter();
   const { transactionType, transaction_for, id, personName, isSubscribe_user, transaction_limit } = useLocalSearchParams();
 
@@ -36,47 +37,50 @@ export default function TransactionScreen() {
     }
   };
 
-  const onChangeDate = (event, date) => {
-    setShowCalendar(false);
-
-    if (event.type === "dismissed") return;
-
-    // if (date < new Date().setHours(0, 0, 0, 0)) {
-    //   Alert.alert("Invalid Date", "You cannot select a past date.");
-    //   return;
-    // }
-
-    setSelectedDate(date);
-  };
-
-  const uploadImage = async (uri) => {
+  const uploadImages = async () => {
+    if (!images.length) return [];
+  
     try {
       const formData = new FormData();
-
-      const fileName = uri.split('/').pop();
-      const fileType = fileName.split('.').pop();
-
-      formData.append('file', {
-        uri,
-        name: fileName,
-        type: `image/${fileType}`,
+  
+      // Append each image to formData
+      images.forEach((img, index) => {
+        formData.append("files", {
+          uri: img.uri,
+          name: img.fileName || `image_${index}.jpg`,
+          type: img.type ? `${img.type}/jpeg` : "image/jpeg",
+        });
       });
-      const response = await ApiService.post(`/upload`, formData, {
+  
+      console.log("FormData ready:", formData);
+  
+      const response = await ApiService.post(`/upload/multi`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
+        },
+        onUploadProgress: (progressEvent) => {
+          const progress = progressEvent.loaded / progressEvent.total;
+          console.log("Upload progress:", progress);
+          // Optionally update a state for progress bar
         },
       });
-
+  
       const result = response.data;
-      const rrr = `https://aquaservices.esotericprojects.tech/uploads/${result.file_info.filename}`;
-      console.log('Upload success:', result);
-      return rrr;
+      console.log("Upload success:", result);
+  
+      // If your backend returns an array of uploaded files
+      if (result.files && Array.isArray(result.files)) {
+        return result.files.map(f => `https://aquaservices.esotericprojects.tech/uploads/${f.filename}`);
+      }
+  
+      return [];
     } catch (error) {
-      console.error('Upload failed:', error);
-      Alert.alert('Upload Failed', 'Could not upload image');
+      console.error("Upload failed:", error);
+      Alert.alert("Upload Failed", "Could not upload images");
+      return [];
     }
   };
-
+  
   const handleOperationPress = (operation) => {
     switch (operation) {
       case 'clear':
@@ -96,74 +100,106 @@ export default function TransactionScreen() {
 
 
   const addTransaction = async () => {
+    if (loading) return; // Prevent double taps
+    
     const date = moment(selectedDate).format('YYYY-MM-DD');
-    if (loading) return; // Prevent double submission
-
-    setLoading(true);        // Disable submit button
-    setUploadProgress(0);    // Reset progress bar
-    setSuccess(false); 
-       const userData = await AsyncStorage.getItem("userData");
-    const userId = JSON.parse(userData).id;
-    const transactionFor = transaction_for === 'customer' ? 'customer' : 'supplier';
-    const commonPayload = {
-      userId: userId,
-      transaction_type: transactionType,
-      transaction_for: transactionFor,
-      amount: Number(amount),
-      description: note,
-      transaction_date: date,
-      ...(imageUri ? { transaction_pic: imageUri } : {}),
-      ...(billID ? { bill_id: billID } : {}),
-    };
-
-    const payload =
-      transactionFor === 'customer'
-        ? { ...commonPayload, customer_id: id } // Replace with actual customer_id
-        : { ...commonPayload, supplier_id: id }; // Replace with actual supplier_id
-
-    const url =
-      transactionFor === 'customer'
-        ? '/transactions/customer'
-        : '/transactions/supplier';
-
+    setUploadProgress(0);
+    setLoading(true);
+  
     try {
-      const response = await ApiService.post(url, payload,{
+      // Get user details
+      const userData = await AsyncStorage.getItem("userData");
+      const userId = JSON.parse(userData).id;
+  
+      const transactionFor =
+        transaction_for === "customer" ? "customer" : "supplier";
+  
+      // -----------------------
+      // 📌 Upload Images ONLY if exist
+      // -----------------------
+      let images_url = null;
+  
+      if (images && Array.isArray(images) && images.length > 0) {
+        images_url = await uploadImages(images);     // Upload array images
+      }
+  
+      // -----------------------
+      // 📌 Build Base Payload
+      // -----------------------
+      const commonPayload = {
+        userId,
+        transaction_type: transactionType,
+        transaction_for: transactionFor,
+        amount: Number(amount),
+        description: note,
+        transaction_date: date,
+  
+        // Add image fields only if available
+        ...(images_url ? { transaction_pic: images_url } : {}),
+        ...(billID ? { bill_id: billID } : {}),
+      };
+  
+      // -----------------------
+      // 📌 Add customer/supplier ID
+      // -----------------------
+      const payload =
+        transactionFor === "customer"
+          ? { ...commonPayload, customer_id: id }
+          : { ...commonPayload, supplier_id: id };
+  
+      // -----------------------
+      // 📌 API Endpoint
+      // -----------------------
+      const url =
+        transactionFor === "customer"
+          ? "/transactions/customer"
+          : "/transactions/supplier";
+  
+      // -----------------------
+      // 📌 Submit Transaction
+      // -----------------------
+      const response = await ApiService.post(url, payload, {
         onUploadProgress: (e) => {
-          setUploadProgress(e.loaded / e.total);
-        }
+          if (e.total > 0) {
+            setUploadProgress(e.loaded / e.total);
+          }
+        },
       });
-      setSuccess(true);    // show check animation
-      setLoading(false);   // stop progress
   
+      // -----------------------
+      // 🎉 Success animation + navigation
+      // -----------------------
       setTimeout(() => {
-        if (transactionFor === 'customer') {
-          router.push({
-            pathname: '/customerDetails',
-            params: {
-              personName: personName,
-              personType: transaction_for,
-              personId: id
-            }
-          });
+        setSuccess(true);
+        setLoading(false);
   
-        } else if (transactionFor === 'supplier') {
+        if (transactionFor === "customer") {
           router.push({
-            pathname: '/supplierDetails',
+            pathname: "/customerDetails",
             params: {
               personName: personName,
               personType: transaction_for,
-              personId: id
-            }
+              personId: id,
+            },
+          });
+        } else {
+          router.push({
+            pathname: "/supplierDetails",
+            params: {
+              personName: personName,
+              personType: transaction_for,
+              personId: id,
+            },
           });
         }
-  
-      }, 1000);      
+      }, 1000);
     } catch (error) {
-      console.error('Error:', error);
-      Alert.alert('Error', 'Failed to add transaction');
+      console.error("Error:", error);
+      setLoading(false);
+      Alert.alert("Error", "Failed to add transaction");
     }
   };
-
+  
   const getInitial = (name) => {
     return name ? name.charAt(0).toUpperCase() : 'U';
   };
@@ -192,36 +228,65 @@ export default function TransactionScreen() {
     );
   };
 
-  const handleCamera = () => {
-    launchCamera(
-      {
-        mediaType: 'photo',
-        saveToPhotos: true
-      },
-      response => {
-        if (response.didCancel || response.errorCode) return;
+  const handleCamera = async () => {
+    // Request camera permission
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      alert('Camera permission is required!');
+      return;
+    }
 
-        const newImage = response.assets[0].uri;
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["images"],  // correct        quality: 1,
+        allowsEditing: false,
+        saveToPhotos: true,
+      });
 
-        setImages(prev => [...prev, newImage]);
+      if (!result.canceled) {
+        const asset = result.assets[0];
+
+        const imageData = {
+          uri: asset.uri,
+          type: asset.type,          // usually "image"
+          fileName: asset.fileName,  // actual filename
+          size: asset.fileSize,      // in bytes
+        };
+        setImages(prev => [...prev, imageData]);
+        console.log('Captured image:', imageData);
       }
-    );
+    } catch (error) {
+      console.error('Camera error:', error);
+    }
   };
 
-  const handleGallery = () => {
-    launchImageLibrary(
-      {
-        mediaType: 'photo',
-        selectionLimit: 0 // MULTIPLE IMAGES
-      },
-      response => {
-        if (response.didCancel || response.errorCode) return;
+  const handleGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      alert('Photo library permission is required!');
+      return;
+    }
 
-        const selectedImages = response.assets.map(item => item.uri);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],  // correct
+        allowsMultipleSelection: true,            // for multiple images
+        quality: 1,
+      });
 
-        setImages(prev => [...prev, ...selectedImages]);
+      if (!result.canceled) {
+        const assetsData = result.assets.map(asset => ({
+          uri: asset.uri,
+          type: asset.type,
+          fileName: asset.fileName,
+          size: asset.fileSize,
+        }));
+        setImages(prev => [...prev, ...assetsData]);
+        console.log('Selected images:', assetsData);
       }
-    );
+    } catch (error) {
+      console.error('Gallery error:', error);
+    }
   };
 
   const deleteImage = (index) => {
@@ -236,6 +301,11 @@ export default function TransactionScreen() {
     setPreviewVisible(false);
     setSelectedImage(null);
   };
+  useEffect(() => {
+    if (typeof selectedDate === "string") {
+      setSelectedDate(new Date(selectedDate));
+    }
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -271,10 +341,10 @@ export default function TransactionScreen() {
             }}>
               {
                 transactionType === "you_gave" ? (
-                  <Text style={{ fontSize: 14, borderRadius: 5, fontWeight: 'bold', color: '#388E3C90' }}>Give   :    {transaction_limit} / 2</Text>
+                  <Text style={{ fontSize: 14, borderRadius: 5, fontWeight: 'bold', color: '#388E3C90' }}>Give   :    {transaction_limit} / 20</Text>
 
                 ) : (
-                  <Text style={{ fontSize: 14, borderRadius: 5, fontWeight: 'bold', color: '#33333390' }}>Receive :   {transaction_limit}  / 4 </Text>
+                  <Text style={{ fontSize: 14, borderRadius: 5, fontWeight: 'bold', color: '#33333390' }}>Receive :   {transaction_limit}  / 8 </Text>
                 )
               }
               <Text style={{ fontSize: 14, borderRadius: 5, fontWeight: 'bold', color: '#333333' }}>Daily Transaction Limit Left Basic Plan </Text>
@@ -306,13 +376,19 @@ export default function TransactionScreen() {
 
               {showCalendar && (
                 <DateTimePicker
-                  value={selectedDate}
+                  value={selectedDate instanceof Date ? selectedDate : new Date()}
                   mode="date"
-                  display="calendar"
-                  //  minimumDate={new Date()}   // 🚫 prevents past dates
-                  onChange={onChangeDate}
+                  display="spinner"
+                  onChange={(event, date) => {
+                    if (date) {
+                      setSelectedDate(date);   // ✔ correct: date is a Date object
+                    }
+                    setShowCalendar(false);
+                  }}
+                  style={{ width: '100%' }}
                 />
               )}
+
             </View>
 
             <View style={styles.buttonRow}>
@@ -344,12 +420,12 @@ export default function TransactionScreen() {
                   {images.map((img, index) => (
                     <View key={index} style={styles.imageWrapper}>
                       <Image
-                        source={{ uri: img }}
+                        source={{ uri: img.uri }}
                         style={styles.selectedImage}
                       />
                       {/* Delete Button */}
                       <TouchableOpacity
-                        onPress={() => deleteImage(uri)}
+                        onPress={() => deleteImage(index)}
                         style={{
                           position: 'absolute',
                           top: -8,
@@ -451,13 +527,13 @@ export default function TransactionScreen() {
 
         <View style={styles.actionButtons}>
 
-<ProgressButton
-  title="Submit"
-  loading={loading}
-  progress={uploadProgress}   // 0 → 1
-  success={success}
-  onPress={addTransaction}
-/>
+          <ProgressButton
+            title="Submit"
+            loading={loading}
+            progress={uploadProgress}   // 0 → 1
+            success={success}
+            onPress={addTransaction}
+          />
 
 
         </View>
@@ -539,8 +615,8 @@ const styles = StyleSheet.create({
   selectedImage: {
     width: 100,
     height: 100,
-    borderRadius: 8,
-  },
+    resizeMode: 'stretch',
+    borderRadius: 8, margin: 10  },
   personName: {
     fontSize: 16,
     fontWeight: '600',
@@ -656,12 +732,6 @@ const styles = StyleSheet.create({
   imageWrapper: {
     position: 'relative',
     marginRight: 12,
-  },
-  selectedImage: {
-    width: '90%',
-    height: 200, resizeMode: 'stretch',
-    borderRadius: 8, margin: 10,
-    backgroundColor: '#f0f0f0',
   },
   removeImageButton: {
     position: 'absolute',

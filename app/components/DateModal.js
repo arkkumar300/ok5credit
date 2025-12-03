@@ -11,6 +11,7 @@ const DateModal = ({ visible, initialDate, onClose, onConfirm }) => {
     if (date) setSelectedDate(date);
   };
 
+  const [tempDate, setTempDate] = useState(new Date("2000-01-01"));
   return (
     <Modal
       visible={visible}
@@ -24,7 +25,7 @@ const DateModal = ({ visible, initialDate, onClose, onConfirm }) => {
           {/* Date Picker Container to avoid iOS width errors */}
           <View style={{ minWidth: 300 }}>
             <DateTimePicker
-              value={selectedDate}
+              value={selectedDate ? selectedDate:tempDate}
               mode="date"
               display="spinner"
               onChange={onChange}

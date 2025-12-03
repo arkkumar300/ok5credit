@@ -39,145 +39,160 @@ export default function BillPreview() {
     setCustomerInfo(JSON.parse(supplierData))
 
   }, [])
+  // const saveBill = async () => {
+  //   const pdfFile = await billPDF(userDetails, supplierInfo, bill, parsedItems, parsedExtraCharges, totalAmount);
+  //   setLoading(true);
+  //   setUploadProgress(0);
+  //   setSuccess(false);
+  //   try {
+  //     const uploadData = new FormData();
+  //     uploadData.append('file', {
+  //       uri: pdfFile.uri,
+  //       name: pdfFile.name,
+  //       type: pdfFile.type
+  //     });
+  //     setUploadProgress(0.33); // 33% complete
+  //     const response = await ApiService.post(`/upload`, uploadData, {
+  //       headers: {
+  //         'Content-Type': 'multipart/form-data',
+  //       },
+  //     });
+
+  //     const uploadJson = await response.data;
+  //     const uploadedPath = `https://aquaservices.esotericprojects.tech/uploads/${uploadJson.file_info.filename}`;
+  //     handleSave(uploadedPath)
+  //   } catch (error) {
+  //     console.log("error ::", error)
+  //   }
+  // }
+
   const saveBill = async () => {
-    const pdfFile = await billPDF(userDetails, supplierInfo, bill, parsedItems, parsedExtraCharges, totalAmount);
     setLoading(true);
-    setUploadProgress(0);
     setSuccess(false);
-    try {
+    setUploadProgress(0);
+  try {
+      /** STEP 1 → Generate PDF */
+      const pdfFile = await billPDF(
+        userDetails, 
+        supplierInfo, 
+        bill, 
+        parsedItems, 
+        parsedExtraCharges, 
+        totalAmount
+      );
+  
+      if (!pdfFile) throw new Error("PDF generation failed");
+  
+      /** STEP 2 → Upload PDF */
       const uploadData = new FormData();
-      uploadData.append('file', {
+      uploadData.append("file", {
         uri: pdfFile.uri,
         name: pdfFile.name,
-        type: pdfFile.type
+        type: pdfFile.type,
+      });
+  
+      const uploadRes = await ApiService.post("/upload", uploadData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
       setUploadProgress(0.33); // 33% complete
-      const response = await ApiService.post(`/upload`, uploadData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      const uploadJson = await response.data;
-      const uploadedPath = `https://aquaservices.esotericprojects.tech/uploads/${uploadJson.file_info.filename}`;
-      handleSave(uploadedPath)
-    } catch (error) {
-      console.log("error ::", error)
-    }
-  }
-
-  const handleSave = async (uploadedPath) => {
-    setUploadProgress(0.66); // 66% complete
-
-    try {
-
-      // 2. upload PDF
-      if (!uploadedPath) {
-        console.log("no pdf path")
-        return;
+  const uploadedPath = `https://aquaservices.esotericprojects.tech/uploads/${uploadRes.data.file_info.filename}`;
+  
+      /** STEP 3 → Save bill */
+      const savedBill = await saveBillToServer(uploadedPath);
+  
+      /** STEP 4 → If bill paid, add transaction */
+      if (savedBill.payment_status === "paid") {
+        await addTransaction(savedBill);
       }
-      const billType = await AsyncStorage.getItem("billType");
-      // 3. Call bill API
-      const payload = {
-        userId: userDetails?.id,
-        transaction_type: "you_gave",
-        bill_type: billType,
-        payment_status: format,
-        transaction_for,
-        items: parsedItems.map(it => ({
-          name: it.itemName ?? it.name,
-          quantity: Number(it.quantity),
-          price: Number(it.price),
-          cessAmount: Number(it.cessAmount),
-          cessPercent: Number(it.cessPercent),
-          gstAmount: Number(it.gstAmount),
-          gstPercent: Number(it.gstPercent),
-        })),
-        ExtraCharges: parsedExtraCharges,
-        bill_file: uploadedPath,
-        amount: Number(totalAmount),
-        bill_id: bill,
-        description: `i have given ${totalAmount} to ${supplierInfo?.name} on ${moment().format('YYYY-MM-DD')}`,
-        bill_date: moment().format('YYYY-MM-DD'),
-
-        // Conditional customer_id / supplier_id
-        ...(transaction_for === "customer"
-          ? { customer_id: supplierInfo?.id }
-          : { supplier_id: supplierInfo?.id }),
-      };
-
-      const billResponse = await ApiService.post(`/bill`, payload);
-
-      if (billResponse.data) {
-        if (billResponse?.data?.bill?.payment_status === 'paid') {
-          setUploadProgress(0.9);
-         await addTransaction(billResponse?.data?.bill);
-         setUploadProgress(1); // 100%
-         setSuccess(true);     
-        } else {
-          const unpaidBillData = billResponse?.data?.bill
-          const encodedUnpaidCustomerData = encodeURIComponent(JSON.stringify(supplierInfo));
-          router.push({
-            pathname: '/billDetails',
-            params: {
-              billId: unpaidBillData?.id,
-              supplierInfo: encodedUnpaidCustomerData,
-              bill: bill,
-              charges: parsedExtraCharges
-            }
-          });
-        }
-      } else {
-        Alert.alert("bill can't generate")
-      }
-
+  
+      /** 🎉 ALL SUCCESS */
+      setSuccess(true);
+      setLoading(false);
+  
     } catch (error) {
-      console.error("handleSave error", error);
-      ToastAndroid.show("An unexpected error occurred", ToastAndroid.LONG);
-    }finally{
-      setLoading(false)
+      console.log("submit error:", error);
+      Alert.alert("Error", error.message || "Something went wrong");
+      setLoading(false);
+      setSuccess(false);
     }
   };
+  
 
-  const addTransaction = async (billData) => {
-    const date = moment().format('YYYY-MM-DD'); // Today's date
-    const userData = await AsyncStorage.getItem("userData");
-    const userId = JSON.parse(userData)?.id;
-    const commonPayload = {
-      userId: userId,
+  const saveBillToServer = async (uploadedPath) => {
+    setUploadProgress(0.66); // 66% complete
+
+    const billType = await AsyncStorage.getItem("billType");
+  
+    const payload = {
+      userId: userDetails?.id,
       transaction_type: "you_gave",
-      transaction_for: transaction_for,
+      bill_type: billType,
+      payment_status: format,
+      transaction_for,
+      items: parsedItems.map(it => ({
+        name: it.itemName ?? it.name,
+        quantity: Number(it.quantity),
+        price: Number(it.price),
+        cessAmount: Number(it.cessAmount),
+        cessPercent: Number(it.cessPercent),
+        gstAmount: Number(it.gstAmount),
+        gstPercent: Number(it.gstPercent),
+      })),
+      ExtraCharges: parsedExtraCharges,
+      bill_file: uploadedPath,
       amount: Number(totalAmount),
-      description: "note",
-      transaction_date: date,
-      bill_id: billData?.id,
-      // Conditional customer_id / supplier_id
+      bill_id: bill,
+      description: `i have given ${totalAmount} to ${supplierInfo?.name} on ${moment().format('YYYY-MM-DD')}`,
+      bill_date: moment().format("YYYY-MM-DD"),
       ...(transaction_for === "customer"
         ? { customer_id: supplierInfo?.id }
         : { supplier_id: supplierInfo?.id }),
-
     };
-
-    const URL = transaction_for === 'customer' ? `/transactions/customer` : `/transactions/supplier`
-    try {
-      const encodedCustomerData = encodeURIComponent(JSON.stringify(supplierInfo));
-      const response = await ApiService.post(URL, commonPayload);
-      if (response.data) {
-        router.push({
-          pathname: '/billDetails',
-          params: {
-            billId: billData?.id,
-            supplierInfo: encodedCustomerData,
-            bill: bill,
-            transaction_for
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      Alert.alert('Error', 'Failed to add transaction');
-    }
+  
+    const billResponse = await ApiService.post(`/bill`, payload);
+  
+    return billResponse.data.bill;
   };
+  
+  const addTransaction = async (billData) => {
+    const date = moment().format("YYYY-MM-DD");
+    const userData = await AsyncStorage.getItem("userData");
+    const userId = JSON.parse(userData)?.id;
+  
+    const payload = {
+      userId,
+      transaction_type: "you_gave",
+      transaction_for,
+      amount: Number(totalAmount),
+      description: "note",
+      transaction_date: date,
+      bill_id: billData.id,
+      ...(transaction_for === "customer"
+        ? { customer_id: supplierInfo?.id }
+        : { supplier_id: supplierInfo?.id }),
+    };
+  
+    const URL = transaction_for === "customer"
+      ? `/transactions/customer`
+      : `/transactions/supplier`;
+  
+    const response = await ApiService.post(URL, payload);
+  
+    const encodedCustomer = encodeURIComponent(JSON.stringify(supplierInfo));
+  
+    router.push({
+      pathname: "/billDetails",
+      params: {
+        billId: billData.id,
+        supplierInfo: encodedCustomer,
+        bill,
+        transaction_for
+      }
+    });
+  
+    return response.data;
+  };
+    
 
   useEffect(() => {
     const fetchBills = async () => {
@@ -245,12 +260,12 @@ export default function BillPreview() {
                 <Text style={styles.cell}>{item?.name}</Text>
                 <Text style={styles.cell}>{item?.discountType === "amount" ? " ₹ " : " % "}  </Text>
                 <Text style={styles.cell}> {item?.enteredValue}</Text>
-                <Text style={styles.cell}>{item?.type === "charge" ? " + " : " - "} {item?.finalAmount}</Text>
+                <Text style={styles.cell}>{item?.type === "charge" ? " + " : " - "} {parseFloat(item?.finalAmount).toFixed(2)}</Text>
               </View>)
           })}
           <View style={[styles.tableRow, { borderTopWidth: 1, marginVertical: 10 }]}>
             <Text style={[styles.cell, { flex: 4, fontWeight: 'bold' }]}>TOTAL</Text>
-            <Text style={[styles.cell, { fontWeight: 'bold' }]}>₹ {totalAmount}</Text>
+            <Text style={[styles.cell, { fontWeight: 'bold' }]}>₹ {parseFloat(totalAmount).toFixed(2)}</Text>
           </View>
         </View>
 
@@ -282,11 +297,6 @@ export default function BillPreview() {
           success={success}
           onPress={saveBill}
         />
-
-        {/* <TouchableOpacity style={styles.downloadBtn} onPress={saveBill}>
-          <Download size={18} color="#000" />
-          <Text style={styles.downloadText}>Save</Text>
-        </TouchableOpacity> */}
       </ScrollView>
     </SafeAreaView>
   );

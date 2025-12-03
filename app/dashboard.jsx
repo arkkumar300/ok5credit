@@ -424,7 +424,7 @@ setInitialsLetter(initials);
 
       <View style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>Net Balance</Text>
-        <Text style={selectedOption=== 'Advance'?styles.balanceAmount_advance :styles.balanceAmount_due}>₹ {netBalance}</Text>
+        <Text style={selectedOption=== 'Advance'?styles.balanceAmount_advance :styles.balanceAmount_due}>₹ {parseFloat(netBalance).toFixed(2)}</Text>
         <Text style={styles.balanceSubtext}>{currentData.length} Accounts</Text>
         <Text style={styles.balanceType}>You Pay</Text>
       </View>

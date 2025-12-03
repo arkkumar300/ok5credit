@@ -58,7 +58,7 @@ export const useFCM = () => {
 
       const title = notification.request.content.title;
       const body = notification.request.content.body;
-      Alert.alert(title || "Notification", body || "");
+      console.log(title || "Notification", body || "");
     });
   };
 

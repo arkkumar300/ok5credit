@@ -49,7 +49,7 @@ export default function SupplierDetails() {
   const [dueDate, setDueDate] = useState(
     supplier?.due_date ? new Date(supplier?.due_date) : null
   );
-  const [showPicker, setShowPicker] = useState(false);  
+  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     const fetchSupplier = async () => {
@@ -187,24 +187,53 @@ export default function SupplierDetails() {
                   <ChevronRight size={24} color="green" />
                 </TouchableOpacity>
               </>}
-            {item.transaction_pic &&
+              {item.transaction_pic && (
               <>
                 <Divider style={{ marginVertical: 5 }} />
-                <TouchableOpacity style={[styles.amountRow, { marginVertical: 5, justifyContent: 'space-between' }]}
-                  onPress={() => router.push({
-                    pathname: '/transactionDetails', params: { transactionDetails: JSON.stringify(item), Name: personName }
-                  })}
+                <TouchableOpacity
+                  style={[styles.amountRow, { marginVertical: 5, justifyContent: 'space-between' }]}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/transactionDetails',
+                      params: { transactionDetails: JSON.stringify(item), Name: personName }
+                    })
+                  }
                 >
-                  <Image
-                    source={{ uri: item.transaction_pic || "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=400&h=300" }}
-                    resizeMode="stretch" alt={item.transaction_pic}
-                    style={{ width: 100, height: 100 }}
-                  />
-                  {item.bill_id && <Text style={styles.amountText}>{item.bill_id}</Text>}
+                  {(() => {
+                    let pics = item?.transaction_pic;
+
+                    // Normalize transaction_pic to ALWAYS be an array
+                    try {
+                      if (typeof pics === "string") {
+                        pics = JSON.parse(pics); // If backend returns string
+                      }
+                    } catch (err) {
+                      console.log("Failed to parse transaction_pic:", err);
+                    }
+
+                    // Ensure it's an array
+                    if (!Array.isArray(pics)) {
+                      pics = [];
+                    }
+
+                    const url =
+                      pics.length > 0
+                        ? pics[0]
+                        : "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg";
+
+                    return (
+                      <Image
+                        source={{ uri: url }}
+                        style={{ width: 100, height: 100 }}
+                        resizeMode="cover"
+                      />
+                    );
+                  })()}
                   <Text style={[styles.amountText, { fontWeight: '600' }]}>₹ {item.amount}</Text>
                   <ChevronRight size={24} color="green" />
                 </TouchableOpacity>
-              </>}
+              </>
+            )}
           </View>
           <Text style={styles.noteText}>{aaa}</Text>
         </View>
@@ -244,24 +273,57 @@ export default function SupplierDetails() {
       <View style={styles.bottomContainer}>
         {/* Actions */}
         <View style={styles.actionsRow}>
-          {Number(supplier?.current_balance) < 0 &&
-            <TouchableOpacity style={styles.actionButton} onPress={()=>setShowPicker(true)}>
-<View style={{ flexDirection: 'row', alignItems: 'center' }}>
-  <Calendar size={18} color={dueDate ? "red" : "green" }/>
-  <Text style={{
-  marginLeft: 6,
-  fontSize: 14,fontWeight:'bold',
-  color: dueDate ? "red" : "green"
-}}>
-  {dueDate ? "Due Date" : "Change Date"}
-</Text>
-</View>
-              <Text style={styles.actionText}>
-                {dueDate  ? new Date(dueDate).toDateString() : "Due Date"}
-              </Text>
+        {Number(supplier?.current_balance) < 0 && (
+            <>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => setShowPicker(true)}
+              >
+                <Calendar size={24} color="#555" />
+                <Text style={styles.actionText}>
+                  {dueDate ? new Date(dueDate).toDateString() : "Due Date"}
+                </Text>
+              </TouchableOpacity>
 
-            </TouchableOpacity>
-          }
+              {showPicker && (
+                <DateTimePicker
+                  value={dueDate instanceof Date ? dueDate : new Date()}
+                  mode="date"
+                  display="spinner"
+                  onChange={async (event, date) => {
+                    setShowPicker(false); // close picker immediately
+                    if (date) {
+                      setDueDate(date); // update local state
+
+                      try {
+                        const userData = await AsyncStorage.getItem("userData");
+                        const userId = JSON.parse(userData)?.id;
+
+                        // Use the selected date (date), NOT dueDate
+                        const response = await ApiService.put(
+                          `/supplier/${supplier.id}`,
+                          {
+                            userId: Number(userId),
+                            due_date: date.toISOString(),
+                          }
+                        );
+
+                        if (response.status === 200) {
+                          alert("Due date updated successfully");
+                        } else {
+                          alert("Failed to update due date");
+                        }
+                      } catch (error) {
+                        console.error(error);
+                        alert("Error updating due date");
+                      }
+                    }
+                  }}
+                  style={{ width: "100%" }}
+                />
+              )}
+            </>
+          )}
           <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
             <PhoneCall size={24} color="#555" />
             <Text style={styles.actionText}>Call</Text>
@@ -406,39 +468,39 @@ export default function SupplierDetails() {
         onClose={() => setError(null)}
       />
 
-<DateModal
-  visible={showPicker}
-  initialDate={dueDate}
-  onClose={() => setShowPicker(false)}
+      <DateModal
+        visible={showPicker}
+        initialDate={dueDate}
+        onClose={() => setShowPicker(false)}
 
-  onConfirm={async (selectedDate) => {
-    setDueDate(selectedDate); // update UI immediately
-    setShowPicker(false);     // close modal
+        onConfirm={async (selectedDate) => {
+          setDueDate(selectedDate); // update UI immediately
+          setShowPicker(false);     // close modal
 
-    try {
-      const userData = await AsyncStorage.getItem("userData");
-      const userId = JSON.parse(userData)?.id;
+          try {
+            const userData = await AsyncStorage.getItem("userData");
+            const userId = JSON.parse(userData)?.id;
 
-      const response = await ApiService.put(
-        `/supplier/${supplier.id}`,
-        {
-          userId: Number(userId),
-          due_date: selectedDate.toISOString(),
-        }
-      );
+            const response = await ApiService.put(
+              `/supplier/${supplier.id}`,
+              {
+                userId: Number(userId),
+                due_date: selectedDate.toISOString(),
+              }
+            );
 
-      if (response.status === 200) {
-        alert("Due date updated successfully");
-      } else {
-        alert("Failed to update due date");
-      }
+            if (response.status === 200) {
+              alert("Due date updated successfully");
+            } else {
+              alert("Failed to update due date");
+            }
 
-    } catch (error) {
-      console.error(error);
-      alert("Error updating due date");
-    }
-  }}
-/>
+          } catch (error) {
+            console.error(error);
+            alert("Error updating due date");
+          }
+        }}
+      />
 
     </SafeAreaView >
 
