@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking } from 'react-native';
-import { PhoneCall, MessageSquare, ArrowDown, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar } from 'lucide-react-native';
+import { View, Text, TextInput, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking, Animated } from 'react-native';
+import { PhoneCall, Delete, MessageSquare, ArrowDown, Percent, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Appbar, Divider } from 'react-native-paper';
+import { Appbar, Divider, Modal } from 'react-native-paper';
 import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
@@ -45,6 +45,18 @@ export default function CustomerDetails() {
   const [credit_given_count_user, setCredit_given_count_user] = useState(0);
   const [payment_got_count_user, setPayment_got_count_user] = useState(0);
   const [subscribePlan, setSubscribePlan_user] = useState("");
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState("");
+  const [amount, setAmount] = useState(0);
+  const [discountNote, setDiscountNote] = useState("");
+  const [note, setNote] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [success, setSuccess] = useState(false);
+  const [discountLoading, setDiscountLoading] = useState(false); // disable button
+  const [animateOpacity] = useState(new Animated.Value(0));
+  const [animateTranslate] = useState(new Animated.Value(50));
+
+
   var rrr = 0
   const [dueDate, setDueDate] = useState(
     customer?.due_date ? new Date(customer?.due_date) : null
@@ -58,11 +70,11 @@ export default function CustomerDetails() {
       try {
         const response = await ApiService.post(`/customers/${personId}`, { userId });
         const data = response.data;
-        console.log("customerDetails::", data)
+
         setCustomer(data.customer);
         const customerPhone = data.customer.mobile;
         const customerDueDate = data.customer.due_date;
-        console.log("customerPhone::", data.customer.mobile)
+
         setDueDate(customerDueDate);
         setCustomerMobile(customerPhone);
         setTransactions(data.transactions);
@@ -126,116 +138,216 @@ export default function CustomerDetails() {
 
   };
 
+  const addTransaction = async () => {
+    if (loading) return; // Prevent double taps
+  const date = moment().format('YYYY-MM-DD');
+    setUploadProgress(0);
+    setLoading(true);
+
+    try {
+      // Get user details
+      const userData = await AsyncStorage.getItem("userData");
+      const userId = JSON.parse(userData).id;
+      const userName = JSON.parse(userData).name;
+      // -----------------------
+      // 📌 Build Base Payload
+      // -----------------------
+      const payload = {
+        customer_id: customer.id,
+        userId,
+        transaction_type: "you_discount",
+        transaction_for: "customer",
+        amount: Number(discountAmount),
+        description: discountNote,
+        transaction_date: date,
+      };
+      console.log("payload:::", payload)
+  
+      // -----------------------
+      // 📌 API Endpoint
+      // -----------------------
+      const url = "/transactions/customer";
+
+      // -----------------------
+      // 📌 Submit Transaction
+      // -----------------------
+      const response = await ApiService.post(url, payload,{
+        headers: { "Content-Type": "application/json" },
+      }, {
+        onUploadProgress: (e) => {
+          if (e.total > 0) {
+            setUploadProgress(e.loaded / e.total);
+          }
+        },
+      });
+      // -----------------------
+      // 🎉 Success animation + navigation
+      // -----------------------
+      setTimeout(() => {
+        setSuccess(true);
+        setLoading(false);
+
+      }, 1000);
+    } catch (error) {
+      console.error("Error:", error);
+      setLoading(false);
+      Alert.alert("Error", "Failed to add transaction");
+    }
+  };
+
+
   const renderItem = ({ item }) => {
-    const isReceived = item.transaction_type === 'you_got';
-    let aaa = '';
+    const isReceived = item.transaction_type === "you_got";
+
+    // ⬇️ Compute rrr balance
     if (isReceived) {
-      rrr = Number(rrr) + Number(item.amount)
-
+      rrr = Number(rrr) + Number(item.amount);
     } else {
-      rrr = Number(rrr) - Number(item.amount)
+      rrr = Number(rrr) - Number(item.amount);
     }
 
-    if (rrr < 0) {
-      aaa = `${Math.abs(rrr)} Due`
-    } else {
-      aaa = `${rrr} Advance`
+    const aaa = rrr < 0 ? `${Math.abs(rrr)} Due` : `${rrr} Advance`;
+
+    // 🔥 If deleted → show disabled card
+    if (item.is_Deleted) {
+      return (
+        <View style={[styles.transactionWrapper,
+        isReceived ? styles.leftContainer : styles.rightContainer,
+        ]}>
+          <View style={styles.transactionBox}>
+            <View style={styles.amountRow}>
+              <Delete size={20} color="gray" />
+              <Text style={[styles.amountText, { color: "gray" }]}>₹ {item.amount}</Text>
+            </View>
+
+            <Text style={[styles.timeText, { color: "gray", marginTop: 5 }]}>
+              Deleted on: {moment(item.delete_date).format("DD/MM/YYYY")}
+            </Text>
+          </View>
+        </View>
+      );
     }
+
+    // 🔥 Normal (non-deleted) item
     return (
       <TouchableOpacity
         style={[
           styles.transactionWrapper,
           isReceived ? styles.leftContainer : styles.rightContainer,
         ]}
-        onPress={() => router.push({
-          pathname: '/transactionDetails', params: { transactionDetails: JSON.stringify(item), Name: personName }
-        })}
+        onPress={() =>
+          router.push({
+            pathname: "/transactionDetails",
+            params: {
+              transactionDetails: JSON.stringify(item),
+              Name: personName,
+            },
+          })
+        }
       >
-        <View style={{}}>
-
-          <View style={styles.transactionBox} >
+        <View>
+          <View style={styles.transactionBox}>
             <View style={styles.amountRow}>
               {isReceived ? (
-                <ArrowDown size={24} color="green" />
+                <ArrowDown size={20} color="green" />
               ) : (
-                <ArrowUp size={24} color="red" />
+                <ArrowUp size={20} color="red" />
               )}
-              <Text style={styles.amountText}> ₹{item.amount}</Text>
-              <Text style={styles.timeText}> {moment(item.transaction_date).format('DD/MM/YYYY')}</Text>
-              <CheckIcon size={24} color="green" style={{ marginHorizontal: 5 }} />
 
+              <Text style={styles.amountText}>₹ {item.amount}</Text>
+              <Text style={styles.timeText}>
+                {moment(item.transaction_date).format("DD/MM/YYYY")}
+              </Text>
+              <CheckIcon size={20} color="green" style={{ marginHorizontal: 5 }} />
             </View>
-            {item?.bill_id &&
-              <>
-                <Divider style={{ marginVertical: 5 }} />
-                <TouchableOpacity style={[styles.amountRow, { marginVertical: 5, justifyContent: 'space-between' }]}
-                  onPress={() => {
-                    const encodedUnpaidCustomerData = encodeURIComponent(JSON.stringify(customer));
 
-                    router.push({
-                      pathname: '/billDetails',
-                      params: {
-                        billId: item.bill_id,
-                        customerInfo: encodedUnpaidCustomerData,
-                        bill: item.bill_id
-                      }
-                    })
-                  }}>
-                  <File size={24} color="green" />
-                  {item.bill_id && <Text style={styles.amountText}>{item.bill_id}</Text>}
-                  <Text style={[styles.amountText, { fontWeight: '600' }]}>₹ {item.amount}</Text>
-                  <ChevronRight size={24} color="green" />
-                </TouchableOpacity>
-              </>}
-            {item?.transaction_pic?.length > 0 && (
+            {/* BILLS */}
+            {item?.bill_id && (
               <>
                 <Divider style={{ marginVertical: 5 }} />
                 <TouchableOpacity
-                  style={[styles.amountRow, { marginVertical: 5, justifyContent: 'space-between' }]}
-                  onPress={() =>
+                  style={[
+                    styles.amountRow,
+                    { marginVertical: 5, justifyContent: "space-between" },
+                  ]}
+                  onPress={() => {
+                    const encoded = encodeURIComponent(JSON.stringify(customer));
                     router.push({
-                      pathname: '/transactionDetails',
-                      params: { transactionDetails: JSON.stringify(item), Name: personName }
-                    })
-                  }
+                      pathname: "/billDetails",
+                      params: {
+                        billId: item.bill_id,
+                        customerInfo: encoded,
+                        bill: item.bill_id,
+                      },
+                    });
+                  }}
                 >
-                  {(() => {
-                    let pics = item?.transaction_pic;
-
-                    // Normalize transaction_pic to ALWAYS be an array
-                    try {
-                      if (typeof pics === "string") {
-                        pics = JSON.parse(pics); // If backend returns string
-                      }
-                    } catch (err) {
-                      console.log("Failed to parse transaction_pic:", err);
-                    }
-
-                    // Ensure it's an array
-                    if (!Array.isArray(pics)) {
-                      pics = [];
-                    }
-
-                    const url =
-                      pics.length > 0
-                        ? pics[0]
-                        : "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg";
-
-                    return (
-                      <Image
-                        source={{ uri: url }}
-                        style={{ width: 100, height: 100 }}
-                        resizeMode="cover"
-                      />
-                    );
-                  })()}
-                  <Text style={[styles.amountText, { fontWeight: '600' }]}>₹ {item.amount}</Text>
+                  <File size={24} color="green" />
+                  <Text style={styles.amountText}>{item.bill_id}</Text>
+                  <Text style={[styles.amountText, { fontWeight: "600" }]}>
+                    ₹ {item.amount}
+                  </Text>
                   <ChevronRight size={24} color="green" />
                 </TouchableOpacity>
               </>
             )}
 
+            {/* TRANSACTION IMAGES */}
+            {item?.transaction_pic?.length > 0 && (
+              <>
+                <Divider style={{ marginVertical: 5 }} />
+                <TouchableOpacity
+                  style={[
+                    styles.amountRow,
+                    { marginVertical: 5, justifyContent: "space-between" },
+                  ]}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/transactionDetails",
+                      params: {
+                        transactionDetails: JSON.stringify(item),
+                        Name: personName,
+                      },
+                    })
+                  }
+                >
+                  {(() => {
+                    let pics = item.transaction_pic;
+                    if (typeof pics === "string") {
+                      try {
+                        pics = JSON.parse(pics);
+                      } catch {
+                        pics = [];
+                      }
+                    }
+                    if (!Array.isArray(pics)) pics = [];
+
+                    const url =
+                      pics?.length > 0
+                        ? pics[0]
+                        : "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg";
+
+                    return (
+                      <View>
+
+                      </View>
+                      // <Image
+                      //   source={{ uri: url }}
+                      //   style={{ width: 100, height: 100 }}
+                      //   resizeMode="cover"
+                      // />
+                    );
+                  })()}
+
+                  <Text style={[styles.amountText, { fontWeight: "600" }]}>
+                    ₹ {item.amount}
+                  </Text>
+                  <ChevronRight size={24} color="green" />
+                </TouchableOpacity>
+              </>
+            )}
           </View>
+
           <Text style={styles.noteText}>{aaa}</Text>
         </View>
       </TouchableOpacity>
@@ -254,6 +366,7 @@ export default function CustomerDetails() {
       {/* Transaction List */}
       <FlatList
         data={transactions}
+        style={{ marginBottom: 50 }}
         renderItem={renderItem}
         keyExtractor={(item) => item.id?.toString()}
         contentContainerStyle={styles.listContent}
@@ -326,6 +439,30 @@ export default function CustomerDetails() {
               )}
             </>
           )}
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              setShowDiscountModal(true);
+
+              // Start animation
+              Animated.parallel([
+                Animated.timing(animateOpacity, {
+                  toValue: 1,
+                  duration: 250,
+                  useNativeDriver: true,
+                }),
+                Animated.timing(animateTranslate, {
+                  toValue: 0,
+                  duration: 250,
+                  useNativeDriver: true,
+                })
+              ]).start();
+            }}
+          >
+            <Percent size={24} color="#555" />
+            <Text style={styles.actionText}>Discount</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
             <PhoneCall size={24} color="#555" />
             <Text style={styles.actionText}>Call</Text>
@@ -385,6 +522,7 @@ export default function CustomerDetails() {
                       transactionType: "you_got",
                       transaction_for: "customer",
                       id: personId,
+                      mobile: customerMobile,
                       personName: personName,
                       isSubscribe_user,
                       transaction_limit: payment_got_count_user || 0
@@ -402,6 +540,7 @@ export default function CustomerDetails() {
                       transactionType: "you_got",
                       transaction_for: "customer",
                       id: personId,
+                      mobile: customerMobile,
                       personName: personName,
                       isSubscribe_user,
                       transaction_limit: payment_got_count_user || 0
@@ -430,6 +569,7 @@ export default function CustomerDetails() {
                       transactionType: "you_gave",
                       transaction_for: "customer",
                       id: personId,
+                      mobile: customerMobile,
                       personName: personName,
                       isSubscribe_user,
                       transaction_limit: credit_given_count_user || 0
@@ -448,6 +588,7 @@ export default function CustomerDetails() {
                       transactionType: "you_gave",
                       transaction_for: "customer",
                       id: personId,
+                      mobile: customerMobile,
                       personName: personName,
                       isSubscribe_user,
                       transaction_limit: credit_given_count_user || 0
@@ -469,18 +610,96 @@ export default function CustomerDetails() {
         message={error}
         onClose={() => setError(null)}
       />
+      {/* ---------------- DISCOUNT MODAL --------------------- */}
+      {/* ---------------- DISCOUNT MODAL --------------------- */}
+      <Modal visible={showDiscountModal} transparent animationType="fade">
+        <View style={styles.overlay}>
+          <Animated.View
+            style={[
+              styles.modalContainer,
+              {
+                opacity: animateOpacity,
+                transform: [{ translateY: animateTranslate }],
+              },
+            ]}
+          >
+            <Text style={styles.title}>Add Discount</Text>
 
-      {/* <DateModal
-  visible={showPicker}
-  initialDate={dueDate}
-  onClose={() => setShowPicker(false)}
+            <TextInput
+              placeholder="Enter discount amount"
+              keyboardType="numeric"
+              value={discountAmount}
+              onChangeText={setDiscountAmount}
+              style={styles.input}
+            />
 
-  onConfirm={async (selectedDate) => {
-    setDueDate(selectedDate); // update UI immediately
-    setShowPicker(false);     // close modal
+            <TextInput
+              placeholder="Note (optional)"
+              value={discountNote}
+              onChangeText={setDiscountNote}
+              style={[styles.input, { height: 80 }]}
+              multiline
+            />
 
-  }}
-/> */}
+            <View style={styles.buttonRow}>
+
+              {/* CANCEL BTN */}
+              <TouchableOpacity
+                style={[styles.button, { backgroundColor: "#ccc" }]}
+                onPress={() => {
+                  setShowDiscountModal(false);
+                  setDiscountAmount("");
+                  setDiscountNote("");
+                }}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              {/* SUBMIT BTN */}
+              <TouchableOpacity
+                disabled={discountLoading}
+                style={[
+                  styles.button,
+                  {
+                    backgroundColor: discountLoading ? "#9CCC9C" : "#2E7D32",
+                    opacity: discountLoading ? 0.6 : 1,
+                  },
+                ]}
+                onPress={async () => {
+                  if (!discountAmount || isNaN(discountAmount)) {
+                    Alert.alert("Invalid", "Enter a valid discount amount");
+                    return;
+                  }
+                  // setDiscountLoading(true);
+                  // set values for your addTransaction function
+                  setAmount(discountAmount);
+                  setNote(discountNote);
+
+                  // Clear for next use
+                  
+                  await addTransaction();
+
+                  setDiscountLoading(false);
+                  setDiscountAmount("");
+                  setDiscountNote("");
+
+                  // Close popup
+                  setShowDiscountModal(false);
+
+                  // Wait for animation reset
+                  animateOpacity.setValue(0);
+                  animateTranslate.setValue(50);
+
+                }}
+              >
+                <Text style={[styles.buttonText, { color: "#fff" }]}>
+                  {discountLoading ? "Saving..." : "Submit"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
 
     </SafeAreaView >
 
@@ -533,6 +752,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
+  },
+  deletedItem: {
+    opacity: 0.4,
+    backgroundColor: "#f5f5f5",
   },
   amountText: {
     fontSize: 18,
@@ -657,4 +880,38 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
+  modalContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 20,
+    elevation: 8,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 15,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#bbb",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 15,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  button: {
+    padding: 12,
+    width: "48%",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  }
 });

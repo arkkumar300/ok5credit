@@ -383,6 +383,7 @@ export default function SupplierDetails() {
                       transactionType: "you_got",
                       transaction_for: "supplier",
                       id: personId,
+                      mobile:supplierMobile,
                       personName: personName,
                       isSubscribe_user,
                       transaction_limit: payment_got_count_user || 0
@@ -400,6 +401,7 @@ export default function SupplierDetails() {
                       transactionType: "you_got",
                       transaction_for: "supplier",
                       id: personId,
+                      mobile:supplierMobile,
                       personName: personName,
                       isSubscribe_user,
                       transaction_limit: payment_got_count_user || 0
@@ -428,6 +430,7 @@ export default function SupplierDetails() {
                       transactionType: "you_gave",
                       transaction_for: "supplier",
                       id: personId,
+                      mobile:supplierMobile,
                       personName: personName,
                       isSubscribe_user,
                       transaction_limit: credit_given_count_user || 0
@@ -446,6 +449,7 @@ export default function SupplierDetails() {
                       transactionType: "you_gave",
                       transaction_for: "supplier",
                       id: personId,
+                      mobile:supplierMobile,
                       personName: personName,
                       isSubscribe_user,
                       transaction_limit: credit_given_count_user || 0

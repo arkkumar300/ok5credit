@@ -104,7 +104,7 @@ const OtherDetails = () => {
     <SafeAreaView style={styles.container}>
       <Appbar.Header style={{ elevation: 3, backgroundColor: "#f4f8f8", borderBottomWidth: 2, borderColor: '#f2f7f6' }}>
         <ArrowLeft size={24} color={'#2E7D32'} style={{ marginStart: 10 }} onPress={() => {
-          router.replace({ pathname: '/billGenaration', params: { customerId:billCustomer?.id || "", billNo: billLable||"", bill_date: billCreateDate,bill_type:billTypes} });
+          router.replace({ pathname: '/billGenaration', params: { customerId:billCustomer?.id || "",mode:"add",billNo: billLable||"", bill_date: billCreateDate,bill_type:billTypes} });
         }} />
         <Appbar.Content title="Other Details" titleStyle={{ color: '#333333', fontWeight: 'bold', marginLeft: 20 }} />
       </Appbar.Header>

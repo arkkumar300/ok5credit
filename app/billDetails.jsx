@@ -124,25 +124,9 @@ export default function BillDetails() {
           color={'#2E7D32'}
           style={{ marginStart: 10 }}
           onPress={() => {
-            if (transaction_for==="supplier") {
               router.push({
-                pathname: './supplierDetails', 
-                params: {
-                  personName: supplierData?.name,
-                  personType: "supplier",
-                  personId: supplierData?.id
-                }
+                pathname: './bills',
               })
-            } else {
-              router.push({
-                pathname: './customerDetails',
-                params: {
-                  personName: supplierData?.name,
-                  personType: "customer",
-                  personId: supplierData?.id
-                }
-              })
-            }
           }
           }
         />

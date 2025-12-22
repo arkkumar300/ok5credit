@@ -1,0 +1,9 @@
+{
+    "welcome": "Welcome, {{name}}!",
+    "amount": "Amount",
+    "add_note": "Add Note (Optional)",
+    "submit": "Submit",
+    "language": "Language",
+    "select_language": "Select Your Language"
+  }
+  

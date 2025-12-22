@@ -26,9 +26,9 @@ export default function BillGenaration() {
     const [billDates, setBillDates] = useState("");
     const [billNote, setBillNote] = useState("");
     const [billStore, setBillStore] = useState(null);
-    const { Id = "", bill_type = "", bill_date = "", billNo = "", transaction_for } = useLocalSearchParams();
+    const { Id = "", bill_type = "", billId = "", mode = "", bill_date = "", billNo = "", transaction_for } = useLocalSearchParams();
     const router = useRouter();
-    const totalAmount = items.reduce((acc, item) => acc + item.total, 0);
+    const totalAmount = items.reduce((acc, item) => acc + item.total || 0, 0);
 
     useFocusEffect(
 
@@ -63,11 +63,96 @@ export default function BillGenaration() {
             };
 
             customeData();
-        }, [billID, billDates]) // reactively update when props change
+        }, []) // reactively update when props change
     )
+    const normalizeExtraCharges = (list) =>
+        list
+            .filter(Boolean) // remove null/undefined
+            .map(group => Array.isArray(group) ? group : [group])
+            .map(group => group.filter(Boolean)); // remove empty items
+
+    useFocusEffect(
+        useCallback(() => {
+            const billUpdates = async () => {
+
+                if (Id) {
+                    fetchClientData();
+                }
+                if (mode === "edit" && billId) {
+                    loadExistingBill(billId);
+                } else {
+
+                    const billNo = await AsyncStorage.getItem("billNo") || "";
+                    if (!billNo) {
+                        await getBillCount();
+                    } else {
+                        setBillID(billNo)
+                    }
+                }
+            }
+            billUpdates();
+        }, [Id, mode]))
+    const normalizeItem = (item) => {
+        return {
+            itemName: item.itemName || item.name || "",   // unify name
+            description: item.description || "",
+            price: Number(item.price || 0),
+            quantity: Number(item.quantity || 0),
+            total: Number(item.total ?? (item.price * item.quantity)),
+            gstAmount: Number(item.gstAmount || 0),
+            gstPercent: Number(item.gstPercent || 0),
+            cessAmount: Number(item.cessAmount || 0),
+            cessPercent: Number(item.cessPercent || 0),
+            barcode: item.barcode || "",
+            mrp: Number(item.mrp || 0),
+            taxType: item.taxType || "inclusive",
+            unit: item.unit || "Nos",
+        };
+    };
+
+    /* -------------------------------------------------------------------------- */
+    /*                            3️⃣ LOAD EXISTING BILL                          */
+    /* -------------------------------------------------------------------------- */
+    const loadExistingBill = async (id) => {
+
+        try {
+            const res = await ApiService.get(`/bill/${id}`);
+            const data = res.data;
+
+            setBillID(data.bill_id);
+            setBillTypes(data.bill_type);
+            setBillDates(data.bill_date);
+            setBillNote(data.description || "");
+
+            setItems(data.items || []);
+            setExtraCharges(data.ExtraCharges || []);
+            setSupplier(data.customer || data.supplier || null);
+            normalizeItem(data);
+
+            // 🔥 Normalize items
+            const normalizedItems = (data.items || []).map(normalizeItem);
+            setItems(normalizedItems);
+
+            // 🔥 Normalize extra charges
+            const normalizedCharges = normalizeExtraCharges(data.ExtraCharges || []);
+            setExtraCharges(normalizedCharges);
+
+            // 🔥 Keep supplier/customer
+            setSupplier(data.customer || data.supplier || null);
+
+        } catch (err) {
+            console.log("Load Edit Error:", err);
+        }
+    };
+
     useEffect(() => {
-        console.log("extraCharges::", extraCharges)
-    }, [extraCharges])
+        const normalized = normalizeExtraCharges(extraCharges || []);
+        // Compare by JSON string (simple deep equality)
+        if (JSON.stringify(normalized) !== JSON.stringify(extraCharges)) {
+            setExtraCharges(normalized);
+        }
+    }, [extraCharges]);
+
     const fetchClientData = async () => {
         const userData = await AsyncStorage.getItem("userData");
         const userId = JSON.parse(userData).id;
@@ -135,58 +220,60 @@ export default function BillGenaration() {
     const gotoBill = async () => {
         await AsyncStorage.setItem("billType", bill_type)
         const extraChargesPreview = flattenExtraCharges(extraCharges);
-        console.log("extraChargesPreview::", extraChargesPreview)
-        if (bill_type === "BILL") {
-            router.push({ pathname: './billPreview', params: { items: JSON.stringify(items), extraCharges: JSON.stringify(extraChargesPreview || []), totalAmount: finalTotalAmount, supplierData: JSON.stringify(supplier), bill: billID, transaction_for } })
-        } else {
-            router.push({ pathname: './quotePreview', params: { items: JSON.stringify(items), extraCharges: JSON.stringify(extraCharges || []), totalAmount: finalTotalAmount, supplierData: JSON.stringify(supplier), bill: billID, transaction_for } })
-        }
-    }
-    useFocusEffect(
-        useCallback(() => {
-            const billUpdates = async () => {
-
-                if (Id) {
-                    fetchClientData();
-                }
-                const billNo = await AsyncStorage.getItem("billNo") || "";
-                console.log("billNo::", billNo)
-                if (!billNo) {
-                    console.log('aaa')
-                    await getBillCount();
-                } else {
-                    setBillID(billNo)
-                }
+            if (bill_type === "BILL") {
+                router.push({ pathname: './billPreview', params: { items: JSON.stringify(items), extraCharges: JSON.stringify(extraChargesPreview || []), totalAmount: finalTotalAmount, supplierData: JSON.stringify(supplier), bill: billID, transaction_for,mode} })
+            } else {
+                router.push({ pathname: './quotePreview', params: { items: JSON.stringify(items), extraCharges: JSON.stringify(extraCharges || []), totalAmount: finalTotalAmount, supplierData: JSON.stringify(supplier), bill: billID, transaction_for } })
             }
-            billUpdates();
-        }, [Id]))
+    }
+    const handleDeleteItem = (index) => {
+        const updated = items.filter((_, i) => i !== index);
+        setItems(updated);
+    };
 
     useEffect(() => {
 
         getSupplier();
 
     }, []);
-    const renderItem = ({ item }) => {
+
+    const renderItem = ({ item, index }) => {
         return (
             <View style={styles.itemContainer}>
                 <View style={styles.itemHeader}>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.itemTitle}>{item.itemName}</Text>
-                        <Text style={styles.itemSubtitle}>{item.gstValue}</Text>
                         <Text style={styles.itemDescription}>{item.description}</Text>
                         <Text style={styles.itemCalc}>
-                            {item.quantity} x (₹ {item.price} + ₹ {item.gstAmount} GST + ₹{' '}
-                            {item.cessAmount} CESS)
+                            {item.quantity} x (₹ {item.price} + ₹ {item.gstAmount} GST + ₹ {item.cessAmount} CESS)
                         </Text>
                     </View>
-                    <Text style={styles.itemPrice}>₹ {item.total}</Text>
-                    <TouchableOpacity style={styles.trashIcon}>
-                        <Trash2 size={20} color="gray" />
+
+                    <Text style={styles.itemPrice}>₹ {parseFloat(item.total).toFixed(2)}</Text>
+
+                    {/* EDIT ICON */}
+                    {/* <TouchableOpacity
+                        style={{ marginRight: 8 }}
+                        onPress={() => {
+                            setEditItemIndex(index);
+                            setEditItemData(item);
+                            setIsAdditem(true);
+                        }}
+                    >
+                        <Edit3 size={20} color="blue" />
+                    </TouchableOpacity> */}
+
+                    {/* DELETE ICON */}
+                    <TouchableOpacity style={{marginLeft:10}}
+                        onPress={() => handleDeleteItem(index)}
+                    >
+                        <Trash2 size={20} color="red" />
                     </TouchableOpacity>
                 </View>
             </View>
-        )
+        );
     };
+
     const flattenExtraCharges = (nestedArray) => {
         const flatArray = nestedArray.flat(); // merges nested groups into single array
 
@@ -194,42 +281,37 @@ export default function BillGenaration() {
     };
     const renderChargesDetails = () =>
         extraCharges.map((group, groupIndex) => {
-
-            let groupTotal = 0; // subtotal of this group
+            let groupTotal = 0;
 
             return (
                 <View key={groupIndex} style={styles.taxContainer}>
-
                     {group.map((item, index) => {
-                        const amount = Number(item.finalAmount || 0);
+                        const amount = Number(item?.finalAmount || 0);
 
-                        // Add or Subtract according to type
-                        if (item.type === "charge") {
-                            groupTotal += amount;
-                        } else if (item.type === "discount") {
-                            groupTotal -= amount;
-                        }
+                        groupTotal += item?.type === "charge" ? amount : -amount;
+
                         return (
                             <Text key={index} style={styles.taxText}>
-                                {item.type === "charge" ? "Charge" : "Discount"} ({item.name})  :   ₹ {amount.toFixed(2)}
+                                {item?.type === "charge" ? "Charge" : "Discount"} ({item?.name}) : ₹ {amount.toFixed(2)}
                             </Text>
                         );
                     })}
 
-                    <Text style={styles.taxTotal}>Sub Total: ₹ {groupTotal.toFixed(2)}</Text>
+                    <Text style={styles.taxTotal}>
+                        Sub Total: ₹ {groupTotal.toFixed(2)}
+                    </Text>
                 </View>
             );
         });
-
     // Calculate extra charges grand total
     const extraChargesTotal = extraCharges.reduce((acc, group) => {
         const groupTotal = group.reduce((sum, item) => {
-            const amount = Number(item.finalAmount || 0);
-            return item.type === "charge" ? sum + amount : sum - amount;
+            const amount = Number(item?.finalAmount || 0);
+            return item?.type === "charge" ? sum + amount : sum - amount;
         }, 0);
+
         return acc + groupTotal;
     }, 0);
-
     // FINAL AMOUNT (items + charges - discounts)
     const finalTotalAmount = totalAmount + extraChargesTotal;
 
@@ -317,7 +399,7 @@ export default function BillGenaration() {
                 setIsAdditem(true)
             }
             }>
-                <Text style={{color:'#f3f3f3',fontWeight:'bold'}}>Add Items</Text>
+                <Text style={{ color: '#f3f3f3', fontWeight: 'bold' }}>Add Items</Text>
             </TouchableOpacity>
 
             {/* Toggle Show/Hide Tax */}
@@ -341,7 +423,7 @@ export default function BillGenaration() {
                     <ScrollView style={{ marginHorizontal: 16, marginBottom: 10 }}>
                         {renderTaxDetails()}
                         {renderChargesDetails()}
-                        </ScrollView>
+                    </ScrollView>
                     <Text style={[styles.taxTitle, { marginBottom: 5, marginHorizontal: 16, }]}>Extra Charges / Discount </Text>
 
                     {/* <ScrollView style={{ marginHorizontal: 16, }}></ScrollView> */}
@@ -366,7 +448,11 @@ export default function BillGenaration() {
             }}>
                 <Text style={styles.previewText}>Preview</Text>
             </TouchableOpacity>
-            <Modal visible={isAdditem} style={{ flex: 1 }}>
+            <Modal visible={isAdditem}
+                style={{ flex: 1 }}
+                animationType="slide"
+                presentationStyle="fullScreen"
+            >
                 <ItemForm
                     setItem={setIsAdditem}
                     setNewItem={(newItem) => {
@@ -376,9 +462,12 @@ export default function BillGenaration() {
             </Modal>
             <Modal visible={isAddExtraCharges}>
                 <ExtraChargesForm
+                    animationType="slide"
+                    presentationStyle="fullScreen"
                     setItem={setIsAddExtraCharges}
                     totalAmount={totalAmount}
-                    setNewItem={(item) => setExtraCharges([...extraCharges, item])}
+                    setNewItem={(item) => setExtraCharges(prev => [...prev, Array.isArray(item) ? item : [item]])
+                    }
                 />
             </Modal>
             <Modal

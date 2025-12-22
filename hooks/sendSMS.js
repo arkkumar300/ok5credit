@@ -12,3 +12,20 @@ export const sendSMS = async (mobile, otp) => {
     return response.text(); // API returns plain text / xml
   };
   
+
+  export const sendTransaction = async (mobile, customerName, amount, userName, InvoiceLink) => {
+    const encodedLink = encodeURIComponent(InvoiceLink);
+        const message = encodeURIComponent(
+      `AquaCredit: Hello ${customerName}, to approve the quotation of ${amount} from ${userName},
+  please visit ${encodedLink}
+  -SIKHI SERVICES`
+    );
+  
+    const url = `https://smslogin.co/v3/api.php?username=SIKHISERVICES&apikey=4f841d38d93faea3a7c2&mobile=${mobile}&senderid=SSSVLD&message=${message}&templateid=1407176363104566270`;
+  
+    console.log("SMS URL:", url);
+  
+    const response = await fetch(url);
+    return response.text(); 
+  };
+  

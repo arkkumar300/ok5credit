@@ -21,6 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import billPDF from './components/billPDF';
 import ApiService from './components/ApiServices';
 import ProgressButton from './components/ProgressButton';
+import { sendTransaction } from '../hooks/sendSMS';
 
 
 export default function BillPreview() {
@@ -32,57 +33,31 @@ export default function BillPreview() {
   const [success, setSuccess] = useState(false);
 
   const router = useRouter();
-  const { items, totalAmount, bill, extraCharges, supplierData, transaction_for } = useLocalSearchParams();
+  const { items=[], totalAmount=0, bill="", mode="", extraCharges=[], supplierData="", transaction_for="",bill_prm_id="" } = useLocalSearchParams();
   const parsedItems = items ? JSON.parse(items) : [];
   const parsedExtraCharges = extraCharges ? JSON.parse(extraCharges) : [];
   useEffect(() => {
     setCustomerInfo(JSON.parse(supplierData))
 
   }, [])
-  // const saveBill = async () => {
-  //   const pdfFile = await billPDF(userDetails, supplierInfo, bill, parsedItems, parsedExtraCharges, totalAmount);
-  //   setLoading(true);
-  //   setUploadProgress(0);
-  //   setSuccess(false);
-  //   try {
-  //     const uploadData = new FormData();
-  //     uploadData.append('file', {
-  //       uri: pdfFile.uri,
-  //       name: pdfFile.name,
-  //       type: pdfFile.type
-  //     });
-  //     setUploadProgress(0.33); // 33% complete
-  //     const response = await ApiService.post(`/upload`, uploadData, {
-  //       headers: {
-  //         'Content-Type': 'multipart/form-data',
-  //       },
-  //     });
-
-  //     const uploadJson = await response.data;
-  //     const uploadedPath = `https://aquaservices.esotericprojects.tech/uploads/${uploadJson.file_info.filename}`;
-  //     handleSave(uploadedPath)
-  //   } catch (error) {
-  //     console.log("error ::", error)
-  //   }
-  // }
 
   const saveBill = async () => {
     setLoading(true);
     setSuccess(false);
     setUploadProgress(0);
-  try {
+    try {
       /** STEP 1 → Generate PDF */
       const pdfFile = await billPDF(
-        userDetails, 
-        supplierInfo, 
-        bill, 
-        parsedItems, 
-        parsedExtraCharges, 
+        userDetails,
+        supplierInfo,
+        bill,
+        parsedItems,
+        parsedExtraCharges,
         totalAmount
       );
-  
+
       if (!pdfFile) throw new Error("PDF generation failed");
-  
+
       /** STEP 2 → Upload PDF */
       const uploadData = new FormData();
       uploadData.append("file", {
@@ -90,25 +65,30 @@ export default function BillPreview() {
         name: pdfFile.name,
         type: pdfFile.type,
       });
-  
       const uploadRes = await ApiService.post("/upload", uploadData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+
       setUploadProgress(0.33); // 33% complete
-  const uploadedPath = `https://aquaservices.esotericprojects.tech/uploads/${uploadRes.data.file_info.filename}`;
-  
-      /** STEP 3 → Save bill */
-      const savedBill = await saveBillToServer(uploadedPath);
-  
-      /** STEP 4 → If bill paid, add transaction */
-      if (savedBill.payment_status === "paid") {
-        await addTransaction(savedBill);
+      const uploadedPath = `https://aquaservices.esotericprojects.tech/uploads/${uploadRes.data.file_info.filename}`;
+
+      if (mode === "add") {
+        /** STEP 3 → Save bill */
+        const savedBill = await saveBillToServer(uploadedPath);
+
+        if (savedBill.payment_status === "paid") {
+          await addTransaction(savedBill);
+          await sendTransaction(supplierInfo?.mobile, supplierInfo?.name, totalAmount, userDetails.name, uploadedPath);
+        }
+      } else {
+        /** STEP 3 → Update bill */
+        const updateBill = await updateBillToServer(uploadedPath);
+        await sendTransaction(supplierInfo?.mobile, supplierInfo?.name, totalAmount, userDetails.name, uploadedPath);
       }
-  
       /** 🎉 ALL SUCCESS */
       setSuccess(true);
       setLoading(false);
-  
+
     } catch (error) {
       console.log("submit error:", error);
       Alert.alert("Error", error.message || "Something went wrong");
@@ -116,13 +96,13 @@ export default function BillPreview() {
       setSuccess(false);
     }
   };
-  
+
 
   const saveBillToServer = async (uploadedPath) => {
     setUploadProgress(0.66); // 66% complete
 
     const billType = await AsyncStorage.getItem("billType");
-  
+
     const payload = {
       userId: userDetails?.id,
       transaction_type: "you_gave",
@@ -148,17 +128,17 @@ export default function BillPreview() {
         ? { customer_id: supplierInfo?.id }
         : { supplier_id: supplierInfo?.id }),
     };
-  
+
     const billResponse = await ApiService.post(`/bill`, payload);
-  
+
     return billResponse.data.bill;
   };
-  
+
   const addTransaction = async (billData) => {
     const date = moment().format("YYYY-MM-DD");
     const userData = await AsyncStorage.getItem("userData");
     const userId = JSON.parse(userData)?.id;
-  
+
     const payload = {
       userId,
       transaction_type: "you_gave",
@@ -171,15 +151,14 @@ export default function BillPreview() {
         ? { customer_id: supplierInfo?.id }
         : { supplier_id: supplierInfo?.id }),
     };
-  
+
     const URL = transaction_for === "customer"
       ? `/transactions/customer`
       : `/transactions/supplier`;
-  
+
     const response = await ApiService.post(URL, payload);
-  
+
     const encodedCustomer = encodeURIComponent(JSON.stringify(supplierInfo));
-  
     router.push({
       pathname: "/billDetails",
       params: {
@@ -189,10 +168,40 @@ export default function BillPreview() {
         transaction_for
       }
     });
-  
+
     return response.data;
   };
-    
+
+// update Bill
+  const updateBillToServer = async (uploadedPath) => {
+    setUploadProgress(0.66); // 66% complete
+
+
+    const payload = {
+      payment_status: format,
+      items: parsedItems.map(it => ({
+        name: it.itemName ?? it.name,
+        quantity: Number(it.quantity),
+        price: Number(it.price),
+        cessAmount: Number(it.cessAmount),
+        cessPercent: Number(it.cessPercent),
+        gstAmount: Number(it.gstAmount),
+        gstPercent: Number(it.gstPercent),
+      })),
+      ExtraCharges: parsedExtraCharges,
+      bill_file: uploadedPath,
+      amount: Number(totalAmount),
+      bill_id: bill,
+      description: `i have given ${totalAmount} to ${supplierInfo?.name} on ${moment().format('YYYY-MM-DD')}`,
+      bill_date: moment().format("YYYY-MM-DD")
+    };
+
+    const billResponse = await ApiService.put(`/bill/${bill_prm_id}`, payload);
+
+    return billResponse.data.bill;
+  };
+
+
 
   useEffect(() => {
     const fetchBills = async () => {

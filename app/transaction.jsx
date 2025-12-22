@@ -10,6 +10,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Modal } from 'react-native-paper';
 import ProgressButton from './components/ProgressButton';
 import DateModal from './components/DateModal';
+import { sendTransaction } from '../hooks/sendSMS';
 
 export default function TransactionScreen() {
   const [amount, setAmount] = useState("");
@@ -27,7 +28,7 @@ export default function TransactionScreen() {
   const [success, setSuccess] = useState(false);
 
   const router = useRouter();
-  const { transactionType, transaction_for, id, personName, isSubscribe_user, transaction_limit } = useLocalSearchParams();
+  const { mobile, transactionType, transaction_for, id, personName, isSubscribe_user, transaction_limit } = useLocalSearchParams();
 
   const handleNumberPress = (num) => {
     if (amount === '0') {
@@ -39,10 +40,10 @@ export default function TransactionScreen() {
 
   const uploadImages = async () => {
     if (!images.length) return [];
-  
+
     try {
       const formData = new FormData();
-  
+
       // Append each image to formData
       images.forEach((img, index) => {
         formData.append("files", {
@@ -51,9 +52,9 @@ export default function TransactionScreen() {
           type: img.type ? `${img.type}/jpeg` : "image/jpeg",
         });
       });
-  
+
       console.log("FormData ready:", formData);
-  
+
       const response = await ApiService.post(`/upload/multi`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
@@ -64,15 +65,15 @@ export default function TransactionScreen() {
           // Optionally update a state for progress bar
         },
       });
-  
+
       const result = response.data;
       console.log("Upload success:", result);
-  
+
       // If your backend returns an array of uploaded files
       if (result.files && Array.isArray(result.files)) {
         return result.files.map(f => `https://aquaservices.esotericprojects.tech/uploads/${f.filename}`);
       }
-  
+
       return [];
     } catch (error) {
       console.error("Upload failed:", error);
@@ -80,7 +81,7 @@ export default function TransactionScreen() {
       return [];
     }
   };
-  
+
   const handleOperationPress = (operation) => {
     switch (operation) {
       case 'clear':
@@ -101,28 +102,29 @@ export default function TransactionScreen() {
 
   const addTransaction = async () => {
     if (loading) return; // Prevent double taps
-    
+
     const date = moment(selectedDate).format('YYYY-MM-DD');
     setUploadProgress(0);
     setLoading(true);
-  
+
     try {
       // Get user details
       const userData = await AsyncStorage.getItem("userData");
       const userId = JSON.parse(userData).id;
-  
+      const userName = JSON.parse(userData).name;
+
       const transactionFor =
         transaction_for === "customer" ? "customer" : "supplier";
-  
+
       // -----------------------
       // 📌 Upload Images ONLY if exist
       // -----------------------
       let images_url = null;
-  
+
       if (images && Array.isArray(images) && images.length > 0) {
         images_url = await uploadImages(images);     // Upload array images
       }
-  
+
       // -----------------------
       // 📌 Build Base Payload
       // -----------------------
@@ -133,12 +135,12 @@ export default function TransactionScreen() {
         amount: Number(amount),
         description: note,
         transaction_date: date,
-  
+
         // Add image fields only if available
         ...(images_url ? { transaction_pic: images_url } : {}),
         ...(billID ? { bill_id: billID } : {}),
       };
-  
+
       // -----------------------
       // 📌 Add customer/supplier ID
       // -----------------------
@@ -146,7 +148,7 @@ export default function TransactionScreen() {
         transactionFor === "customer"
           ? { ...commonPayload, customer_id: id }
           : { ...commonPayload, supplier_id: id };
-  
+
       // -----------------------
       // 📌 API Endpoint
       // -----------------------
@@ -154,7 +156,7 @@ export default function TransactionScreen() {
         transactionFor === "customer"
           ? "/transactions/customer"
           : "/transactions/supplier";
-  
+
       // -----------------------
       // 📌 Submit Transaction
       // -----------------------
@@ -165,14 +167,12 @@ export default function TransactionScreen() {
           }
         },
       });
-  
       // -----------------------
       // 🎉 Success animation + navigation
       // -----------------------
       setTimeout(() => {
         setSuccess(true);
         setLoading(false);
-  
         if (transactionFor === "customer") {
           router.push({
             pathname: "/customerDetails",
@@ -199,7 +199,7 @@ export default function TransactionScreen() {
       Alert.alert("Error", "Failed to add transaction");
     }
   };
-  
+
   const getInitial = (name) => {
     return name ? name.charAt(0).toUpperCase() : 'U';
   };
@@ -398,7 +398,7 @@ export default function TransactionScreen() {
                   style={[styles.addImagesButton, styles.addBillButton, { marginLeft: 20 }]}
                   onPress={() => {
                     router.push({
-                      pathname: '/billGenaration', params: { Id: id, bill_type: "BILL", bill_date: moment(selectedDate).format('DD MMM YYYY'), transaction_for }
+                      pathname: '/billGenaration', params: { Id: id, bill_type: "BILL",mode:"add", bill_date: moment(selectedDate).format('DD MMM YYYY'), transaction_for }
                     });
                   }}
                 >
@@ -462,82 +462,84 @@ export default function TransactionScreen() {
           </>
         )
         }
-
-        <View style={styles.calculator}>
-          <View style={styles.calculatorRow}>
-            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('1')}>
-              <Text style={styles.calcButtonText}>1</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('2')}>
-              <Text style={styles.calcButtonText}>2</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('3')}>
-              <Text style={styles.calcButtonText}>3</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.calcButton, styles.operatorButton]} onPress={() => handleOperationPress('delete')}>
-              <Text style={styles.calcButtonText}>⌫</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.calculatorRow}>
-            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('4')}>
-              <Text style={styles.calcButtonText}>4</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('5')}>
-              <Text style={styles.calcButtonText}>5</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('6')}>
-              <Text style={styles.calcButtonText}>6</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.calcButton, styles.operatorButton]} onPress={() => handleOperationPress('clear')}>
-              <Text style={styles.calcButtonText}>×</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.calculatorRow}>
-            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('7')}>
-              <Text style={styles.calcButtonText}>7</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('8')}>
-              <Text style={styles.calcButtonText}>8</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('9')}>
-              <Text style={styles.calcButtonText}>9</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.calcButton, styles.operatorButton]}>
-              <Text style={styles.calcButtonText}>—</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.calculatorRow}>
-            <TouchableOpacity style={styles.calcButton} onPress={() => handleOperationPress('decimal')}>
-              <Text style={styles.calcButtonText}>.</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('0')}>
-              <Text style={styles.calcButtonText}>0</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.calcButton, styles.equalsButton]}>
-              <Text style={styles.calcButtonText}>=</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.calcButton, styles.operatorButton]}>
-              <Text style={styles.calcButtonText}>+</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         <View style={styles.actionButtons}>
-
-          <ProgressButton
-            title="Submit"
-            loading={loading}
-            progress={uploadProgress}   // 0 → 1
-            success={success}
-            onPress={addTransaction}
-          />
-
-
         </View>
       </ScrollView>
+      {amount && (
+
+      <ProgressButton
+        title="Submit"
+        loading={loading}
+        progress={uploadProgress}   // 0 → 1
+        success={success}
+        onPress={addTransaction}
+      />
+      )}
+      <View style={styles.calculator}>
+        <View style={styles.calculatorRow}>
+          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('1')}>
+            <Text style={styles.calcButtonText}>1</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('2')}>
+            <Text style={styles.calcButtonText}>2</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('3')}>
+            <Text style={styles.calcButtonText}>3</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.calcButton, styles.operatorButton]} onPress={() => handleOperationPress('delete')}>
+            <Text style={styles.calcButtonText}>⌫</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.calculatorRow}>
+          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('4')}>
+            <Text style={styles.calcButtonText}>4</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('5')}>
+            <Text style={styles.calcButtonText}>5</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('6')}>
+            <Text style={styles.calcButtonText}>6</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.calcButton, styles.operatorButton]} onPress={() => handleOperationPress('clear')}>
+            <Text style={styles.calcButtonText}>clear</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.calculatorRow}>
+          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('7')}>
+            <Text style={styles.calcButtonText}>7</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('8')}>
+            <Text style={styles.calcButtonText}>8</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('9')}>
+            <Text style={styles.calcButtonText}>9</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.calcButton, styles.operatorButton]} onPress={() => handleNumberPress('-')}>
+            <Text style={styles.calcButtonText}>—</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.calculatorRow}>
+          <TouchableOpacity style={styles.calcButton} onPress={() => handleOperationPress('decimal')}>
+            <Text style={styles.calcButtonText}>.</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('0')}>
+            <Text style={styles.calcButtonText}>0</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.calcButton, styles.equalsButton]} onPress={() =>{
+           const rrr= eval(amount);
+           setAmount(rrr)
+          }}>
+            <Text style={styles.calcButtonText}>=</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.calcButton, styles.operatorButton]} onPress={() => handleNumberPress('+')}>
+            <Text style={styles.calcButtonText}>+</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <Modal visible={previewVisible} transparent>
         <View
           style={{
@@ -616,7 +618,8 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     resizeMode: 'stretch',
-    borderRadius: 8, margin: 10  },
+    borderRadius: 8, margin: 10
+  },
   personName: {
     fontSize: 16,
     fontWeight: '600',

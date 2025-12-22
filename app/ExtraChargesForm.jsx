@@ -4,9 +4,9 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    StyleSheet,ScrollView,
+    StyleSheet, ScrollView,
     FlatList,
-    Dimensions,KeyboardAvoidingView, Platform
+    Dimensions, KeyboardAvoidingView, Platform
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
@@ -142,49 +142,54 @@ export default function ExtraChargesForm({ setItem, setNewItem, totalAmount }) {
 
     return (
         <KeyboardAvoidingView
-    behavior={Platform.OS === "ios" ? "padding" : "height"}
-    keyboardVerticalOffset={80} // adjust as needed
-  >
-    <ScrollView
-      style={styles.container}
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={{ paddingBottom: 120 }}
-    >
-        <View style={styles.container}>
-            <Text style={styles.header}>Charges & Discounts</Text>
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={80} // adjust as needed
+        >
+            {/* <ScrollView
+                style={styles.container}
+                keyboardShouldPersistTaps="handled"
+                horizontal
+                contentContainerStyle={{ paddingBottom: 120 }}
+            > */}
+                <View style={styles.container}>
+                    <Text style={styles.header}>Charges & Discounts</Text>
 
-            <FlatList
-                data={items}
-                renderItem={renderItem}
-                keyExtractor={(_, i) => i.toString()}
-                ListFooterComponent={()=>{
-                    return(
-                        <TouchableOpacity style={styles.addMoreBtn} onPress={addMore}>
-                        <Text style={styles.addMoreTxt}>+ Add More</Text>
-                    </TouchableOpacity>                    )
-                }}
-            />
+                    <FlatList
+                        data={items}
+                        renderItem={renderItem}
+                        keyExtractor={(_, i) => i.toString()}
+                        ListFooterComponent={() => {
+                            return (
+                                <>
+                                <TouchableOpacity style={styles.addMoreBtn} onPress={addMore}>
+                                    <Text style={styles.addMoreTxt}>+ Add More</Text>
+                                </TouchableOpacity>
+                                                    <View style={{ flexDirection: 'row', justifyContent: 'space-around', width: "100%" ,marginBottom:80}}>
 
-           
-            <View style={{ flexDirection: 'row', justifyContent: 'space-around',width:"100%" }}>
+                                                    <TouchableOpacity style={styles.saveBtn} onPress={() => setItem(false)}>
+                                                        <Text style={styles.saveTxt}>Close</Text>
+                                                    </TouchableOpacity>
+                            
+                                                    <TouchableOpacity style={styles.saveBtn} onPress={save}>
+                                                        <Text style={styles.saveTxt}>Save</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                                </>
+                            
+                                )
+                        }}
+                    />
 
-                <TouchableOpacity style={styles.saveBtn} onPress={() => setItem(false)}>
-                    <Text style={styles.saveTxt}>Close</Text>
-                </TouchableOpacity>
 
-                <TouchableOpacity style={styles.saveBtn} onPress={save}>
-                    <Text style={styles.saveTxt}>Save</Text>
-                </TouchableOpacity>
-            </View>
 
-        </View>
-        </ScrollView>
-  </KeyboardAvoidingView>
+                </View>
+            {/* </ScrollView> */}
+        </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { height: Dimensions.get("screen").height, padding: 15,paddingVertical: 60, backgroundColor: "#f3f3f3" },
+    container: { height: Dimensions.get("screen").height, padding: 15, paddingVertical: 60, backgroundColor: "#f3f3f3" },
     header: { fontSize: 20, fontWeight: "bold", marginBottom: 10 },
 
     card: {
@@ -248,8 +253,8 @@ const styles = StyleSheet.create({
     },
 
     addMoreBtn: {
-        marginTop: 15,
-        padding: 12,
+        marginTop: 2,
+        padding: 8,
         borderRadius: 15,
     },
     addMoreTxt: { color: "#00A050", fontWeight: "bold" },
@@ -257,9 +262,9 @@ const styles = StyleSheet.create({
     saveBtn: {
         marginTop: 15,
         backgroundColor: "#00B050",
-        width:"25%",paddingVertical:10,
-        borderRadius: 25,paddingHorizontal:15,
-        alignItems: "center",justifyContent:'center'
+        width: "25%", paddingVertical: 10,
+        borderRadius: 25, paddingHorizontal: 15,
+        alignItems: "center", justifyContent: 'center'
     },
     saveTxt: { color: "#fff", fontWeight: "bold", fontSize: 18 },
 });

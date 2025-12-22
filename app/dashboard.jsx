@@ -9,7 +9,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import exportDataAsPDF from './components/downloadPDF';
 import { useFocusEffect } from '@react-navigation/native';
 import LottieView from 'lottie-react-native';
-
+import { useTranslation } from 'react-i18next';
+import i18n from './i18n/i18n';
 
 let transactionData = {
   customers: [
@@ -22,6 +23,8 @@ let transactionData = {
     { id: 2, name: 'Supply Co', amount: 250, type: 'Advance', date: 'Yesterday', initial: 'S', color: '#FF9800' },
   ]
 };
+
+
 
 const FILTER_CATEGORIES = ['Sort By', 'Name'];
 
@@ -48,10 +51,18 @@ export default function DashboardScreen() {
   const [selectedCategory, setSelectedCategory] = useState('Sort By');
   const [selectedOption, setSelectedOption] = useState('Default');
   const [isVerified, setIsVerified] = useState(null); // null = loading state
-
+  const [currentLang, setCurrentLang] = useState('hi');
+  const { t } = useTranslation();
+  
   useEffect(() => {
     checkEligibility();
   }, [])
+
+const changeLanguage = (code) => {
+  i18n.changeLanguage(code);
+  setCurrentLang(code);
+};
+
   const fetchDashboardData = async () => {
     const userDetails = await AsyncStorage.getItem("userData");
     const userId = JSON.parse(userDetails).id;
@@ -386,8 +397,11 @@ setInitialsLetter(initials);
         </TouchableOpacity>
       </View>
 
-
-      <View style={styles.tabContainer}>
+      <Text style={{margin:10,fontWeight:'bold',fontSize:18,color:"green",letterSpacing:1}}>
+      {t('welcome', { name: userData?.name })}
+      </Text>
+      
+            <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'Customer' && styles.activeTab]}
           onPress={() => {

@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, SafeAreaView } from 'react-native';
 import { Provider as PaperProvider, Appbar, FAB, } from 'react-native-paper';
-import { ChevronDown, Search, FileText, Plus, Check, Clock, ArrowLeft, SearchCheck, } from 'lucide-react-native';
+import { ChevronDown, Search,Edit3, FileText, Plus, Check, Clock, ArrowLeft, SearchCheck, } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import ApiService from './components/ApiServices';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -32,7 +32,7 @@ export default function Bills() {
 
     const addBill = async () => {
         await AsyncStorage.setItem("billType", activeTab === 'bill' ? 'BILL' : 'QUOTATION')
-        router.replace({ pathname: './billGenaration', params: { bill_type: activeTab === 'bill' ? 'BILL' : 'QUOTATION', bill_date: moment().format('DD MMM YYYY') } })
+        router.push({ pathname: './billGenaration', params: { bill_type: activeTab === 'bill' ? 'BILL' : 'QUOTATION',mode:"edit", bill_date: moment().format('DD MMM YYYY') } })
     }
 
     useFocusEffect(
@@ -97,6 +97,7 @@ export default function Bills() {
     }
 
     const renderItem = ({ item }) => (
+        
         <TouchableOpacity style={styles.card} onPress={() => handleBillDetails(item.id)}>
             <View style={styles.leftRow}>
                 <FileText size={24} color="#007B83" />
@@ -106,8 +107,12 @@ export default function Bills() {
                     {item.supplier && <Text style={styles.customer}>{item?.supplier?.name || 'N/A'}</Text>}
                 </View>
             </View>
+        
             <View style={styles.rightRow}>
+                {/* Amount */}
                 <Text style={styles.amount}>₹{parseFloat(item.amount).toLocaleString()}</Text>
+        
+                {/* Date and Status */}
                 <View style={styles.rowAlign}>
                     {activeTab === 'bill' ? (
                         <Check size={16} color="green" />
@@ -122,9 +127,28 @@ export default function Bills() {
                         })}
                     </Text>
                 </View>
+        
+                {/* EDIT ICON */}
+                <TouchableOpacity
+                    style={{ padding: 5, marginLeft: 10 }}
+                    onPress={() =>
+                        router.replace({
+                            pathname: './billGenaration',
+                            params: {
+                                mode: "edit",
+                                billId: item?.id,   // <-- IMPORTANT
+                                bill_type: item?.bill_type,
+                                bill_date: moment(item?.bill_date).format('DD MMM YYYY'),
+                                bill_prm_id:item.id
+                            },
+                        })
+                    }
+                >
+                    <Edit3 size={20} color="#007B83" />
+                </TouchableOpacity>
             </View>
         </TouchableOpacity>
-    );
+            );
     return (
         <PaperProvider>
             <SafeAreaView style={{ flex: 1 }}>
