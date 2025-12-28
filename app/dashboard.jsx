@@ -137,8 +137,6 @@ setInitialsLetter(initials);
 
       const { is_verified } = response.data;
 
-      console.log("is_verified::", is_verified);
-
       setIsVerified(is_verified); // store result in state
     } catch (error) {
       console.log("Error checking eligibility:", error);

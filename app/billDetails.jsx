@@ -80,7 +80,7 @@ export default function BillDetails() {
       try {
         setLoading(true);
     
-        const response = await ApiService.post(`/bill/${billId}`);
+        const response = await ApiService.get(`/bill/${billId}`);
         const result = response.data;
     
         // Parse items and charges safely

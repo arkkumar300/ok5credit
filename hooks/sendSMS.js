@@ -13,19 +13,22 @@ export const sendSMS = async (mobile, otp) => {
   };
   
 
-  export const sendTransaction = async (mobile, customerName, amount, userName, InvoiceLink) => {
-    const encodedLink = encodeURIComponent(InvoiceLink);
-        const message = encodeURIComponent(
-      `AquaCredit: Hello ${customerName}, to approve the quotation of ${amount} from ${userName},
-  please visit ${encodedLink}
-  -SIKHI SERVICES`
-    );
+  export const sendTransaction = async (mobile, customerName, amount, userName, invoiceQuery) => {
+    // Build full URL with query string
+    const invoiceUrl = `https://aquaadmin.esotericprojects.tech/bill.html?id=${encodeURIComponent(invoiceQuery)}`;
   
-    const url = `https://smslogin.co/v3/api.php?username=SIKHISERVICES&apikey=4f841d38d93faea3a7c2&mobile=${mobile}&senderid=SSSVLD&message=${message}&templateid=1407176363104566270`;
+    // Build message according to template
+    const message = `AquaCredit: Hello ${customerName}, to approve the quotation of ${amount} from ${userName},\nplease visit ${invoiceUrl}\n-SIKHI SERVICES`;
+  
+    // Encode message for URL
+    const encodedMessage = encodeURIComponent(message);
+  
+    // Construct final SMS API URL
+    const url = `https://smslogin.co/v3/api.php?username=SIKHISERVICES&apikey=4f841d38d93faea3a7c2&mobile=${mobile}&senderid=SSSVLD&message=${encodedMessage}&templateid=1407176647106245979`;
   
     console.log("SMS URL:", url);
   
     const response = await fetch(url);
-    return response.text(); 
+    return response.text();
   };
   

@@ -28,7 +28,9 @@ export default function BillGenaration() {
     const [billStore, setBillStore] = useState(null);
     const { Id = "", bill_type = "", billId = "", mode = "", bill_date = "", billNo = "", transaction_for } = useLocalSearchParams();
     const router = useRouter();
-    const totalAmount = items.reduce((acc, item) => acc + item.total || 0, 0);
+    const totalAmount = Array.isArray(items)
+        ? items.reduce((acc, item) => acc + Number(item?.total || 0), 0)
+        : 0;
 
     useFocusEffect(
 
@@ -92,6 +94,7 @@ export default function BillGenaration() {
             }
             billUpdates();
         }, [Id, mode]))
+
     const normalizeItem = (item) => {
         return {
             itemName: item.itemName || item.name || "",   // unify name
@@ -109,6 +112,9 @@ export default function BillGenaration() {
             unit: item.unit || "Nos",
         };
     };
+useEffect(() => {
+  console.log("ITEMS TYPE:", Array.isArray(items), items);
+}, [items]);
 
     /* -------------------------------------------------------------------------- */
     /*                            3️⃣ LOAD EXISTING BILL                          */
@@ -125,17 +131,44 @@ export default function BillGenaration() {
             setBillNote(data.description || "");
 
             setItems(data.items || []);
-            setExtraCharges(data.ExtraCharges || []);
-            setSupplier(data.customer || data.supplier || null);
+            const rawCharges = data.ExtraCharges;
+
+            let normalizedCharges = [];
+            
+            if (Array.isArray(rawCharges)) {
+              normalizedCharges = normalizeExtraCharges(rawCharges);
+            } else if (typeof rawCharges === "string") {
+              try {
+                normalizedCharges = normalizeExtraCharges(JSON.parse(rawCharges));
+              } catch {
+                normalizedCharges = [];
+              }
+            }
+            
+            setExtraCharges(normalizedCharges);
+                        setSupplier(data.customer || data.supplier || null);
             normalizeItem(data);
 
             // 🔥 Normalize items
-            const normalizedItems = (data.items || []).map(normalizeItem);
+            const rawItems = data.items;
+
+            let normalizedItems = [];
+
+            if (Array.isArray(rawItems)) {
+                normalizedItems = rawItems.map(normalizeItem);
+            } else if (typeof rawItems === 'string') {
+                try {
+                    normalizedItems = JSON.parse(rawItems).map(normalizeItem);
+                } catch {
+                    normalizedItems = [];
+                }
+            }
+
             setItems(normalizedItems);
 
             // 🔥 Normalize extra charges
-            const normalizedCharges = normalizeExtraCharges(data.ExtraCharges || []);
-            setExtraCharges(normalizedCharges);
+            // const normalizedCharges = normalizeExtraCharges(data.ExtraCharges || []);
+            // setExtraCharges(normalizedCharges);
 
             // 🔥 Keep supplier/customer
             setSupplier(data.customer || data.supplier || null);
@@ -146,13 +179,11 @@ export default function BillGenaration() {
     };
 
     useEffect(() => {
-        const normalized = normalizeExtraCharges(extraCharges || []);
-        // Compare by JSON string (simple deep equality)
-        if (JSON.stringify(normalized) !== JSON.stringify(extraCharges)) {
-            setExtraCharges(normalized);
+        if (!Array.isArray(extraCharges)) {
+          setExtraCharges([]);
         }
-    }, [extraCharges]);
-
+      }, [extraCharges]);
+      
     const fetchClientData = async () => {
         const userData = await AsyncStorage.getItem("userData");
         const userId = JSON.parse(userData).id;
@@ -220,11 +251,11 @@ export default function BillGenaration() {
     const gotoBill = async () => {
         await AsyncStorage.setItem("billType", bill_type)
         const extraChargesPreview = flattenExtraCharges(extraCharges);
-            if (bill_type === "BILL") {
-                router.push({ pathname: './billPreview', params: { items: JSON.stringify(items), extraCharges: JSON.stringify(extraChargesPreview || []), totalAmount: finalTotalAmount, supplierData: JSON.stringify(supplier), bill: billID, transaction_for,mode} })
-            } else {
-                router.push({ pathname: './quotePreview', params: { items: JSON.stringify(items), extraCharges: JSON.stringify(extraCharges || []), totalAmount: finalTotalAmount, supplierData: JSON.stringify(supplier), bill: billID, transaction_for } })
-            }
+        if (bill_type === "BILL") {
+            router.push({ pathname: './billPreview', params: { items: JSON.stringify(items), extraCharges: JSON.stringify(extraChargesPreview || []), totalAmount: finalTotalAmount, supplierData: JSON.stringify(supplier), bill: billID, transaction_for, mode } })
+        } else {
+            router.push({ pathname: './quotePreview', params: { items: JSON.stringify(items), extraCharges: JSON.stringify(extraCharges || []), totalAmount: finalTotalAmount, supplierData: JSON.stringify(supplier), bill: billID, transaction_for } })
+        }
     }
     const handleDeleteItem = (index) => {
         const updated = items.filter((_, i) => i !== index);
@@ -264,7 +295,7 @@ export default function BillGenaration() {
                     </TouchableOpacity> */}
 
                     {/* DELETE ICON */}
-                    <TouchableOpacity style={{marginLeft:10}}
+                    <TouchableOpacity style={{ marginLeft: 10 }}
                         onPress={() => handleDeleteItem(index)}
                     >
                         <Trash2 size={20} color="red" />
@@ -280,8 +311,9 @@ export default function BillGenaration() {
         return flatArray;
     };
     const renderChargesDetails = () =>
-        extraCharges.map((group, groupIndex) => {
-            let groupTotal = 0;
+        Array.isArray(extraCharges)
+          ? extraCharges.map((group, groupIndex) => {
+              if (!Array.isArray(group)) return null;            let groupTotal = 0;
 
             return (
                 <View key={groupIndex} style={styles.taxContainer}>
@@ -302,16 +334,21 @@ export default function BillGenaration() {
                     </Text>
                 </View>
             );
-        });
+        }):null;
     // Calculate extra charges grand total
-    const extraChargesTotal = extraCharges.reduce((acc, group) => {
-        const groupTotal = group.reduce((sum, item) => {
-            const amount = Number(item?.finalAmount || 0);
-            return item?.type === "charge" ? sum + amount : sum - amount;
-        }, 0);
+    const extraChargesTotal = Array.isArray(extraCharges)
+  ? extraCharges.reduce((acc, group) => {
+      if (!Array.isArray(group)) return acc;
 
-        return acc + groupTotal;
-    }, 0);
+      const groupTotal = group.reduce((sum, item) => {
+        const amount = Number(item?.finalAmount || 0);
+        return item?.type === "charge" ? sum + amount : sum - amount;
+      }, 0);
+
+      return acc + groupTotal;
+    }, 0)
+  : 0;
+
     // FINAL AMOUNT (items + charges - discounts)
     const finalTotalAmount = totalAmount + extraChargesTotal;
 
@@ -376,7 +413,7 @@ export default function BillGenaration() {
             </View>
 
             <FlatList
-                data={items}  // ✅ show current item list
+                data={Array.isArray(items) ? items : []}
                 keyExtractor={(item, index) => index.toString()}
                 renderItem={renderItem}
                 style={{ marginHorizontal: 16 }}
@@ -456,7 +493,11 @@ export default function BillGenaration() {
                 <ItemForm
                     setItem={setIsAdditem}
                     setNewItem={(newItem) => {
-                        setItems([...items, newItem]);  // ✅ append new item
+                        setItems(prev =>
+                            Array.isArray(prev)
+                                ? [...prev, newItem]
+                                : [newItem]
+                        );
                     }}
                 />
             </Modal>
@@ -466,9 +507,14 @@ export default function BillGenaration() {
                     presentationStyle="fullScreen"
                     setItem={setIsAddExtraCharges}
                     totalAmount={totalAmount}
-                    setNewItem={(item) => setExtraCharges(prev => [...prev, Array.isArray(item) ? item : [item]])
-                    }
-                />
+                    setNewItem={(item) =>
+                        setExtraCharges(prev =>
+                          Array.isArray(prev)
+                            ? [...prev, Array.isArray(item) ? item : [item]]
+                            : [Array.isArray(item) ? item : [item]]
+                        )
+                      }
+                                      />
             </Modal>
             <Modal
                 animationType="slide"

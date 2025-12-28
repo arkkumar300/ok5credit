@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Smartphone, X, Check, FileText, Headphones, Monitor, Image, Package, Share, TrendingUp, Settings, MoreHorizontal } from "lucide-react-native";
-import { Appbar, Avatar } from 'react-native-paper';
+import { ActivityIndicator, Appbar, Avatar } from 'react-native-paper';
 import RazorpayCheckout from 'react-native-razorpay';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
+import moment from "moment";
 
 const YOUR_RAZORPAY_KEY_ID = "rzp_test_RfcfxfJ2sIZdao";
 
@@ -22,8 +23,8 @@ export default function MyPlanScreen() {
   // 🔥 Fetch Plans from API
   const fetchPlans = async () => {
     try {
-      const res = await ApiService.get("/plans/",{
-        headers:{'Content-Type':'application/json'}
+      const res = await ApiService.get("/plans/", {
+        headers: { 'Content-Type': 'application/json' }
       });
       const data = res.data;
       if (!data?.plans) {
@@ -80,20 +81,19 @@ export default function MyPlanScreen() {
         Alert.alert("Error", "Plan not selected");
         return;
       }
-
+      const price = Number(selected.price.replace("₹", ""));
       const res = await ApiService.post(`/payment_rozarpay/create-order`, {
         amount: Number(selected.price.replace("₹", "")),
         currency: "INR",
         subscriber_name: userDetails.name,
         subscriber_email: userDetails.email,
         subscriber_phone: userDetails.mobile,
-        subscribePlan: selected.id
+        subscribePlan: selected.name
       }, {
         headers: { "Content-Type": "application/json" }
       });
 
       const data = res.data;
-
       if (!data.orderId) {
         Alert.alert("Error", "Unable to create order");
         return;
@@ -104,7 +104,7 @@ export default function MyPlanScreen() {
         image: "../assets/images/icon.png",
         currency: "INR",
         key: YOUR_RAZORPAY_KEY_ID,
-        amount: data.amount,
+        amount: price,
         order_id: data.orderId,
         name: "Aqua Services",
         prefill: {
@@ -113,19 +113,19 @@ export default function MyPlanScreen() {
           contact: userDetails.mobile
         },
         theme: { color: "#0C8CE9" },
-       
-          // ⭐ Restrict only to UPI
-          method: {
-            netbanking: false,
-            card: false,
-            wallet: false,
-            emi: false,
-            paylater: false,
-            upi: true
-          },
-        
-          // ⭐ Optional: Force only UPI Apps  
-          "upi_app": "default",          
+
+        // ⭐ Restrict only to UPI
+        method: {
+          netbanking: false,
+          card: false,
+          wallet: false,
+          emi: false,
+          paylater: false,
+          upi: true
+        },
+
+        // ⭐ Optional: Force only UPI Apps  
+        "upi_app": "default",
       };
 
       RazorpayCheckout.open(options)
@@ -149,7 +149,93 @@ export default function MyPlanScreen() {
     console.log("paymentData::", paymentData);
   };
 
-  const handleContinue = () => startPayment();
+  const checkEligibility = async () => {
+    try {
+      const userData = await AsyncStorage.getItem("userData");
+      if (!userData) return { eligible: false, reason: "NO_USER" };
+  
+      const userId = JSON.parse(userData).id;
+      const user = (await ApiService.get(`/user/${userId}`))?.data;
+      if (!user) return { eligible: false, reason: "NO_DATA" };
+  
+      if (!user.is_active)
+        return { eligible: false, reason: "ACCOUNT_INACTIVE" };
+  
+      if (!user.is_verified)
+        return { eligible: false, reason: "NOT_VERIFIED" };
+  
+      if (user.isSubscribe)
+        return { eligible: false, reason: "ALREADY_SUBSCRIPTION" };
+  
+     // ------------------------------
+      // Subscription expiration check
+      // ------------------------------
+      if (user.subscribeEndAt) {
+        // Parse DB string correctly
+        const endAt = moment.utc(user.subscribeEndAt, "YYYY-MM-DD HH:mm:ss");
+  console.log("now ::",moment.utc())
+        // Compare with current UTC time
+        if (endAt.isAfter(moment.utc())) {
+          return { eligible: false, reason: "SUBSCRIPTION_EXPIRED" };
+        }
+      }
+      return { eligible: true };
+    } catch (error) {
+      console.log("Eligibility error:", error);
+      return { eligible: false, reason: "ERROR" };
+    }
+  };
+  
+
+  const handleContinue = async () => {
+    setLoading(true);
+
+    const result = await checkEligibility();
+
+    setLoading(false);
+
+    if (result.eligible) {
+      startPayment();
+      return;
+    }
+
+    // Handle UI messages
+    switch (result.reason) {
+      case "NOT_VERIFIED":
+        Alert.alert(
+          "Account Not Verified",
+          "Please verify your account to continue."
+        );
+        break;
+
+      case "ALREADY_SUBSCRIPTION":
+        Alert.alert(
+          "Already Subscribed",
+          "Please subscribe After subscription finished."
+        );
+        break;
+
+      case "SUBSCRIPTION_EXPIRED":
+        Alert.alert(
+          "Subscription Expired",
+          "Your subscription has expired. Please renew."
+        );
+        break;
+
+      case "ACCOUNT_INACTIVE":
+        Alert.alert(
+          "Account Inactive",
+          "Your account is inactive. Contact support."
+        );
+        break;
+
+      default:
+        Alert.alert(
+          "Error",
+          "Unable to check eligibility. Please try again."
+        );
+    }
+  };
 
   if (loading) {
     return (
@@ -165,7 +251,7 @@ export default function MyPlanScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {plans.map((plan) => (
           <View key={plan.id} style={styles.planCard}>
-            
+
             <View style={styles.planHeader}>
               <View style={styles.planTitleContainer}>
                 <Text style={styles.planName}>{plan.name}</Text>
@@ -203,9 +289,24 @@ export default function MyPlanScreen() {
       </ScrollView>
 
       <View style={styles.bottomContainer}>
-        <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-          <Text style={styles.continueButtonText}>Continue</Text>
+        <TouchableOpacity
+          onPress={handleContinue}
+          disabled={loading}
+          style={{
+            backgroundColor: loading ? "#ccc" : "#4CAF50",
+            padding: 15,
+            borderRadius: 8,
+          }}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={{ color: "#fff", textAlign: "center" }}>
+              Continue
+            </Text>
+          )}
         </TouchableOpacity>
+
       </View>
 
     </SafeAreaView>

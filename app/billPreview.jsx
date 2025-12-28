@@ -75,11 +75,7 @@ export default function BillPreview() {
       if (mode === "add") {
         /** STEP 3 → Save bill */
         const savedBill = await saveBillToServer(uploadedPath);
-
-        if (savedBill.payment_status === "paid") {
           await addTransaction(savedBill);
-          await sendTransaction(supplierInfo?.mobile, supplierInfo?.name, totalAmount, userDetails.name, uploadedPath);
-        }
       } else {
         /** STEP 3 → Update bill */
         const updateBill = await updateBillToServer(uploadedPath);
@@ -138,12 +134,16 @@ export default function BillPreview() {
     const date = moment().format("YYYY-MM-DD");
     const userData = await AsyncStorage.getItem("userData");
     const userId = JSON.parse(userData)?.id;
+    const userName = JSON.parse(userData)?.name;
 
     const payload = {
       userId,
       transaction_type: "you_gave",
       transaction_for,
       amount: Number(totalAmount),
+      paidAmount: format === 'unpaid'? 0: Number(totalAmount),
+      remainingAmount: format === 'unpaid'? Number(totalAmount) : 0,
+      paymentType:format === 'paid'? "paid":"credit",
       description: "note",
       transaction_date: date,
       bill_id: billData.id,
@@ -151,13 +151,15 @@ export default function BillPreview() {
         ? { customer_id: supplierInfo?.id }
         : { supplier_id: supplierInfo?.id }),
     };
+    console.log("payload:::",payload)
 
     const URL = transaction_for === "customer"
       ? `/transactions/customer`
       : `/transactions/supplier`;
 
     const response = await ApiService.post(URL, payload);
-
+    const invoice = response.data.transaction.id
+    sendTransaction(supplierInfo.mobile, supplierInfo.name, totalAmount, userName, invoice)
     const encodedCustomer = encodeURIComponent(JSON.stringify(supplierInfo));
     router.push({
       pathname: "/billDetails",

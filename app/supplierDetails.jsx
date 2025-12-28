@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking } from 'react-native';
+import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking,Alert } from 'react-native';
 import { PhoneCall, MessageSquare, ArrowDown, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Divider } from 'react-native-paper';
@@ -63,7 +63,9 @@ export default function SupplierDetails() {
         const supplierPhone = data.supplier.mobile;
         const supplierDueDate = data.supplier.due_date;
 
-        setDueDate(supplierDueDate);
+        const supplier_id = data.supplier.id;
+
+        fetchSupplierDueDate(supplier_id);
         setSupplierMobile(supplierPhone);
         setTransactions(data.transactions);
       } catch (err) {
@@ -75,6 +77,22 @@ export default function SupplierDetails() {
     };
     fetchSupplier();
   }, []);
+
+  const fetchSupplierDueDate = async (supplier_id) => {
+    const userData = await AsyncStorage.getItem("userData");
+    const userId = JSON.parse(userData).id;
+    try {
+      const response = await ApiService.post(`/supplier/upcoming/DueDate`, {supplier_id, user_id:userId });
+      const data = response.data;
+
+      setDueDate(data.upcoming_due_date);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCall = () => {
     if (!supplierMobile) {
@@ -125,6 +143,32 @@ export default function SupplierDetails() {
 
 
   };
+
+  const updateTransactionDueDate = async (newDuedate) => {
+    const dueDatePayload = {
+      supplier_id: supplier.id,
+      isDuedateChange: true,
+      dueDate: newDuedate
+    }
+
+    try {
+
+      // Use the selected date (date), NOT dueDate
+      const response = await ApiService.put(
+        `transactions/updateTransactions/DueDate`,
+        dueDatePayload
+      ); 
+
+      if (response.status === 200) {
+        Alert.alert("DueDate updated successfully")
+      } else {
+        alert("Failed to update due date");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Error updating due date");
+    }
+  }
 
   const renderItem = ({ item }) => {
     const isReceived = item.transaction_type === 'you_got';
@@ -187,7 +231,7 @@ export default function SupplierDetails() {
                   <ChevronRight size={24} color="green" />
                 </TouchableOpacity>
               </>}
-              {item.transaction_pic && (
+            {item.transaction_pic && (
               <>
                 <Divider style={{ marginVertical: 5 }} />
                 <TouchableOpacity
@@ -273,7 +317,7 @@ export default function SupplierDetails() {
       <View style={styles.bottomContainer}>
         {/* Actions */}
         <View style={styles.actionsRow}>
-        {Number(supplier?.current_balance) < 0 && (
+          {Number(supplier?.current_balance) < 0 && (
             <>
               <TouchableOpacity
                 style={styles.actionButton}
@@ -309,7 +353,8 @@ export default function SupplierDetails() {
                         );
 
                         if (response.status === 200) {
-                          alert("Due date updated successfully");
+
+                          updateTransactionDueDate(date.toISOString())
                         } else {
                           alert("Failed to update due date");
                         }
@@ -383,7 +428,7 @@ export default function SupplierDetails() {
                       transactionType: "you_got",
                       transaction_for: "supplier",
                       id: personId,
-                      mobile:supplierMobile,
+                      mobile: supplierMobile,
                       personName: personName,
                       isSubscribe_user,
                       transaction_limit: payment_got_count_user || 0
@@ -401,7 +446,7 @@ export default function SupplierDetails() {
                       transactionType: "you_got",
                       transaction_for: "supplier",
                       id: personId,
-                      mobile:supplierMobile,
+                      mobile: supplierMobile,
                       personName: personName,
                       isSubscribe_user,
                       transaction_limit: payment_got_count_user || 0
@@ -430,7 +475,7 @@ export default function SupplierDetails() {
                       transactionType: "you_gave",
                       transaction_for: "supplier",
                       id: personId,
-                      mobile:supplierMobile,
+                      mobile: supplierMobile,
                       personName: personName,
                       isSubscribe_user,
                       transaction_limit: credit_given_count_user || 0
@@ -449,7 +494,7 @@ export default function SupplierDetails() {
                       transactionType: "you_gave",
                       transaction_for: "supplier",
                       id: personId,
-                      mobile:supplierMobile,
+                      mobile: supplierMobile,
                       personName: personName,
                       isSubscribe_user,
                       transaction_limit: credit_given_count_user || 0
@@ -472,7 +517,8 @@ export default function SupplierDetails() {
         onClose={() => setError(null)}
       />
 
-      <DateModal
+
+      {/* <DateModal
         visible={showPicker}
         initialDate={dueDate}
         onClose={() => setShowPicker(false)}
@@ -503,8 +549,8 @@ export default function SupplierDetails() {
             console.error(error);
             alert("Error updating due date");
           }
-        }}
-      />
+        }} 
+      /> */}
 
     </SafeAreaView >
 

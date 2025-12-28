@@ -153,7 +153,7 @@ export default function Bills() {
         <PaperProvider>
             <SafeAreaView style={{ flex: 1 }}>
                 <Appbar.Header>
-                    <Appbar.BackAction onPress={() => router.back()} />
+                    <Appbar.BackAction onPress={() =>router.push({ pathname: './more'}) }/>
                     <Appbar.Content title={showSearch ? '' : activeTab === 'bill' ? 'Bill' : 'Quote'} />
                     {showSearch ? (
                         <>

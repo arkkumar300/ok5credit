@@ -9,6 +9,7 @@ import ApiService from './components/ApiServices';
 import ErrorModal from './components/ErrorModal';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import DateModal from './components/DateModal';
+import { Alert } from 'react-native';
 
 const transactions = [
   {
@@ -74,8 +75,9 @@ export default function CustomerDetails() {
         setCustomer(data.customer);
         const customerPhone = data.customer.mobile;
         const customerDueDate = data.customer.due_date;
+        const customer_id = data.customer.id;
 
-        setDueDate(customerDueDate);
+        fetchCustomerDueDate(customer_id);
         setCustomerMobile(customerPhone);
         setTransactions(data.transactions);
       } catch (err) {
@@ -87,6 +89,22 @@ export default function CustomerDetails() {
     };
     fetchCustomer();
   }, []);
+
+  const fetchCustomerDueDate = async (customer_id) => {
+    const userData = await AsyncStorage.getItem("userData");
+    const userId = JSON.parse(userData).id;
+    try {
+      const response = await ApiService.post(`/customers/upcoming/DueDate`, {customer_id, user_id:userId });
+      const data = response.data;
+
+      setDueDate(data.upcoming_due_date);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCall = () => {
     if (!customerMobile) {
@@ -140,7 +158,7 @@ export default function CustomerDetails() {
 
   const addTransaction = async () => {
     if (loading) return; // Prevent double taps
-  const date = moment().format('YYYY-MM-DD');
+    const date = moment().format('YYYY-MM-DD');
     setUploadProgress(0);
     setLoading(true);
 
@@ -162,7 +180,7 @@ export default function CustomerDetails() {
         transaction_date: date,
       };
       console.log("payload:::", payload)
-  
+
       // -----------------------
       // 📌 API Endpoint
       // -----------------------
@@ -171,7 +189,7 @@ export default function CustomerDetails() {
       // -----------------------
       // 📌 Submit Transaction
       // -----------------------
-      const response = await ApiService.post(url, payload,{
+      const response = await ApiService.post(url, payload, {
         headers: { "Content-Type": "application/json" },
       }, {
         onUploadProgress: (e) => {
@@ -195,6 +213,31 @@ export default function CustomerDetails() {
     }
   };
 
+  const updateTransactionDueDate = async (newDuedate) => {
+    const dueDatePayload = {
+      customer_id: customer.id,
+      isDuedateChange: true,
+      dueDate: newDuedate
+    }
+
+    try {
+
+      // Use the selected date (date), NOT dueDate
+      const response = await ApiService.put(
+        `transactions/updateTransactions/DueDate`,
+        dueDatePayload
+      ); 
+
+      if (response.status === 200) {
+        Alert.alert("DueDate updated successfully")
+      } else {
+        alert("Failed to update due date");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Error updating due date");
+    }
+  }
 
   const renderItem = ({ item }) => {
     const isReceived = item.transaction_type === "you_got";
@@ -424,7 +467,8 @@ export default function CustomerDetails() {
                         );
 
                         if (response.status === 200) {
-                          alert("Due date updated successfully");
+
+                          updateTransactionDueDate(date.toISOString())
                         } else {
                           alert("Failed to update due date");
                         }
@@ -533,7 +577,7 @@ export default function CustomerDetails() {
                   // setIsModelView(true)
                 }
               } else {
-                if (payment_got_count_user < 4) {
+                if (payment_got_count_user < 10) {
                   router.push({
                     pathname: '/transaction',
                     params: {
@@ -581,7 +625,7 @@ export default function CustomerDetails() {
                   // setIsModelView(true)
                 }
               } else {
-                if (credit_given_count_user < 20) {
+                if (credit_given_count_user < 40) {
                   router.push({
                     pathname: '/transaction',
                     params: {
@@ -676,7 +720,7 @@ export default function CustomerDetails() {
                   setNote(discountNote);
 
                   // Clear for next use
-                  
+
                   await addTransaction();
 
                   setDiscountLoading(false);

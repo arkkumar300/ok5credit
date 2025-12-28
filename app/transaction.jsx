@@ -26,6 +26,9 @@ export default function TransactionScreen() {
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [success, setSuccess] = useState(false);
+  const [paymentType, setPaymentType] = useState('paid'); // 'paid' | 'credit'
+  const [showDueDatePicker, setShowDueDatePicker] = useState(false);
+  const [dueDate, setDueDate] = useState(new Date());
 
   const router = useRouter();
   const { mobile, transactionType, transaction_for, id, personName, isSubscribe_user, transaction_limit } = useLocalSearchParams();
@@ -98,8 +101,6 @@ export default function TransactionScreen() {
     }
   };
 
-
-
   const addTransaction = async () => {
     if (loading) return; // Prevent double taps
 
@@ -112,6 +113,16 @@ export default function TransactionScreen() {
       const userData = await AsyncStorage.getItem("userData");
       const userId = JSON.parse(userData).id;
       const userName = JSON.parse(userData).name;
+      if (paymentType === 'credit' && !dueDate) {
+        Alert.alert('Validation Error', 'Please select a due date');
+        setLoading(false);
+        return;
+      }
+
+      const formattedDueDate =
+        paymentType === 'credit'
+          ? moment(dueDate).format('YYYY-MM-DD')
+          : undefined;
 
       const transactionFor =
         transaction_for === "customer" ? "customer" : "supplier";
@@ -133,12 +144,18 @@ export default function TransactionScreen() {
         transaction_type: transactionType,
         transaction_for: transactionFor,
         amount: Number(amount),
+        paidAmount: paymentType === 'credit' ? 0 : Number(amount),
+        remainingAmount: paymentType === 'credit' ? Number(amount) : 0,
         description: note,
         transaction_date: date,
-
+        due_date: formattedDueDate,
+        paymentType: paymentType,
         // Add image fields only if available
         ...(images_url ? { transaction_pic: images_url } : {}),
         ...(billID ? { bill_id: billID } : {}),
+        ...(paymentType === 'credit' && formattedDueDate
+          ? { due_date: formattedDueDate }
+          : {}),
       };
 
       // -----------------------
@@ -160,6 +177,7 @@ export default function TransactionScreen() {
       // -----------------------
       // 📌 Submit Transaction
       // -----------------------
+      console.log("payload:::", payload)
       const response = await ApiService.post(url, payload, {
         onUploadProgress: (e) => {
           if (e.total > 0) {
@@ -167,6 +185,9 @@ export default function TransactionScreen() {
           }
         },
       });
+      console.log("response::", response.data.transaction)
+      const invoice = response.data.transaction.id
+      sendTransaction(mobile, personName, amount, userName, invoice)
       // -----------------------
       // 🎉 Success animation + navigation
       // -----------------------
@@ -393,24 +414,36 @@ export default function TransactionScreen() {
 
             <View style={styles.buttonRow}>
 
-              {transactionType === "you_gave" ?
+              {transactionType === "you_gave" && transaction_for === "customer" && (
                 <TouchableOpacity
-                  style={[styles.addImagesButton, styles.addBillButton, { marginLeft: 20 }]}
+                  style={[
+                    styles.addImagesButton,
+                    styles.addBillButton,
+                    { marginHorizontal: 10 }
+                  ]}
                   onPress={() => {
                     router.push({
-                      pathname: '/billGenaration', params: { Id: id, bill_type: "BILL",mode:"add", bill_date: moment(selectedDate).format('DD MMM YYYY'), transaction_for }
+                      pathname: "/billGenaration",
+                      params: {
+                        Id: id,
+                        bill_type: "BILL",
+                        mode: "add",
+                        bill_date: moment(selectedDate).format("DD MMM YYYY"),
+                        transaction_for: transaction_for
+                      }
                     });
                   }}
                 >
                   <PaperclipIcon size={20} color="#ffffff" />
-                  <Text style={[styles.addImagesText, styles.addBillText]}>Add Bill</Text>
+                  <Text style={[styles.addImagesText, styles.addBillText]}>
+                    Create Bill
+                  </Text>
                 </TouchableOpacity>
-                :
-                <TouchableOpacity style={styles.addImagesButton} onPress={showImagePickerOptions}>
-                  <Camera size={20} color="#4CAF50" />
-                  <Text style={styles.addImagesText}>Add Bill</Text>
-                </TouchableOpacity>
-              }
+              )}
+              <TouchableOpacity style={styles.addImagesButton} onPress={showImagePickerOptions}>
+                <Camera size={20} color="#4CAF50" />
+                <Text style={styles.addImagesText}>Add Bill</Text>
+              </TouchableOpacity>
             </View>
             {images.length > 0 && (
               <View style={styles.imagesContainer}>
@@ -459,6 +492,73 @@ export default function TransactionScreen() {
                 <Mic size={20} color="#666" />
               </TouchableOpacity>
             </View>
+            {
+              transactionType === "you_gave" && <View style={styles.toggleContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.toggleButton,
+                    paymentType === 'paid' && styles.activeToggle
+                  ]}
+                  onPress={() => setPaymentType('paid')}
+                >
+                  <Text
+                    style={[
+                      styles.toggleText,
+                      paymentType === 'paid' && styles.activeToggleText
+                    ]}
+                  >
+                    Paid
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.toggleButton,
+                    paymentType === 'credit' && styles.activeToggle
+                  ]}
+                  onPress={() => setPaymentType('credit')}
+                >
+                  <Text
+                    style={[
+                      styles.toggleText,
+                      paymentType === 'credit' && styles.activeToggleText
+                    ]}
+                  >
+                    Credit
+                  </Text>
+                </TouchableOpacity>
+              </View>}
+
+            {paymentType === 'credit' && (
+              <View style={styles.dueDateContainer}>
+                <Text style={styles.dateLabel}>Due Date</Text>
+
+                <TouchableOpacity
+                  style={styles.dateSelector}
+                  onPress={() => setShowDueDatePicker(true)}
+                >
+                  <Text style={styles.dateText}>
+                    {moment(dueDate).format('DD MMM YYYY')}
+                  </Text>
+                  <Text style={styles.dropdownArrow}>📅</Text>
+                </TouchableOpacity>
+
+                {showDueDatePicker && (
+                  <DateTimePicker
+                    value={dueDate}
+                    mode="date"
+                    display="spinner"
+                    onChange={(event, date) => {
+                      if (date) {
+                        setDueDate(date);
+                      }
+                      setShowDueDatePicker(false);
+                    }}
+                  />
+                )}
+              </View>
+            )}
+
           </>
         )
         }
@@ -467,13 +567,13 @@ export default function TransactionScreen() {
       </ScrollView>
       {amount && (
 
-      <ProgressButton
-        title="Submit"
-        loading={loading}
-        progress={uploadProgress}   // 0 → 1
-        success={success}
-        onPress={addTransaction}
-      />
+        <ProgressButton
+          title="Submit"
+          loading={loading}
+          progress={uploadProgress}   // 0 → 1
+          success={success}
+          onPress={addTransaction}
+        />
       )}
       <View style={styles.calculator}>
         <View style={styles.calculatorRow}>
@@ -528,9 +628,9 @@ export default function TransactionScreen() {
           <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('0')}>
             <Text style={styles.calcButtonText}>0</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.calcButton, styles.equalsButton]} onPress={() =>{
-           const rrr= eval(amount);
-           setAmount(rrr)
+          <TouchableOpacity style={[styles.calcButton, styles.equalsButton]} onPress={() => {
+            const rrr = eval(amount);
+            setAmount(rrr)
           }}>
             <Text style={styles.calcButtonText}>=</Text>
           </TouchableOpacity>
@@ -592,6 +692,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
+  toggleContainer: {
+    flexDirection: 'row',
+    marginVertical: 12,
+    borderRadius: 8,
+    alignSelf: 'center', width: '90%',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+  },
+
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+
+  activeToggle: {
+    backgroundColor: '#4CAF50',
+  },
+
+  toggleText: {
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+
+  activeToggleText: {
+    color: '#fff',
+  },
+
+  dueDateContainer: {
+    marginTop: 10, width: '90%', alignSelf: 'center'
+  },
+
   avatar: {
     width: 40,
     height: 40,
@@ -692,7 +826,7 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginHorizontal: 30, alignSelf: 'center',
+    alignSelf: 'center', width: '90%',
     marginBottom: 20,
   },
   addImagesButton: {
