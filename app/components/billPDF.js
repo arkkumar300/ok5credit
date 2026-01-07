@@ -1,7 +1,7 @@
 // billPDF.js
 
 import * as Print from 'expo-print';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const billPDF = async (userDetails, customerInfo, bill, items, charges, totalAmount) => {
   const currentDate = new Date().toLocaleDateString('en-IN', {
@@ -45,10 +45,12 @@ const billPDF = async (userDetails, customerInfo, bill, items, charges, totalAmo
       <style>
         body { font-family: Arial, sans-serif; padding: 20px; }
         .header { text-align: center; margin-bottom: 20px; }
+        .divider { background: #888; height: 3px; margin: 20px 0; }
+        .capitalize {text-transform: capitalize;}
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th { background: #f2f2f2; border: 1px solid #ccc; padding: 8px; }
         td { border: 1px solid #ccc; padding: 8px; }
-        .divider { background: #888; height: 3px; margin: 20px 0; }
+
       </style>
     </head>
 
@@ -56,7 +58,7 @@ const billPDF = async (userDetails, customerInfo, bill, items, charges, totalAmo
 
       <!-- BUSINESS DETAILS -->
       <div class="header">
-        <h2>${userDetails?.name}</h2>
+        <h2 class="capitalize">${userDetails?.name}</h2>
         <p>${(userDetails?.address || "").replace(/\n/g, '<br/>')}</p>
         <p>Mobile: ${userDetails?.mobile}</p>
         <p>Date: ${currentDate}</p>
@@ -66,7 +68,7 @@ const billPDF = async (userDetails, customerInfo, bill, items, charges, totalAmo
 
       <!-- CUSTOMER DETAILS -->
       <div class="header">
-        <h2>${customerInfo?.name}</h2>
+        <h2 class="capitalize">${customerInfo?.name}</h2>
         <p>${(customerInfo?.address || "").replace(/\n/g, '<br/>')}</p>
         <p>Mobile: ${customerInfo?.mobile}</p>
       </div>

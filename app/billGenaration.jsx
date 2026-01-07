@@ -96,15 +96,22 @@ export default function BillGenaration() {
         }, [Id, mode]))
 
     const normalizeItem = (item) => {
+        const tot = Number(item.price || 0) * Number(item.quantity || 0)
+        console.log("Item:::", Number(item.price || 0) ,"* ",Number(item.quantity || 0,"=",tot))
+        const gstAmount = tot * (Number(item.gstPercent || 0) / 100);
+        console.log("Item:::",gstAmount)
+
+        const cessAmount = tot * (Number(item.cessPercent || 0) / 100);
+        console.log("Item:::",cessAmount)
         return {
             itemName: item.itemName || item.name || "",   // unify name
             description: item.description || "",
             price: Number(item.price || 0),
             quantity: Number(item.quantity || 0),
             total: Number(item.total ?? (item.price * item.quantity)),
-            gstAmount: Number(item.gstAmount || 0),
+            gstAmount: gstAmount || 0,
             gstPercent: Number(item.gstPercent || 0),
-            cessAmount: Number(item.cessAmount || 0),
+            cessAmount: cessAmount || 0,
             cessPercent: Number(item.cessPercent || 0),
             barcode: item.barcode || "",
             mrp: Number(item.mrp || 0),
@@ -112,9 +119,9 @@ export default function BillGenaration() {
             unit: item.unit || "Nos",
         };
     };
-useEffect(() => {
-  console.log("ITEMS TYPE:", Array.isArray(items), items);
-}, [items]);
+    useEffect(() => {
+        console.log("ITEMS TYPE:", Array.isArray(items), items);
+    }, [items]);
 
     /* -------------------------------------------------------------------------- */
     /*                            3️⃣ LOAD EXISTING BILL                          */
@@ -134,19 +141,19 @@ useEffect(() => {
             const rawCharges = data.ExtraCharges;
 
             let normalizedCharges = [];
-            
+
             if (Array.isArray(rawCharges)) {
-              normalizedCharges = normalizeExtraCharges(rawCharges);
+                normalizedCharges = normalizeExtraCharges(rawCharges);
             } else if (typeof rawCharges === "string") {
-              try {
-                normalizedCharges = normalizeExtraCharges(JSON.parse(rawCharges));
-              } catch {
-                normalizedCharges = [];
-              }
+                try {
+                    normalizedCharges = normalizeExtraCharges(JSON.parse(rawCharges));
+                } catch {
+                    normalizedCharges = [];
+                }
             }
-            
+
             setExtraCharges(normalizedCharges);
-                        setSupplier(data.customer || data.supplier || null);
+            setSupplier(data.customer || data.supplier || null);
             normalizeItem(data);
 
             // 🔥 Normalize items
@@ -180,10 +187,10 @@ useEffect(() => {
 
     useEffect(() => {
         if (!Array.isArray(extraCharges)) {
-          setExtraCharges([]);
+            setExtraCharges([]);
         }
-      }, [extraCharges]);
-      
+    }, [extraCharges]);
+
     const fetchClientData = async () => {
         const userData = await AsyncStorage.getItem("userData");
         const userId = JSON.parse(userData).id;
@@ -252,7 +259,7 @@ useEffect(() => {
         await AsyncStorage.setItem("billType", bill_type)
         const extraChargesPreview = flattenExtraCharges(extraCharges);
         if (bill_type === "BILL") {
-            router.push({ pathname: './billPreview', params: { items: JSON.stringify(items), extraCharges: JSON.stringify(extraChargesPreview || []), totalAmount: finalTotalAmount, supplierData: JSON.stringify(supplier), bill: billID, transaction_for, mode } })
+            router.push({ pathname: './billPreview', params: { items: JSON.stringify(items), extraCharges: JSON.stringify(extraChargesPreview || []), totalAmount: finalTotalAmount, supplierData: JSON.stringify(supplier), bill: billID, transaction_for, mode, bill_prm_id: billId } })
         } else {
             router.push({ pathname: './quotePreview', params: { items: JSON.stringify(items), extraCharges: JSON.stringify(extraCharges || []), totalAmount: finalTotalAmount, supplierData: JSON.stringify(supplier), bill: billID, transaction_for } })
         }
@@ -276,7 +283,7 @@ useEffect(() => {
                         <Text style={styles.itemTitle}>{item.itemName}</Text>
                         <Text style={styles.itemDescription}>{item.description}</Text>
                         <Text style={styles.itemCalc}>
-                            {item.quantity} x (₹ {item.price} + ₹ {item.gstAmount} GST + ₹ {item.cessAmount} CESS)
+                            ({item.quantity} x ₹ {item.price}) + ₹ {item.gstAmount} GST + ₹ {item.cessAmount} CESS;
                         </Text>
                     </View>
 
@@ -312,42 +319,42 @@ useEffect(() => {
     };
     const renderChargesDetails = () =>
         Array.isArray(extraCharges)
-          ? extraCharges.map((group, groupIndex) => {
-              if (!Array.isArray(group)) return null;            let groupTotal = 0;
+            ? extraCharges.map((group, groupIndex) => {
+                if (!Array.isArray(group)) return null; let groupTotal = 0;
 
-            return (
-                <View key={groupIndex} style={styles.taxContainer}>
-                    {group.map((item, index) => {
-                        const amount = Number(item?.finalAmount || 0);
+                return (
+                    <View key={groupIndex} style={styles.taxContainer}>
+                        {group.map((item, index) => {
+                            const amount = Number(item?.finalAmount || 0);
 
-                        groupTotal += item?.type === "charge" ? amount : -amount;
+                            groupTotal += item?.type === "charge" ? amount : -amount;
 
-                        return (
-                            <Text key={index} style={styles.taxText}>
-                                {item?.type === "charge" ? "Charge" : "Discount"} ({item?.name}) : ₹ {amount.toFixed(2)}
-                            </Text>
-                        );
-                    })}
+                            return (
+                                <Text key={index} style={styles.taxText}>
+                                    {item?.type === "charge" ? "Charge" : "Discount"} ({item?.name}) : ₹ {amount.toFixed(2)}
+                                </Text>
+                            );
+                        })}
 
-                    <Text style={styles.taxTotal}>
-                        Sub Total: ₹ {groupTotal.toFixed(2)}
-                    </Text>
-                </View>
-            );
-        }):null;
+                        <Text style={styles.taxTotal}>
+                            Sub Total: ₹ {groupTotal.toFixed(2)}
+                        </Text>
+                    </View>
+                );
+            }) : null;
     // Calculate extra charges grand total
     const extraChargesTotal = Array.isArray(extraCharges)
-  ? extraCharges.reduce((acc, group) => {
-      if (!Array.isArray(group)) return acc;
+        ? extraCharges.reduce((acc, group) => {
+            if (!Array.isArray(group)) return acc;
 
-      const groupTotal = group.reduce((sum, item) => {
-        const amount = Number(item?.finalAmount || 0);
-        return item?.type === "charge" ? sum + amount : sum - amount;
-      }, 0);
+            const groupTotal = group.reduce((sum, item) => {
+                const amount = Number(item?.finalAmount || 0);
+                return item?.type === "charge" ? sum + amount : sum - amount;
+            }, 0);
 
-      return acc + groupTotal;
-    }, 0)
-  : 0;
+            return acc + groupTotal;
+        }, 0)
+        : 0;
 
     // FINAL AMOUNT (items + charges - discounts)
     const finalTotalAmount = totalAmount + extraChargesTotal;
@@ -386,7 +393,6 @@ useEffect(() => {
                     {supplier ?
                         <>
                             <Text style={{ fontWeight: '200', fontSize: 14 }}>{bill_type === "BILL" ? "Bill" : "Quote"} to {`\n`}<Text style={styles.userName}>{supplier.name}</Text></Text>
-
                         </>
                         :
                         <>
@@ -493,6 +499,7 @@ useEffect(() => {
                 <ItemForm
                     setItem={setIsAdditem}
                     setNewItem={(newItem) => {
+                        console.log("item::",newItem)
                         setItems(prev =>
                             Array.isArray(prev)
                                 ? [...prev, newItem]
@@ -509,12 +516,12 @@ useEffect(() => {
                     totalAmount={totalAmount}
                     setNewItem={(item) =>
                         setExtraCharges(prev =>
-                          Array.isArray(prev)
-                            ? [...prev, Array.isArray(item) ? item : [item]]
-                            : [Array.isArray(item) ? item : [item]]
+                            Array.isArray(prev)
+                                ? [...prev, Array.isArray(item) ? item : [item]]
+                                : [Array.isArray(item) ? item : [item]]
                         )
-                      }
-                                      />
+                    }
+                />
             </Modal>
             <Modal
                 animationType="slide"

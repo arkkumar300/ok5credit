@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function UserInfo() {
   const [userData, setUserData] = useState(null);
   const [nameInput, setNameInput] = useState('');
+  const [businessNameInput, setBusinessNameInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
@@ -41,7 +42,7 @@ export default function UserInfo() {
 
     try {
       setSubmitting(true);
-      const response = await ApiService.put(`user/${USER_ID}`, { name: nameInput.trim() });
+      const response = await ApiService.put(`user/${USER_ID}`, { name: nameInput.trim(),businessName:businessNameInput });
 
       // Update local state without refetching
       setUserData(prev => ({ ...prev, name: response.data.name }));
@@ -122,7 +123,19 @@ export default function UserInfo() {
           label="Enter your name"
           mode="outlined"
           value={nameInput}
+          placeholder='Name'
+          placeholderTextColor={'#aaaaaa'}
           onChangeText={setNameInput}
+          left={<TextInput.Icon icon={() => <User size={20} />} />}
+          style={{ marginBottom: 16 }}
+        />
+        <TextInput
+          label="Enter Your  Business Name"
+          mode="outlined"
+          placeholder='Business Name'
+          value={businessNameInput}
+          placeholderTextColor={'#aaaaaa'}
+          onChangeText={setBusinessNameInput}
           left={<TextInput.Icon icon={() => <User size={20} />} />}
           style={{ marginBottom: 16 }}
         />

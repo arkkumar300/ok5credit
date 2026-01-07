@@ -1,32 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
-import {
-  Text,
-  TextInput,
-  Button,
-  Appbar,
-  Divider
-} from 'react-native-paper';
+import { Text, TextInput, Button, Appbar, Divider } from 'react-native-paper';
 import DropDownPicker from 'react-native-dropdown-picker';
-import {
-  ArrowLeft,
-  File,
-  Barcode,
-  IndianRupee,
-  PercentCircle
-} from 'lucide-react-native';
+import { ArrowLeft, File, Barcode, IndianRupee, PercentCircle } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import ApiService from './components/ApiServices';
 
-export default function ItemForm() {
+export default function AddEditItem() {
   const { item } = useLocalSearchParams();
   const [selectedItem, setSelectedItem] = useState(null);
 
   useEffect(() => {
     if (item) {
       try {
-        const parsed = JSON.parse(decodeURIComponent(item)); // ✅ correct order
-        setSelectedItem(parsed);
+        const parsedItem = JSON.parse(decodeURIComponent(item));
+
+        setSelectedItem(parsedItem);
+
+        setId(parsedItem.id || '');
+
+        setItemName(parsedItem.itemName || '');
+        setQuantity(String(parsedItem.quantity ?? ''));
+        setPrice(String(parsedItem.price ?? ''));
+        setMrp(String(parsedItem.mrp ?? ''));
+        setBarcode(parsedItem.barcode || '');
+        setDescription(parsedItem.description || '');
+        setCess(String(parsedItem.cess ?? ''));
+
+        setUnitValue(parsedItem.unitValue || 'Nos');
+        setGstValue(String(parsedItem.gstValue ?? '0.25'));
+        setRateTypeValue(parsedItem.rateType || 'inclusive');
+
       } catch (e) {
         console.error('Invalid item param:', e);
       }
@@ -35,9 +39,9 @@ export default function ItemForm() {
 
   const [id, setId] = useState('');
   const [itemName, setItemName] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [price, setPrice] = useState('');
-  const [mrp, setMrp] = useState('');
+  const [quantity, setQuantity] = useState("");
+  const [price, setPrice] = useState("");
+  const [mrp, setMrp] = useState("");
   const [barcode, setBarcode] = useState('');
   const [description, setDescription] = useState('');
   const [cess, setCess] = useState('');
@@ -82,48 +86,49 @@ export default function ItemForm() {
 
   const router = useRouter();
 
-  useEffect(() => {
-    if (item) {
-      try {
-        const parsedItem = JSON.parse(decodeURIComponent(item));
-        console.log("rrr ::",parsedItem.quantity)
-        setSelectedItem(parsedItem);
-        setItemName(parsedItem.itemName || '');
-        setId(parsedItem.id || '');
-        setQuantity(parsedItem.quantity || '');
-        setPrice(parsedItem.price || '');
-        setMrp(parsedItem.mrp || '');
-        setBarcode(parsedItem.barcode || '');
-        setDescription(parsedItem.description || '');
-        setCess(parsedItem.cess || '');
-        setUnitValue(parsedItem.unitValue || 'Nos');
-        setGstValue(parsedItem.gstValue || '0.25');
-        setRateTypeValue(parsedItem.rateType || 'inclusive');
-      } catch (e) {
-        console.error('Invalid item param:', e);
-      }
-    }
-  }, [item]);
+  // useEffect(() => {
+  //   console.log("item::", item)
+  //   if (item) {
+  //     try {
+  //       const parsedItem = JSON.parse(decodeURIComponent(item));
+
+  //       setSelectedItem(parsedItem);
+  //       setItemName(parsedItem.itemName || '');
+  //       setId(parsedItem.id || '');
+  //       setQuantity(parsedItem.quantity || '');
+  //       setPrice(parsedItem.price || '');
+  //       setMrp(parsedItem.mrp || '');
+  //       setBarcode(parsedItem.barcode || '');
+  //       setDescription(parsedItem.description || '');
+  //       setCess(parsedItem.cess || '');
+  //       setUnitValue(parsedItem.unitValue || 'Nos');
+  //       setGstValue(parsedItem.gstValue || '0.25');
+  //       setRateTypeValue(parsedItem.rateType || 'inclusive');
+  //     } catch (e) {
+  //       console.error('Invalid item param:', e);
+  //     }
+  //   }
+  // }, [item]);
 
   const handleSave = async () => {
     const newItem = {
       itemName,
-      quantity,
-      price,
-      mrp,
+      quantity: Number(quantity),
+      price: Number(price),
+      gstValue: Number(gstValue),
+      mrp: Number(mrp),
       barcode,
       description,
       cess,
       unitValue,
-      gstValue,
       rateType: rateTypeValue,
     };
-let response=null;
+    let response = null;
     try {
       if (id) {
-         response = await ApiService.put(`/item/${id}`, newItem);
+        response = await ApiService.put(`/item/${id}`, newItem);
       } else {
-         response = await ApiService.post('/item', newItem);
+        response = await ApiService.post('/item', newItem);
       }
 
 
@@ -132,9 +137,9 @@ let response=null;
       }
 
       if (response.data) {
-        
+
         const data = await response.data;
-        console.log("data ::",data)
+        console.log("data ::", data)
         router.push('./items')
       }
 
@@ -154,6 +159,8 @@ let response=null;
       <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
         <TextInput
           label="Item Name"
+          placeholder='name'
+          placeholderTextColor={"#aaaaaa"}
           value={itemName}
           onChangeText={setItemName}
           left={<TextInput.Icon icon={() => <File size={18} />} />}
@@ -164,6 +171,8 @@ let response=null;
         <View style={styles.row}>
           <TextInput
             label="Quantity"
+            placeholder='Quantity'
+            placeholderTextColor={"#aaaaaa"}
             value={quantity}
             onChangeText={setQuantity}
             keyboardType="numeric"
@@ -188,6 +197,8 @@ let response=null;
         <View style={styles.row}>
           <TextInput
             label="Rate"
+            placeholder='Rate'
+            placeholderTextColor={"#aaaaaa"}
             value={price}
             onChangeText={setPrice}
             keyboardType="numeric"
@@ -197,6 +208,8 @@ let response=null;
           />
           <TextInput
             label="MRP"
+            placeholder='MRP'
+            placeholderTextColor={"#aaaaaa"}
             value={mrp}
             onChangeText={setMrp}
             keyboardType="numeric"
@@ -221,6 +234,8 @@ let response=null;
           </View>
           <TextInput
             label="CESS %"
+            placeholder='CESS %'
+            placeholderTextColor={"#aaaaaa"}
             value={cess}
             onChangeText={setCess}
             keyboardType="numeric"
@@ -246,6 +261,8 @@ let response=null;
 
         <TextInput
           label="Barcode"
+          placeholder='Barcode %'
+          placeholderTextColor={"#aaaaaa"}
           value={barcode}
           onChangeText={setBarcode}
           keyboardType="numeric"
@@ -256,6 +273,8 @@ let response=null;
 
         <TextInput
           label="Description"
+          placeholder='Description'
+          placeholderTextColor={"#aaaaaa"}
           value={description}
           onChangeText={setDescription}
           left={<TextInput.Icon icon={() => <File size={18} />} />}
@@ -287,7 +306,7 @@ let response=null;
 
 const styles = StyleSheet.create({
   container: { padding: 16, backgroundColor: '#fff' },
-  input: { marginBottom: 16 },
+  input: { marginBottom: 16, color: '#333333' },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -89,6 +89,7 @@ export default function ExtraChargesForm({ setItem, setNewItem, totalAmount }) {
             <TextInput
                 placeholder={item.type === "charge" ? "Charge Name" : "Discount Name"}
                 style={styles.input}
+                placeholderTextColor={"#aaaaaa"}
                 value={item.name}
                 onChangeText={(v) => updateItem(index, "name", v)}
             />
@@ -125,6 +126,7 @@ export default function ExtraChargesForm({ setItem, setNewItem, totalAmount }) {
                             ? "Enter % value"
                             : "Enter discount amount"
                 }
+                placeholderTextColor={"#aaaaaa"}
                 style={styles.input}
                 keyboardType="numeric"
                 value={item.value}
@@ -225,6 +227,7 @@ const styles = StyleSheet.create({
         padding: 10,
         borderRadius: 8,
         marginTop: 8,
+        color:"#333333"
     },
 
     innerToggleRow: {

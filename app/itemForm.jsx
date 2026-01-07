@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Dimensions, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, Button, Divider } from 'react-native-paper';
-import { File, Barcode, IndianRupee, PercentCircle } from 'lucide-react-native';
+import { File, Barcode, IndianRupee, PercentCircle, X } from 'lucide-react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 
 export default function ItemForm({ setItem, setNewItem }) {
@@ -59,10 +59,9 @@ export default function ItemForm({ setItem, setNewItem }) {
   let netPrice = 0; // price without tax
 
   if (taxType === 'inclusive') {
-    const divisor = 100 + gstPercent + cessPercent;
-    gstAmount = (amount * gstPercent) / divisor;
-    cessAmount = (amount * cessPercent) / divisor;
-    netPrice = amount - (gstAmount + cessAmount);
+    gstAmount = 0;
+    cessAmount = 0;
+    netPrice = amount;
     total = amount;
   } else {
     gstAmount = (amount * gstPercent) / 100;
@@ -93,178 +92,188 @@ export default function ItemForm({ setItem, setNewItem }) {
 
   return (
     <KeyboardAvoidingView
-    behavior={Platform.OS === "ios" ? "padding" : "height"}
-    keyboardVerticalOffset={80} // adjust as needed
-  >
-
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 120 }}>
-      {/* Item Name */}
-      <TextInput
-        label="Item Name"
-        value={itemName}
-        onChangeText={setItemName}
-        left={<TextInput.Icon icon={() => <File size={18} />} />}
-        mode="outlined"
-        style={styles.input}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={80} // adjust as needed
+    >
+      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 120 }}>
+      <X
+        color="red"
+        size={24}
+        style={{marginBottom:8,
+          alignSelf:'flex-end'
+        }}
+        onPress={() =>  {console.log("rrr")
+          setItem(false)}}
       />
+        {/* Item Name */}
+        <TextInput
+          label="Item Name"
+          value={itemName}
+          onChangeText={setItemName}
+          left={<TextInput.Icon icon={() => <File size={18} />} />}
+          mode="outlined"
+          style={styles.input}
+        />
 
-      {showForm && (
-        <>
-          {/* Quantity & Unit */}
-          <View style={styles.row}>
-            <TextInput
-              label="Quantity"
-              value={quantity}
-              onChangeText={setQuantity}
-              keyboardType="numeric"
-              mode="outlined"
-              style={[styles.input, { flex: 1 }]}
-            />
-            <View style={{ flex: 1, zIndex: 9999,elevation: 10,}}>
+        {showForm && (
+          <>
 
-              <DropDownPicker
-                open={unitOpen}
-                value={unit}
-                items={unitItems}
-                setOpen={setUnitOpen}
-                setValue={setUnit}
-                setItems={setUnitItems}
+
+            {/* Quantity & Unit */}
+            <View style={styles.row}>
+              <TextInput
+                label="Quantity"
+                value={quantity}
+                onChangeText={setQuantity}
+                keyboardType="numeric"
+                mode="outlined"
+                style={[styles.input, { flex: 1 }]}
+              />
+              <View style={{ flex: 1, zIndex: 9999, elevation: 10, }}>
+
+                <DropDownPicker
+                  open={unitOpen}
+                  value={unit}
+                  items={unitItems}
+                  setOpen={setUnitOpen}
+                  setValue={setUnit}
+                  setItems={setUnitItems}
+                  style={[styles.input, { flex: 1, marginLeft: 10 }]}
+                  placeholder="Select Unit"
+                  listMode="SCROLLVIEW"
+                />
+              </View>
+            </View>
+
+            {/* Rate & MRP */}
+            <View style={styles.row}>
+              <TextInput
+                label="Rate"
+                value={price}
+                onChangeText={setPrice}
+                keyboardType="numeric"
+                left={<TextInput.Icon icon={() => <IndianRupee size={18} />} />}
+                mode="outlined"
+                style={[styles.input, { flex: 1 }]}
+              />
+              <TextInput
+                label="MRP"
+                value={mrp}
+                onChangeText={setMrp}
+                keyboardType="numeric"
+                mode="outlined"
                 style={[styles.input, { flex: 1, marginLeft: 10 }]}
-                placeholder="Select Unit"
-                listMode="SCROLLVIEW"
               />
             </View>
-          </View>
+            <Text style={{ color: '#00B050', fontWeight: 'bold', marginVertical: 8 }} onPress={() => {
+              setIsAddMore(!isAddMore)
+            }}>
+              {isAddMore ? "Hide Advanced Settings" : "Show Advanced Settings"}</Text>
+            {isAddMore && (
+              <>
 
-          {/* Rate & MRP */}
-          <View style={styles.row}>
-            <TextInput
-              label="Rate"
-              value={price}
-              onChangeText={setPrice}
-              keyboardType="numeric"
-              left={<TextInput.Icon icon={() => <IndianRupee size={18} />} />}
-              mode="outlined"
-              style={[styles.input, { flex: 1 }]}
-            />
-            <TextInput
-              label="MRP"
-              value={mrp}
-              onChangeText={setMrp}
-              keyboardType="numeric"
-              mode="outlined"
-              style={[styles.input, { flex: 1, marginLeft: 10 }]}
-            />
-          </View>
-          <Text style={{ color: '#00B050', fontWeight: 'bold', marginVertical: 8 }} onPress={() => {
-            setIsAddMore(!isAddMore)
-          }}>
-            {isAddMore ? "Hide Advanced Settings" : "Show Advanced Settings"}</Text>
-          {isAddMore && (
-            <>
+                {/* Barcode */}
+                <TextInput
+                  label="Barcode"
+                  value={barcode}
+                  onChangeText={setBarcode}
+                  keyboardType="numeric"
+                  left={<TextInput.Icon icon={() => <Barcode size={18} />} />}
+                  mode="outlined"
+                  style={styles.input}
+                />
 
-              {/* Barcode */}
-              <TextInput
-                label="Barcode"
-                value={barcode}
-                onChangeText={setBarcode}
-                keyboardType="numeric"
-                left={<TextInput.Icon icon={() => <Barcode size={18} />} />}
-                mode="outlined"
-                style={styles.input}
-              />
+                {/* Tax Toggle */}
+                <View style={styles.row}>
+                  <Button
+                    mode={taxType === 'inclusive' ? 'contained' : 'outlined'}
+                    onPress={() => setTaxType('inclusive')}
+                    style={{ flex: 1 }}
+                  >
+                    Inclusive
+                  </Button>
 
-              {/* Tax Toggle */}
-              <View style={styles.row}>
-                <Button
-                  mode={taxType === 'inclusive' ? 'contained' : 'outlined'}
-                  onPress={() => setTaxType('inclusive')}
-                  style={{ flex: 1 }}
-                >
-                  Inclusive
-                </Button>
+                  <Button
+                    mode={taxType === 'exclusive' ? 'contained' : 'outlined'}
+                    onPress={() => setTaxType('exclusive')}
+                    style={{ flex: 1, marginLeft: 10 }}
+                  >
+                    Exclusive
+                  </Button>
+                </View>
 
-                <Button
-                  mode={taxType === 'exclusive' ? 'contained' : 'outlined'}
-                  onPress={() => setTaxType('exclusive')}
-                  style={{ flex: 1, marginLeft: 10 }}
-                >
-                  Exclusive
-                </Button>
-              </View>
+                {/* GST & CESS */}
+                <View style={styles.row}>
+                  <View style={{ flex: 1, zIndex: 9999, elevation: 10, }}>
+                    <DropDownPicker
+                      open={gstOpen}
+                      value={gst}
+                      items={gstItems}
+                      setOpen={setGstOpen}
+                      setValue={setGst}
+                      setItems={setGstItems}
+                      style={styles.dropdown}
+                      placeholder="GST"
+                      listMode="SCROLLVIEW"
+                    />
+                  </View>
 
-              {/* GST & CESS */}
-              <View style={styles.row}>
-                <View style={{ flex: 1, zIndex: 9999,elevation: 10, }}>
-                  <DropDownPicker
-                    open={gstOpen}
-                    value={gst}
-                    items={gstItems}
-                    setOpen={setGstOpen}
-                    setValue={setGst}
-                    setItems={setGstItems}
-                    style={styles.dropdown}
-                    placeholder="GST"
-                    listMode="SCROLLVIEW"
+                  <TextInput
+                    label="CESS %"
+                    value={cess}
+                    onChangeText={setCess}
+                    keyboardType="numeric"
+                    left={<TextInput.Icon icon={() => <PercentCircle size={18} />} />}
+                    mode="outlined"
+                    style={[styles.input, { flex: 1, marginLeft: 10 }]}
                   />
                 </View>
 
+                {/* Description */}
                 <TextInput
-                  label="CESS %"
-                  value={cess}
-                  onChangeText={setCess}
-                  keyboardType="numeric"
-                  left={<TextInput.Icon icon={() => <PercentCircle size={18} />} />}
+                  label="Description"
+                  value={description}
+                  onChangeText={setDescription}
+                  left={<TextInput.Icon icon={() => <File size={18} />} />}
                   mode="outlined"
-                  style={[styles.input, { flex: 1, marginLeft: 10 }]}
+                  style={styles.input}
                 />
-              </View>
 
-              {/* Description */}
-              <TextInput
-                label="Description"
-                value={description}
-                onChangeText={setDescription}
-                left={<TextInput.Icon icon={() => <File size={18} />} />}
-                mode="outlined"
-                style={styles.input}
-              />
+              </>
+            )}
 
-            </>
-          )}
+            <Divider style={{ marginVertical: 16 }} />
 
-          <Divider style={{ marginVertical: 16 }} />
-
-          {/* Calculations */}
-          <View style={styles.totalBox}>
-            <Text>Total: ₹ {total.toFixed(2)}</Text>
-            <Text>Net Price: ₹ {netPrice.toFixed(2)}</Text>
-            <Text>GST: ₹ {gstAmount.toFixed(2)}</Text>
-            <Text>CESS: ₹ {cessAmount.toFixed(2)}</Text>
-            <Text>
-              {qty} x ₹ {basePrice.toFixed(2)} = ₹ {total.toFixed(2)}
-            </Text>
-          </View>
+            {/* Calculations */}
+            <View style={styles.totalBox}>
+              <Text>Total: ₹ {total.toFixed(2)}</Text>
+              <Text>Net Price: ₹ {netPrice.toFixed(2)}</Text>
+              <Text>GST: ₹ {gstAmount.toFixed(2)}</Text>
+              <Text>CESS: ₹ {cessAmount.toFixed(2)}</Text>
+              <Text>
+                {qty} x ₹ {basePrice.toFixed(2)} = ₹ {total.toFixed(2)}
+              </Text>
+            </View>
 
 
-          {/* Buttons */}
-          <View style={[styles.row, { marginBottom: 100 }]}>
-            <Button mode="outlined" onPress={() => setItem(false)} style={{ flex: 1, marginRight: 10 }}>
-              Close
-            </Button>
-            <Button mode="contained" onPress={handleSave} style={{ flex: 1 }}>
-              Done
-            </Button>
-          </View>
-        </>
-      )}
-    </ScrollView>
-  </KeyboardAvoidingView>
+            {/* Buttons */}
+            <View style={[styles.row, { marginBottom: 100 }]}>
+              <Button mode="outlined" onPress={() => setItem(false)} style={{ flex: 1, marginRight: 10 }}>
+                Close
+              </Button>
+              <Button mode="contained" onPress={handleSave} style={{ flex: 1 }}>
+                Done
+              </Button>
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, backgroundColor: '#fff', height: Dimensions.get('screen').height,paddingVertical: 60 },
+  container: { padding: 16, backgroundColor: '#fff', height: Dimensions.get('screen').height, paddingVertical: 60 },
   input: { marginBottom: 10 },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   totalBox: { padding: 10, backgroundColor: '#f5f5f5', borderRadius: 8, marginBottom: 10 },

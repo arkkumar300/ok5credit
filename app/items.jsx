@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {View,Text,FlatList,StyleSheet,TouchableOpacity,Modal,Alert} from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Modal, Alert } from 'react-native';
 import { Appbar, FAB } from 'react-native-paper';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Delete, Eye, Pencil, Plus, Trash2 } from 'lucide-react-native';
@@ -38,6 +38,25 @@ export default function Items() {
         setModalVisible(false);
     };
 
+    const deleteItem = async (id) => {
+        console.log("delete item id",id)
+        try {
+         const response= await ApiService.delete(`/item/${id}`);
+          if (response?.data?.success === false) {
+            throw new Error(response.data.message || "Delete failed");
+          }
+      
+          console.log("Item deleted successfully:", response.data);
+                
+        } catch (err) {
+          console.error("Error deleting item:", err.message);
+          throw err;
+        }finally{
+            fetchItems()
+            setModalVisible(false)
+        }
+      };
+      
     const handleDelete = (id) => {
         Alert.alert('Confirm Delete', 'Are you sure you want to delete this item?', [
             { text: 'Cancel', style: 'cancel' },
@@ -45,11 +64,13 @@ export default function Items() {
                 text: 'Delete',
                 style: 'destructive',
                 onPress: () => {
-                    setItems((prev) => prev.filter((item) => item.id !== id));
+                    deleteItem(id)
                 },
             },
         ]);
     };
+
+
 
     const fetchItems = async () => {
         try {
@@ -173,7 +194,7 @@ export default function Items() {
                                         <Pencil size={20} color="#1e88e5" />
                                     </TouchableOpacity>
                                     <TouchableOpacity
-                                        onPress={handleDelete}
+                                        onPress={()=>handleDelete(selectedItem.id)}
                                         style={styles.iconButton}
                                     >
                                         <Delete size={20} color="#1e88e5" />

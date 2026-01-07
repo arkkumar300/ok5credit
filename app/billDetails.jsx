@@ -27,12 +27,12 @@ export default function BillDetails() {
 
   const quoteRef = useRef();
   const router = useRouter();
-  const { billId, supplierInfo, bill,transaction_for } = useLocalSearchParams();
+  const { billId, supplierInfo, bill, transaction_for } = useLocalSearchParams();
 
   // ---------- Parse supplier data ----------
   useEffect(() => {
     if (supplierInfo) {
-      console.log("supplierInfo::",supplierInfo)
+      console.log("supplierInfo::", supplierInfo)
       try {
         const parsedData = JSON.parse(decodeURIComponent(supplierInfo));
         setSupplierData(parsedData);
@@ -76,43 +76,43 @@ export default function BillDetails() {
     const fetchBills = async () => {
       const userData = await AsyncStorage.getItem("userData");
       setUserDetails(JSON.parse(userData));
-    
+
       try {
         setLoading(true);
-    
+
         const response = await ApiService.get(`/bill/${billId}`);
         const result = response.data;
-    
+
         // Parse items and charges safely
         const parsedItems = Array.isArray(result.items) ? result.items : JSON.parse(result.items);
         const parsedCharges = Array.isArray(result.ExtraCharges) ? result.ExtraCharges : JSON.parse(result.ExtraCharges);
-    
+
         setItems(parsedItems);
         setExtraCharges(parsedCharges);
         setbillDetails(result);
-    
+
         // 🔥 Compute totals NOW using parsed arrays
         const totalItemAmount =
           parsedItems.reduce((sum, i) => sum + Number(i.price || 0) * Number(i.quantity || 0), 0);
-    
+
         const totalExtra =
           parsedCharges.reduce((sum, c) => sum + Number(c.finalAmount || 0), 0);
-    
+
         const taxable = Number(result.amount) - (totalItemAmount + totalExtra);
-    
+
         // Update states with computed values
         setItemsAmount(totalItemAmount);
         setChargesAmount(totalExtra);
         setTaxableAmount(taxable);
         setTotalPrice(result.amount);
-    
+
       } catch (err) {
         console.error("Error fetching bill:", err);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchBills();
   }, []);
 
@@ -124,9 +124,9 @@ export default function BillDetails() {
           color={'#2E7D32'}
           style={{ marginStart: 10 }}
           onPress={() => {
-              router.push({
-                pathname: './bills',
-              })
+            router.push({
+              pathname: './bills',
+            })
           }
           }
         />
@@ -212,6 +212,37 @@ export default function BillDetails() {
             <Text style={styles.downloadText}>Download</Text>
           </TouchableOpacity>
         </View>
+        <TouchableOpacity
+          style={[styles.downloadBtn, { alignSelf: 'center' }]}
+          onPress={() => {
+            console.log("rrr:::",supplierInfo)
+            const personInfo=JSON.parse(supplierInfo)
+            if (transaction_for === "customer") {
+
+              router.navigate({
+                pathname: '/customerDetails',
+                params: {
+                  personName: personInfo.name,
+                  personType: "customer",
+                  personId: personInfo.id,
+                },
+              });
+            } else {
+
+              router.navigate({
+                pathname: '/supplierDetails',
+                params: {
+                  personName: personInfo.name,
+                  personType: "supplier",
+                  personId: personInfo.id,
+                },
+              });
+            }
+          }}
+        >
+          <Download size={18} color="#000" />
+          <Text style={styles.downloadText}>Done</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -225,7 +256,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     elevation: 2,
   },
-  heading: { textAlign: 'center', fontSize: 18, fontWeight: 'bold',textTransform:'capitalize' },
+  heading: { textAlign: 'center', fontSize: 18, fontWeight: 'bold', textTransform: 'capitalize' },
   address: { textAlign: 'center', fontSize: 12, marginTop: 4 },
   mobile: { textAlign: 'center', marginVertical: 6, fontWeight: 'bold' },
   row: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },

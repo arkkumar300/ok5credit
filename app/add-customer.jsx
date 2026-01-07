@@ -83,7 +83,7 @@ export default function AddCustomerScreen() {
 
   const openContacts = async () => {
     const { status } = await Contacts.requestPermissionsAsync();
-console.log("rrr:::",status)
+
     if (status === 'granted') {
       const { data } = await Contacts.getContactsAsync({
         fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Image],
@@ -125,6 +125,7 @@ console.log("rrr:::",status)
               value={name}
               onChangeText={setName}
               placeholder="Enter customer name"
+              placeholderTextColor={"#aaaaaa"}
               autoFocus={true}
             />
           </View>
@@ -140,6 +141,7 @@ console.log("rrr:::",status)
               maxLength={10}
               onChangeText={(text) => setMobile(cleanMobileNumber(text))}
               placeholder="Enter mobile number"
+              placeholderTextColor={"#aaaaaa"}
               keyboardType="numeric"
             />
           </View>
@@ -269,6 +271,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: 40,
+    color:"#333333"
   },
   confirmButton: {
     marginHorizontal: 20,

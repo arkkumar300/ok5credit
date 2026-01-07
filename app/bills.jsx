@@ -172,6 +172,7 @@ export default function Bills() {
                             <TextInput
                                 placeholder="Search..."
                                 value={searchText}
+                                placeholderTextColor={"#aaaaaa"}
                                 onChangeText={setSearchText}
                                 style={styles.searchInput}
                                 autoFocus
@@ -300,6 +301,7 @@ const styles = StyleSheet.create({
     searchInput: {
         backgroundColor: 'white',
         flex: 1,
+        color:"#333333",
         paddingHorizontal: 10,
         marginRight: 10,
         borderRadius: 5,

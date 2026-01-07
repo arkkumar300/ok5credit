@@ -64,29 +64,30 @@ export default function CustomerDetails() {
   );
   const [showPicker, setShowPicker] = useState(false);
 
+  const fetchCustomer = async () => {
+    const userData = await AsyncStorage.getItem("userData");
+    const userId = JSON.parse(userData).id;
+    try {
+      const response = await ApiService.post(`/customers/${personId}`, { userId });
+      const data = response.data;
+
+      setCustomer(data.customer);
+      const customerPhone = data.customer.mobile;
+      const customerDueDate = data.customer.due_date;
+      const customer_id = data.customer.id;
+
+      fetchCustomerDueDate(customer_id);
+      setCustomerMobile(customerPhone);
+      setTransactions(data.transactions);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchCustomer = async () => {
-      const userData = await AsyncStorage.getItem("userData");
-      const userId = JSON.parse(userData).id;
-      try {
-        const response = await ApiService.post(`/customers/${personId}`, { userId });
-        const data = response.data;
-
-        setCustomer(data.customer);
-        const customerPhone = data.customer.mobile;
-        const customerDueDate = data.customer.due_date;
-        const customer_id = data.customer.id;
-
-        fetchCustomerDueDate(customer_id);
-        setCustomerMobile(customerPhone);
-        setTransactions(data.transactions);
-      } catch (err) {
-        console.error(err);
-        setError('Failed to load data');
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchCustomer();
   }, []);
 
@@ -94,9 +95,8 @@ export default function CustomerDetails() {
     const userData = await AsyncStorage.getItem("userData");
     const userId = JSON.parse(userData).id;
     try {
-      const response = await ApiService.post(`/customers/upcoming/DueDate`, {customer_id, user_id:userId });
+      const response = await ApiService.post(`/customers/upcoming/DueDate`, { customer_id, user_id: userId });
       const data = response.data;
-
       setDueDate(data.upcoming_due_date);
     } catch (err) {
       console.error(err);
@@ -170,6 +170,9 @@ export default function CustomerDetails() {
       // -----------------------
       // 📌 Build Base Payload
       // -----------------------
+
+      const formattedDueDate = undefined;
+      // Add image fields only if available
       const payload = {
         customer_id: customer.id,
         userId,
@@ -177,7 +180,11 @@ export default function CustomerDetails() {
         transaction_for: "customer",
         amount: Number(discountAmount),
         description: discountNote,
+        paidAmount: Number(discountAmount),
+        remainingAmount: Number(discountAmount),
         transaction_date: date,
+        due_date: formattedDueDate,
+        paymentType: 'paid',
       };
       console.log("payload:::", payload)
 
@@ -210,6 +217,8 @@ export default function CustomerDetails() {
       console.error("Error:", error);
       setLoading(false);
       Alert.alert("Error", "Failed to add transaction");
+    } finally {
+      await fetchCustomer();
     }
   };
 
@@ -226,7 +235,7 @@ export default function CustomerDetails() {
       const response = await ApiService.put(
         `transactions/updateTransactions/DueDate`,
         dueDatePayload
-      ); 
+      );
 
       if (response.status === 200) {
         Alert.alert("DueDate updated successfully")
@@ -240,8 +249,8 @@ export default function CustomerDetails() {
   }
 
   const renderItem = ({ item }) => {
-    const isReceived = item.transaction_type === "you_got";
-
+    const isReceived = item.transaction_type === "you_got" || item.transaction_type === "you_discount";
+    console.log("items::::", item)
     // ⬇️ Compute rrr balance
     if (isReceived) {
       rrr = Number(rrr) + Number(item.amount);
@@ -372,13 +381,13 @@ export default function CustomerDetails() {
 
                     return (
                       <View>
+                        <Image
+                          source={{ uri:url }}
+                          style={{width:80,height:80,borderRadius:3 }}
+                          resizeMode="contain"
+                        />
 
                       </View>
-                      // <Image
-                      //   source={{ uri: url }}
-                      //   style={{ width: 100, height: 100 }}
-                      //   resizeMode="cover"
-                      // />
                     );
                   })()}
 
@@ -420,7 +429,7 @@ export default function CustomerDetails() {
               <Image
                 source={require('../assets/images/DataCaution.png')}
                 style={styles.image}
-                resizeMode="contain" blurRadius={5}
+                resizeMode="contain"
               />
               <Text style={styles.emptyText}>customer transactions data is pravite and secure</Text>
             </View>
@@ -671,6 +680,7 @@ export default function CustomerDetails() {
 
             <TextInput
               placeholder="Enter discount amount"
+              placeholderTextColor={"#aaaaaa"}
               keyboardType="numeric"
               value={discountAmount}
               onChangeText={setDiscountAmount}
@@ -679,6 +689,7 @@ export default function CustomerDetails() {
 
             <TextInput
               placeholder="Note (optional)"
+              placeholderTextColor={"#aaaaaa"}
               value={discountNote}
               onChangeText={setDiscountNote}
               style={[styles.input, { height: 80 }]}
@@ -853,13 +864,13 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   image: {
-    width: '95%', justifyContent: 'center',
-    height: 200, top: -100, alignSelf: 'center'
+    width: '90%', justifyContent: 'center',
+    height: 150, alignSelf: 'center'
   },
   emptyText: {
     fontSize: 14, fontWeight: '700',
-    color: '#666', top: -50,
-    textAlign: 'center', marginBottom: 50
+    color: '#666',
+    textAlign: 'center'
   },
   actionButton: {
     alignItems: 'center',

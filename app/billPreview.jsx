@@ -1,14 +1,6 @@
 // App.js
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  SafeAreaView,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Alert } from 'react-native';
 import { Appbar, Divider, RadioButton } from 'react-native-paper';
 import { ArrowLeft, Circle, DotSquare, Download, FileText, Square } from 'lucide-react-native';
 import { captureRef } from 'react-native-view-shot';
@@ -22,7 +14,7 @@ import billPDF from './components/billPDF';
 import ApiService from './components/ApiServices';
 import ProgressButton from './components/ProgressButton';
 import { sendTransaction } from '../hooks/sendSMS';
-
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function BillPreview() {
   const [format, setFormat] = useState('unpaid');
@@ -31,9 +23,12 @@ export default function BillPreview() {
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [success, setSuccess] = useState(false);
+  const [dueDate, setDueDate] = useState(new Date());
+  const [showDueDatePicker, setShowDueDatePicker] = useState(false);
 
   const router = useRouter();
-  const { items=[], totalAmount=0, bill="", mode="", extraCharges=[], supplierData="", transaction_for="",bill_prm_id="" } = useLocalSearchParams();
+  const { items = [], totalAmount = 0, bill = "", mode = "", extraCharges = [], supplierData = "", transaction_for = "", bill_prm_id = "" } = useLocalSearchParams();
+
   const parsedItems = items ? JSON.parse(items) : [];
   const parsedExtraCharges = extraCharges ? JSON.parse(extraCharges) : [];
   useEffect(() => {
@@ -75,11 +70,13 @@ export default function BillPreview() {
       if (mode === "add") {
         /** STEP 3 → Save bill */
         const savedBill = await saveBillToServer(uploadedPath);
-          await addTransaction(savedBill);
+        await addTransaction(savedBill);
       } else {
         /** STEP 3 → Update bill */
         const updateBill = await updateBillToServer(uploadedPath);
         await sendTransaction(supplierInfo?.mobile, supplierInfo?.name, totalAmount, userDetails.name, uploadedPath);
+        
+    
       }
       /** 🎉 ALL SUCCESS */
       setSuccess(true);
@@ -108,6 +105,7 @@ export default function BillPreview() {
       items: parsedItems.map(it => ({
         name: it.itemName ?? it.name,
         quantity: Number(it.quantity),
+        total: Number(it.total),
         price: Number(it.price),
         cessAmount: Number(it.cessAmount),
         cessPercent: Number(it.cessPercent),
@@ -135,23 +133,28 @@ export default function BillPreview() {
     const userData = await AsyncStorage.getItem("userData");
     const userId = JSON.parse(userData)?.id;
     const userName = JSON.parse(userData)?.name;
+    const formattedDueDate = format === 'unpaid'
+      ? moment(dueDate).format('YYYY-MM-DD')
+      : undefined;
 
     const payload = {
       userId,
       transaction_type: "you_gave",
       transaction_for,
       amount: Number(totalAmount),
-      paidAmount: format === 'unpaid'? 0: Number(totalAmount),
-      remainingAmount: format === 'unpaid'? Number(totalAmount) : 0,
-      paymentType:format === 'paid'? "paid":"credit",
+      paidAmount: format === 'unpaid' ? 0 : Number(totalAmount),
+      remainingAmount: format === 'unpaid' ? Number(totalAmount) : 0,
+      paymentType: format === 'paid' ? "paid" : "credit",
       description: "note",
       transaction_date: date,
       bill_id: billData.id,
+      ...(format === 'unpaid' && formattedDueDate
+        ? { due_date: formattedDueDate }
+        : {}),
       ...(transaction_for === "customer"
         ? { customer_id: supplierInfo?.id }
         : { supplier_id: supplierInfo?.id }),
     };
-    console.log("payload:::",payload)
 
     const URL = transaction_for === "customer"
       ? `/transactions/customer`
@@ -174,16 +177,20 @@ export default function BillPreview() {
     return response.data;
   };
 
-// update Bill
+  // update Bill
   const updateBillToServer = async (uploadedPath) => {
     setUploadProgress(0.66); // 66% complete
 
-
+    const formattedDueDate = format === 'unpaid'
+    ? moment(dueDate).format('YYYY-MM-DD')
+    : undefined;
+    
     const payload = {
       payment_status: format,
       items: parsedItems.map(it => ({
         name: it.itemName ?? it.name,
         quantity: Number(it.quantity),
+        total: Number(it.total),
         price: Number(it.price),
         cessAmount: Number(it.cessAmount),
         cessPercent: Number(it.cessPercent),
@@ -195,11 +202,25 @@ export default function BillPreview() {
       amount: Number(totalAmount),
       bill_id: bill,
       description: `i have given ${totalAmount} to ${supplierInfo?.name} on ${moment().format('YYYY-MM-DD')}`,
-      bill_date: moment().format("YYYY-MM-DD")
+      bill_date: moment().format("YYYY-MM-DD"),
+      paymentType: format === 'paid' ? "paid" : "credit",
+      ...(format === 'unpaid' && formattedDueDate
+        ? { due_date: formattedDueDate }
+        : {}),
     };
-
+    
     const billResponse = await ApiService.put(`/bill/${bill_prm_id}`, payload);
+    const encodedCustomer = encodeURIComponent(JSON.stringify(supplierInfo));
 
+    router.push({
+      pathname: "/billDetails",
+      params: {
+        billId: bill_prm_id,
+        supplierInfo: encodedCustomer,
+        bill,
+        transaction_for
+      }
+    });
     return billResponse.data.bill;
   };
 
@@ -298,8 +319,43 @@ export default function BillPreview() {
                 selected={format === 'unpaid'}
                 onPress={setFormat}
               />
+
             </View>
           </RadioButton.Group>
+
+          {format === 'unpaid' && (
+            <View>
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 5,
+                  paddingHorizontal: 10,
+                  backgroundColor: 'red',
+                  borderRadius: 10,
+                }}
+                onPress={() => setShowDueDatePicker(true)}
+              >
+                <Text style={{ fontWeight: 'bold', color: "#f3f3f3" }}>
+                  Due Date: {dueDate ? dueDate.toLocaleDateString() : ''}
+                </Text>
+              </TouchableOpacity>
+
+              {showDueDatePicker && (
+                <DateTimePicker
+                  value={dueDate || new Date()} // Ensure value is always valid
+                  mode="date"
+                  display="spinner"
+                  onChange={(event, selectedDate) => {
+                    setShowDueDatePicker(false); // Hide picker first
+
+                    if (selectedDate) {
+                      setDueDate(selectedDate); // Update state if a date is selected
+                    }
+                  }}
+                />
+              )}
+            </View>
+          )}
+
         </View>
         <ProgressButton
           title="Submit"

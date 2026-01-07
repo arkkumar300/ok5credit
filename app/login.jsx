@@ -6,26 +6,47 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const router = useRouter();
 
-  useEffect(()=>{
-    const dataClear=async ()=>{
+  useEffect(() => {
+    const dataClear = async () => {
       await AsyncStorage.clear()
     }
     dataClear()
-  },[])
+  }, [])
+
+  const validatePhoneNumber = (number) => {
+    const phoneRegex = /^[6-9]\d{9}$/;
+    return phoneRegex.test(number);
+  };
 
   const handleContinue = () => {
+    if (!validatePhoneNumber(phoneNumber)) {
+      setPhoneError('Please enter a valid 10-digit mobile number');
+      return;
+    }
+
     if (phoneNumber.length === 10) {
       router.push({
         pathname: '/otp',
-        params: { mobile:phoneNumber }
+        params: { mobile: phoneNumber }
       });
     }
   };
 
+  const handleChange = (text) => {
+    setPhoneNumber(text);
+console.log("rrr:::",text)
+    // Clear error while typing if valid
+    if (validatePhoneNumber(text)) {
+      setPhoneError('valid number');
+    }else{
+      setPhoneError('Invalid number');
+    }
+  };
   return (
-    <ScrollView style={{backgroundColor:'#fff'}}>
+    <ScrollView style={{ backgroundColor: '#fff' }}>
       <SafeAreaView style={styles.container}>
         <View style={styles.logoContainer}>
           <View style={styles.logo}>
@@ -46,12 +67,17 @@ export default function LoginScreen() {
             <TextInput
               style={styles.phoneInput}
               value={phoneNumber}
-              onChangeText={setPhoneNumber}
+              onChangeText={handleChange}
               placeholder="Enter mobile number"
+              placeholderTextColor="#aaaaaa"
               keyboardType="numeric"
               maxLength={10}
-              autoFocus={true}
+              autoFocus
             />
+          </View>
+          <View style={{marginBottom:18}}>
+
+          {phoneNumber ? <Text style={validatePhoneNumber(phoneNumber)?styles.validText:styles.errorText}>{phoneError}</Text> : null}
           </View>
 
           <TouchableOpacity
@@ -81,6 +107,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  inputErrorBorder: {
+    borderColor: '#ff4d4f',
+    marginBottom: 22,
+  },
+  errorText: {
+    color: '#ff4d4f',
+    marginTop: 6,
+    fontSize: 13,textTransform:'capitalize'
+  },
+  validText: {
+    color: '#4CAF50',
+    marginTop: 6,
+    fontSize: 13,textTransform:'capitalize'
   },
   logoContainer: {
     alignItems: 'center',
@@ -130,7 +170,7 @@ const styles = StyleSheet.create({
   },
   phoneInputContainer: {
     flexDirection: 'row',
-    marginBottom: 32,
+    marginBottom: 12,
   },
   countryCode: {
     borderWidth: 2,
@@ -143,7 +183,7 @@ const styles = StyleSheet.create({
   },
   countryCodeText: {
     fontSize: 16,
-    color: '#333',
+    color: '#333333',
   },
   phoneInput: {
     flex: 1,
@@ -153,7 +193,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     fontSize: 16,
-    color: '#333',
+    color: '#333333',
   },
   continueButton: {
     paddingVertical: 16,
@@ -184,7 +224,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 24,
-    paddingBottom: 32,marginVertical:24,
+    paddingBottom: 32, marginVertical: 24,
     alignItems: 'center',
   },
   footerText: {

@@ -1,99 +1,85 @@
 // KhataScreen.js
 
-import React,{useState,useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    View, Text, FlatList,SafeAreaView, TouchableOpacity, StyleSheet
+    View, Text, FlatList, SafeAreaView, TouchableOpacity, StyleSheet
 } from 'react-native';
 import { Appbar, FAB } from 'react-native-paper';
-import {BookOpenText, Truck, User2, Download, ArrowLeft} from 'lucide-react-native';
+import { BookOpenText, Truck, User2, Download, ArrowLeft } from 'lucide-react-native';
 import handleDownloadPDF from './components/ledgerPDF';
 import { useRouter } from 'expo-router';
 import ApiService from './components/ApiServices';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const khataData = [
-    {
-        id: '1',
-        title: 'Customer Khata',
-        balance: '₹900',
-        info: '1 Customer',
-        subtitle: 'You Get',
-        icon: BookOpenText,
-        iconColor: '#007B83',
-        balanceColor: '#E53935'
-    },
-    {
-        id: '2',
-        title: 'Supplier Khata',
-        balance: '₹100',
-        info: '1 Supplier',
-        subtitle: 'You Give',
-        icon: Truck,
-        iconColor: '#4CAF50',
-        balanceColor: '#E53935'
-    }
-];
-
 const Account = () => {
     const [khataData, setKhataData] = useState([]);
+    const [businessName, setBusinessName] = useState("");
+    const [customers, setCustomers] = useState([]);
+    const [suppliers, setSuppliers] = useState([]);
+
     const router = useRouter();
-  
+
     useEffect(() => {
-      const fetchDashboard = async () => {
-        const userData = await AsyncStorage.getItem("userData");
-        const userId = JSON.parse(userData).id;
+        const fetchDashboard = async () => {
+            const userData = await AsyncStorage.getItem("userData");
+            console.log("rrr::", userData)
+            const userId = JSON.parse(userData).id;
+            const businessName = JSON.parse(userData).businessName;
+            setBusinessName(businessName)
+            try {
+                const response = await ApiService.post(`/dashboard/businessOwner`, { userId });
+                const json = await response.data;
 
-        try {
-            const response = await ApiService.post(`/dashboard/businessOwner`, { userId });
-          const json = await response.data;
+                if (json.success) {
+                    const custBalance = json.Customers.reduce(
+                        (sum, c) => sum + parseFloat(c.current_balance || '0'),
+                        0
+                    );
+                    const supBalance = json.Suppliers.reduce(
+                        (sum, s) => sum + parseFloat(s.current_balance || '0'),
+                        0
+                    );
 
-          if (json.success) {
-            const custBalance = json.Customers.reduce(
-              (sum, c) => sum + parseFloat(c.current_balance || '0'),
-              0
-            );
-            const supBalance = json.Suppliers.reduce(
-              (sum, s) => sum + parseFloat(s.current_balance || '0'),
-              0
-            );
-  
-            setKhataData([
-              {
-                id: 'customer',
-                title: 'Customer Khata',
-                balance: `₹${custBalance.toFixed(2)}`,
-                info: `${json.Customers.length} Customers`,
-                subtitle: 'You Get',
-                icon: BookOpenText,
-                iconColor: '#007B83',
-                balanceColor: '#E53935',
-              },
-              {
-                id: 'supplier',
-                title: 'Supplier Khata',
-                balance: `₹${supBalance.toFixed(2)}`,
-                info: `${json.Suppliers.length} Suppliers`,
-                subtitle: 'You Give',
-                icon: Truck,
-                iconColor: '#4CAF50',
-                balanceColor: '#E53935',
-              },
-            ]);
-          } else {
-            console.error('API returned false success');
-          }
-        } catch (err) {
-          console.error('Error fetching dashboard data:', err);
-        } finally {
-          setLoading(false);
-        }
-      };
-  
-      fetchDashboard();
+                    setCustomers(json.Customers);
+                    setSuppliers(json.Suppliers);
+
+                    setKhataData([
+                        {
+                            id: 'customer',
+                            title: 'Customer Khata',
+                            balance: `₹${custBalance.toFixed(2)}`,
+                            info: `${json.Customers.length} Customers`,
+                            subtitle: 'You Get',
+                            icon: BookOpenText,
+                            iconColor: '#007B83',
+                            balanceColor: '#E53935',
+                        },
+                        {
+                            id: 'supplier',
+                            title: 'Supplier Khata',
+                            balance: `₹${supBalance.toFixed(2)}`,
+                            info: `${json.Suppliers.length} Suppliers`,
+                            subtitle: 'You Give',
+                            icon: Truck,
+                            iconColor: '#4CAF50',
+                            balanceColor: '#E53935',
+                        },
+                    ]);
+                } else {
+                    console.error('API returned false success');
+                }
+            } catch (err) {
+                console.error('Error fetching dashboard data:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDashboard();
     }, []);
     const renderItem = ({ item }) => (
         <TouchableOpacity style={styles.card} onPress={() => router.push({
-            pathname: '/customerOverview',params:{transaction_for:item.id}
+            pathname: '/customerOverview', params: { transaction_for: item.id }
         })}>
             <View style={styles.cardHeader}>
                 <item.icon size={20} color={item.iconColor} />
@@ -117,7 +103,7 @@ const Account = () => {
         <SafeAreaView style={styles.container}>
             <Appbar.Header style={styles.header}>
                 <Appbar.BackAction onPress={() => router.back()} icon={() => <ArrowLeft size={22} />} />
-                <Appbar.Content title="ARK STORES" />
+                <Appbar.Content title={businessName} />
             </Appbar.Header>
 
             <FlatList
@@ -129,14 +115,19 @@ const Account = () => {
 
             {/* Download Backup */}
             <FAB
-                icon={({ size, color }) => (
-                    <Download size={size} color={color} />
-                )}
-                onPress={handleDownloadPDF}
+                icon={({ size, color }) => <Download size={size} color={color} />}
+                onPress={() =>
+                    handleDownloadPDF({
+                        businessName,
+                        customers,
+                        suppliers,
+                    })
+                }
                 style={styles.fab}
-                color="#007B83" // Icon color
-                customSize={60} // optional, for resizing FAB
+                color="#007B83"
+                customSize={60}
             />
+
         </SafeAreaView>
     );
 };
@@ -158,7 +149,7 @@ const styles = StyleSheet.create({
     header: {
         fontSize: 18,
         fontWeight: 'bold',
-        elevation:3,
+        elevation: 3,
         color: '#000',
     },
     listContainer: {

@@ -146,7 +146,7 @@ export default function OTPScreen() {
 
     } catch (error) {
       console.error("❌ OTP Verification Error:", error);
-      Alert.alert("Error", error.message || "Invalid OTP. Try again.");
+      Alert.alert("Error", "Invalid OTP. Try again.");
     } finally {
       setVerifying(false);
     }

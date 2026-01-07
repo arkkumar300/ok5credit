@@ -125,6 +125,7 @@ console.log("rrr:::",status)
               value={name}
               onChangeText={setName}
               placeholder="Enter supplier name"
+              placeholderTextColor={"#aaaaaa"}
               autoFocus={true}
             />
           </View>
@@ -140,6 +141,7 @@ console.log("rrr:::",status)
               maxLength={10}
               onChangeText={(text) => setMobile(cleanMobileNumber(text))}
               placeholder="Enter mobile number"
+              placeholderTextColor={"#aaaaaa"}
               keyboardType="numeric"
             />
           </View>
@@ -269,6 +271,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: 40,
+    color:'#333333'
   },
   confirmButton: {
     marginHorizontal: 20,

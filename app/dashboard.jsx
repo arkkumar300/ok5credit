@@ -53,15 +53,15 @@ export default function DashboardScreen() {
   const [isVerified, setIsVerified] = useState(null); // null = loading state
   const [currentLang, setCurrentLang] = useState('hi');
   const { t } = useTranslation();
-  
+
   useEffect(() => {
     checkEligibility();
   }, [])
 
-const changeLanguage = (code) => {
-  i18n.changeLanguage(code);
-  setCurrentLang(code);
-};
+  const changeLanguage = (code) => {
+    i18n.changeLanguage(code);
+    setCurrentLang(code);
+  };
 
   const fetchDashboardData = async () => {
     const userDetails = await AsyncStorage.getItem("userData");
@@ -70,7 +70,7 @@ const changeLanguage = (code) => {
     setUserData(rrr)
     const name = rrr?.name?.trim() || '';
     const initials = name.trim()[0]?.toUpperCase() || '';
-setInitialsLetter(initials);
+    setInitialsLetter(initials);
 
     try {
 
@@ -114,7 +114,7 @@ setInitialsLetter(initials);
     const totalCustomer = customersList.reduce((sum, c) => sum + c.amount, 0);
     const totalSupplier = suppliersList.reduce((sum, s) => sum + s.amount, 0);
     const balance = totalSupplier - totalCustomer;
-    setNetBalance(balance);
+    setNetBalance(totalCustomer);
   };
 
   useFocusEffect(
@@ -336,15 +336,15 @@ setInitialsLetter(initials);
     <SafeAreaView style={styles.container}>
 
       <Appbar.Header style={{ elevation: 5 }}>
-        <TouchableOpacity onPress={()=>{
+        <TouchableOpacity onPress={() => {
           router.push('/profile')
         }}>
-        <Avatar.Text
-          label={initialsLetter}
-          size={38} 
-          color="#ffffff" 
-          style={{ backgroundColor: '#2E7D32', marginStart: 8,elevation:3 }}
-        />
+          <Avatar.Text
+            label={initialsLetter}
+            size={38}
+            color="#ffffff"
+            style={{ backgroundColor: '#2E7D32', marginStart: 8, elevation: 3 }}
+          />
         </TouchableOpacity>
 
         <Appbar.Content
@@ -387,7 +387,7 @@ setInitialsLetter(initials);
         ) : isVerified ? (
           <Text style={styles.verifyText}>Verified Business</Text>
         ) : (
-          <Text style={styles.unverifyText}>Not yet verified</Text>
+          <Text style={styles.unverifyText}>Bussiness not verified / KYC pending</Text>
         )}
 
         <TouchableOpacity onPress={() => router.push('/profile')}>
@@ -395,11 +395,11 @@ setInitialsLetter(initials);
         </TouchableOpacity>
       </View>
 
-      <Text style={{margin:10,fontWeight:'bold',fontSize:18,color:"green",letterSpacing:1}}>
-      {t('welcome', { name: userData?.name })}
+      <Text style={{ margin: 10, fontWeight: 'bold', fontSize: 18, color: "green", textTransform: 'capitalize', letterSpacing: 1 }}>
+        {t('welcome', { name: userData?.name })}
       </Text>
-      
-            <View style={styles.tabContainer}>
+
+      <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'Customer' && styles.activeTab]}
           onPress={() => {
@@ -434,12 +434,12 @@ setInitialsLetter(initials);
         </View>
       </View>
 
-      <View style={styles.balanceCard}>
+      {activeTab === 'Customer' && <View style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>Net Balance</Text>
-        <Text style={selectedOption=== 'Advance'?styles.balanceAmount_advance :styles.balanceAmount_due}>₹ {parseFloat(netBalance).toFixed(2)}</Text>
+        <Text style={selectedOption === 'Advance' ? styles.balanceAmount_advance : styles.balanceAmount_due}>₹ {parseFloat(netBalance).toFixed(2)}</Text>
         <Text style={styles.balanceSubtext}>{currentData.length} Accounts</Text>
         <Text style={styles.balanceType}>You Pay</Text>
-      </View>
+      </View>}
 
       <ScrollView style={styles.listContainer}>
         {Array.isArray(currentData) && currentData.length > 0 ? (
@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     flex: 1,
-    marginTop: 16,
+    marginTop: 26,
   },
   personCard: {
     flexDirection: 'row',

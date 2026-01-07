@@ -51,30 +51,30 @@ export default function SupplierDetails() {
   );
   const [showPicker, setShowPicker] = useState(false);
 
+  const fetchSupplier = async () => {
+    const userData = await AsyncStorage.getItem("userData");
+    const userId = JSON.parse(userData).id;
+    try {
+      const response = await ApiService.post(`/supplier/${personId}`, { userId });
+      const data = response.data;
+
+      setSupplier(data.supplier);
+      const supplierPhone = data.supplier.mobile;
+      const supplierDueDate = data.supplier.due_date;
+
+      const supplier_id = data.supplier.id;
+
+      fetchSupplierDueDate(supplier_id);
+      setSupplierMobile(supplierPhone);
+      setTransactions(data.transactions);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
   useEffect(() => {
-    const fetchSupplier = async () => {
-      const userData = await AsyncStorage.getItem("userData");
-      const userId = JSON.parse(userData).id;
-      try {
-        const response = await ApiService.post(`/supplier/${personId}`, { userId });
-        const data = response.data;
-
-        setSupplier(data.supplier);
-        const supplierPhone = data.supplier.mobile;
-        const supplierDueDate = data.supplier.due_date;
-
-        const supplier_id = data.supplier.id;
-
-        fetchSupplierDueDate(supplier_id);
-        setSupplierMobile(supplierPhone);
-        setTransactions(data.transactions);
-      } catch (err) {
-        console.error(err);
-        setError('Failed to load data');
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchSupplier();
   }, []);
 
@@ -82,9 +82,8 @@ export default function SupplierDetails() {
     const userData = await AsyncStorage.getItem("userData");
     const userId = JSON.parse(userData).id;
     try {
-      const response = await ApiService.post(`/supplier/upcoming/DueDate`, {supplier_id, user_id:userId });
+      const response = await ApiService.post(`/supplier/upcoming/DueDate`, { supplier_id, user_id: userId });
       const data = response.data;
-
       setDueDate(data.upcoming_due_date);
     } catch (err) {
       console.error(err);
@@ -268,7 +267,7 @@ export default function SupplierDetails() {
                     return (
                       <Image
                         source={{ uri: url }}
-                        style={{ width: 100, height: 100 }}
+                        style={{ width: 80, height: 80,borderRadius:3 }}
                         resizeMode="cover"
                       />
                     );

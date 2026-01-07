@@ -28,7 +28,10 @@ export default function TransactionScreen() {
   const [success, setSuccess] = useState(false);
   const [paymentType, setPaymentType] = useState('paid'); // 'paid' | 'credit'
   const [showDueDatePicker, setShowDueDatePicker] = useState(false);
+  const [showChangeDueDatePicker, setShowChangeDueDatePicker] = useState(false);
   const [dueDate, setDueDate] = useState(new Date());
+  const [changeUpcommigDueDate, setChangeUpcommigDueDate] = useState(new Date());
+  const [upcommigDueDate, setUpcommigDueDate] = useState(new Date());
 
   const router = useRouter();
   const { mobile, transactionType, transaction_for, id, personName, isSubscribe_user, transaction_limit } = useLocalSearchParams();
@@ -100,6 +103,66 @@ export default function TransactionScreen() {
         break;
     }
   };
+
+  const fetchCustomerDueDate = async () => {
+    const userData = await AsyncStorage.getItem("userData");
+    const userId = JSON.parse(userData).id;
+    const payload={
+      user_id: userId 
+    }
+    if (transaction_for === "customer") {
+      payload.customer_id =id ;
+    } else {
+      payload.supplier_id =id ;
+    }   
+     try {
+      const url =
+      transaction_for === "customer"
+          ? "/customers/upcoming/DueDate"
+          : "/supplier/upcoming/DueDate";
+
+      const response = await ApiService.post(url, payload);
+      const data = response.data;
+      setUpcommigDueDate(data.upcoming_due_date);
+
+    } catch (err) {
+      console.error(err);
+      setError('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateTransactionDueDate = async (newDuedate) => {
+    const dueDatePayload = {
+      isDuedateChange: true,
+      dueDate: newDuedate
+    };
+  
+    if (transaction_for === "customer") {
+      dueDatePayload.customer_id =id ;
+    } else {
+      dueDatePayload.supplier_id =id ;
+    }
+  
+    try {
+
+      // Use the selected date (date), NOT dueDate
+      const response = await ApiService.put(
+        `transactions/updateTransactions/DueDate`,
+        dueDatePayload
+      );
+
+      if (response.status === 200) {
+        Alert.alert("DueDate updated successfully")
+      } else {
+        alert("Failed to update due date");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Error updating due date");
+    }
+  }
 
   const addTransaction = async () => {
     if (loading) return; // Prevent double taps
@@ -177,7 +240,6 @@ export default function TransactionScreen() {
       // -----------------------
       // 📌 Submit Transaction
       // -----------------------
-      console.log("payload:::", payload)
       const response = await ApiService.post(url, payload, {
         onUploadProgress: (e) => {
           if (e.total > 0) {
@@ -185,9 +247,13 @@ export default function TransactionScreen() {
           }
         },
       });
-      console.log("response::", response.data.transaction)
+
       const invoice = response.data.transaction.id
       sendTransaction(mobile, personName, amount, userName, invoice)
+
+      if (transactionType==='you_got') {
+        updateTransactionDueDate(changeUpcommigDueDate)
+      }
       // -----------------------
       // 🎉 Success animation + navigation
       // -----------------------
@@ -274,7 +340,6 @@ export default function TransactionScreen() {
           size: asset.fileSize,      // in bytes
         };
         setImages(prev => [...prev, imageData]);
-        console.log('Captured image:', imageData);
       }
     } catch (error) {
       console.error('Camera error:', error);
@@ -303,7 +368,6 @@ export default function TransactionScreen() {
           size: asset.fileSize,
         }));
         setImages(prev => [...prev, ...assetsData]);
-        console.log('Selected images:', assetsData);
       }
     } catch (error) {
       console.error('Gallery error:', error);
@@ -326,6 +390,10 @@ export default function TransactionScreen() {
     if (typeof selectedDate === "string") {
       setSelectedDate(new Date(selectedDate));
     }
+  }, []);
+
+  useEffect(() => {
+    fetchCustomerDueDate()
   }, []);
 
   return (
@@ -485,6 +553,7 @@ export default function TransactionScreen() {
                 style={styles.noteInput}
                 placeholder="Add Note (Optional)"
                 value={note}
+                placeholderTextColor={"#aaaaaa"}
                 onChangeText={setNote}
                 multiline
               />
@@ -542,7 +611,9 @@ export default function TransactionScreen() {
                   </Text>
                   <Text style={styles.dropdownArrow}>📅</Text>
                 </TouchableOpacity>
-
+                <Text style={[styles.dateText,{marginVertical:10}]}>
+                   Upcomming DueData: {moment(upcommigDueDate).format('DD MMM YYYY')}
+                  </Text>
                 {showDueDatePicker && (
                   <DateTimePicker
                     value={dueDate}
@@ -553,6 +624,36 @@ export default function TransactionScreen() {
                         setDueDate(date);
                       }
                       setShowDueDatePicker(false);
+                    }}
+                  />
+                )}
+              </View>
+            )}
+            {transactionType === 'you_got' && (
+              <View style={styles.dueDateContainer}>
+
+                <TouchableOpacity
+                  style={styles.dateSelector}
+                  onPress={() => setShowChangeDueDatePicker(true)}
+                >
+                  <Text style={styles.dateText}>
+                    {moment(changeUpcommigDueDate).format('DD MMM YYYY')}
+                  </Text>
+                  <Text style={styles.dropdownArrow}>📅</Text>
+                </TouchableOpacity>
+                <Text style={[styles.dateText,{marginVertical:10}]}>
+                   Upcomming DueData: {moment(upcommigDueDate).format('DD MMM YYYY')}
+                  </Text>
+                {showChangeDueDatePicker && (
+                  <DateTimePicker
+                    value={changeUpcommigDueDate}
+                    mode="date"
+                    display="spinner"
+                    onChange={(event, date) => {
+                      if (date) {
+                        setChangeUpcommigDueDate(date);
+                      }
+                      setShowChangeDueDatePicker(false);
                     }}
                   />
                 )}
@@ -903,7 +1004,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     paddingVertical: 16,
-    color: '#333',
+    color: '#333333',
   },
   micButton: {
     padding: 8,

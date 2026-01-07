@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,
+  View, Text, StyleSheet, SafeAreaView, Image, ScrollView, TouchableOpacity,
   Alert, Modal, TextInput
 } from 'react-native';
 import { Calendar, Check, FileText, HelpCircle, ArrowLeft, Edit, Delete } from 'lucide-react-native';
@@ -28,26 +28,26 @@ export default function TransactionDetails() {
     try {
       const url = `/transactions/delete/${transaction.id}`;
       const idPayload =
-      transaction.transaction_for === "customer"
-        ? { customer_id: transaction.customer_id }
-        : { supplier_id: transaction.supplier_id };
+        transaction.transaction_for === "customer"
+          ? { customer_id: transaction.customer_id }
+          : { supplier_id: transaction.supplier_id };
 
-    const payload = {
-      ...idPayload,
-      userId: transaction.business_owner_id,
-      transaction_type: transactionType,
-      transaction_for: transaction.transaction_for,
-      amount: Number(newAmount),
-    };
-    
-    const response = await ApiService.put(url,payload, {
+      const payload = {
+        ...idPayload,
+        userId: transaction.business_owner_id,
+        transaction_type: transactionType,
+        transaction_for: transaction.transaction_for,
+        amount: Number(newAmount),
+      };
+
+      const response = await ApiService.put(url, payload, {
         headers: { "Content-Type": "application/json" },
       });
-  console.log("rrr:::",response)
+      console.log("rrr:::", response)
       if (response.data) {
         Alert.alert("Deleted", "Transaction deleted successfully");
         setShowDeleteModal(false);
-  
+
         // go back to previous screen
         navigation.goBack();
       } else {
@@ -58,31 +58,33 @@ export default function TransactionDetails() {
       Alert.alert("Error", "Something went wrong");
     }
   };
-  
+
   useEffect(() => {
+    if (!transactionDetails) return;
     const tx = JSON.parse(transactionDetails);
+
     setTransaction(tx);
     setTransactionType(tx?.transaction_type);
-  }, []);
+  }, [transactionDetails]);
 
   // ---------------------- HANDLE EDIT API ----------------------
   const handleUpdateTransaction = async () => {
-    console.log("transaction::",transaction)
+    console.log("transaction::", transaction)
     if (!newAmount || isNaN(Number(newAmount))) {
       Alert.alert("Invalid Amount", "Please enter a valid number.");
       return;
     }
-  
+
     try {
-      const url =  transaction.transaction_for === "customer"? `/transactions/customer/${transaction.id}`:`/transactions/supplier/${transaction.id}`;
-  
+      const url = transaction.transaction_for === "customer" ? `/transactions/customer/${transaction.id}` : `/transactions/supplier/${transaction.id}`;
+
       // If transaction_for === "customer" → send customer_id
       // If transaction_for === "supplier" → send supplier_id
       const idPayload =
         transaction.transaction_for === "customer"
           ? { customer_id: transaction.customer_id }
           : { supplier_id: transaction.supplier_id };
-  
+
       const payload = {
         ...idPayload,
         userId: transaction.business_owner_id,
@@ -90,21 +92,21 @@ export default function TransactionDetails() {
         transaction_for: transaction.transaction_for,
         amount: Number(newAmount),
       };
-  
+
       console.log("UPDATE PAYLOAD:", payload);
-  
+
       const response = await ApiService.put(url, payload, {
         headers: { "Content-Type": "application/json" },
       });
-  
+
       if (response.data) {
         Alert.alert("Success", "Transaction updated successfully");
-  
+
         setTransaction(prev => ({
           ...prev,
           amount: Number(newAmount),
         }));
-  
+
         setShowEditModal(false);
       } else {
         Alert.alert("Update Failed", response.data?.message || "Unknown error");
@@ -114,7 +116,7 @@ export default function TransactionDetails() {
       Alert.alert("Error", "Something went wrong!");
     }
   };
-  
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -131,14 +133,40 @@ export default function TransactionDetails() {
 
       {/* Amount */}
       <View style={styles.amountContainer}>
-        <Text style={styles.amount}>₹ {transaction?.amount || 0}</Text>
+        <Text style={styles.amount}>₹ {Number(transaction?.amount || 0).toFixed(2)}</Text>
       </View>
 
       {/* Details */}
       <ScrollView style={styles.detailsContainer}>
+        {Array.isArray(transaction?.transaction_pic) &&
+          transaction.transaction_pic.length > 0 && (
+            <View style={{ marginTop: 20,backgroundColor:'#f3f3f3',padding:10,borderRadius:10 }}>
+              <Text style={{ fontWeight: "bold", marginBottom: 10 }}>
+                Transaction Images
+              </Text>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {transaction?.transaction_pic.map((img, index) => (
+                  <Image
+                    key={index}
+                    source={{ uri: img }}
+                    style={{
+                      width: 85,
+                      height: 85,
+                      marginRight: 10,
+                      borderRadius: 8,
+                      backgroundColor: "#ffffff",
+                    }}
+                    resizeMode="cover"
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
         <View style={styles.row}>
           <FileText size={18} color="#555" />
-          <Text style={styles.rowText}>Bill Number: {transaction?.bill_id || "N/A"}</Text>
+          <Text style={styles.rowText}>Bill Number: {transaction?.bill_id ?? "N/A"}</Text>
         </View>
 
         <View style={styles.row}>
@@ -164,13 +192,13 @@ export default function TransactionDetails() {
           </TouchableOpacity>
         )}
 
-<TouchableOpacity
-  style={styles.row}
-  onPress={() => setShowDeleteModal(true)}
->
-  <Delete size={18} color="red" />
-  <Text style={[styles.rowText, { color: "red" }]}>Delete Transaction</Text>
-</TouchableOpacity>
+        <TouchableOpacity
+          style={styles.row}
+          onPress={() => setShowDeleteModal(true)}
+        >
+          <Delete size={18} color="red" />
+          <Text style={[styles.rowText, { color: "red" }]}>Delete Transaction</Text>
+        </TouchableOpacity>
 
       </ScrollView>
 
@@ -210,32 +238,32 @@ export default function TransactionDetails() {
       </Modal>
 
       {/* ---------------- DELETE CONFIRM MODAL --------------------- */}
-<Modal visible={showDeleteModal} transparent animationType="fade">
-  <View style={modalStyles.modalOverlay}>
-    <View style={modalStyles.modalContainer}>
-      <Text style={modalStyles.title}>Delete Transaction?</Text>
-      <Text style={{ textAlign: "center", marginBottom: 20 }}>
-        Are you sure you want to delete this transaction?  
-      </Text>
+      <Modal visible={showDeleteModal} transparent animationType="fade">
+        <View style={modalStyles.modalOverlay}>
+          <View style={modalStyles.modalContainer}>
+            <Text style={modalStyles.title}>Delete Transaction?</Text>
+            <Text style={{ textAlign: "center", marginBottom: 20 }}>
+              Are you sure you want to delete this transaction?
+            </Text>
 
-      <View style={modalStyles.btnRow}>
-        <TouchableOpacity
-          style={[modalStyles.button, { backgroundColor: "#ccc" }]}
-          onPress={() => setShowDeleteModal(false)}
-        >
-          <Text style={modalStyles.btnText}>Cancel</Text>
-        </TouchableOpacity>
+            <View style={modalStyles.btnRow}>
+              <TouchableOpacity
+                style={[modalStyles.button, { backgroundColor: "#ccc" }]}
+                onPress={() => setShowDeleteModal(false)}
+              >
+                <Text style={modalStyles.btnText}>Cancel</Text>
+              </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[modalStyles.button, { backgroundColor: "red" }]}
-          onPress={handleDeleteTransaction}
-        >
-          <Text style={[modalStyles.btnText, { color: "#fff" }]}>Delete</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  </View>
-</Modal>
+              <TouchableOpacity
+                style={[modalStyles.button, { backgroundColor: "red" }]}
+                onPress={handleDeleteTransaction}
+              >
+                <Text style={[modalStyles.btnText, { color: "#fff" }]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
     </SafeAreaView>
   );
