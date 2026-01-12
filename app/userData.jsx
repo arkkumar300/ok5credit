@@ -71,8 +71,7 @@ export default function UserInfo() {
   const sendWelcomePushNotification = async () => {
     const userData = await AsyncStorage.getItem("userData");
     const fcmToken_stored = await AsyncStorage.getItem("UserFCMToken");
-    console.log("🌟 Token after permissionsss:", fcmToken_stored);
-    const userMobile = JSON.parse(userData).mobile;
+     const userMobile = JSON.parse(userData).mobile;
     
     try {
       const response = await ApiService.post('fcmToken/pushNotification', {

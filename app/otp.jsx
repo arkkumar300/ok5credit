@@ -50,7 +50,6 @@ export default function OTPScreen() {
         { mobile},
         { headers: { 'Content-Type': 'application/json' } }
       );
-
       if (!response.data.success)
         throw new Error(response.data.message || "Failed to send OTP");
       const genrateOTP=response.data.otp
@@ -155,9 +154,7 @@ export default function OTPScreen() {
   useEffect(() => {
     const getToken = async () => {
       await FirebasePermission();
-      const storedToken = await AsyncStorage.getItem("UserFCMToken");
-      console.log("🌟 Token after permission:", storedToken);
-  
+      const storedToken = await AsyncStorage.getItem("UserFCMToken");  
       if (storedToken) setFcmToken(storedToken);
     };
     

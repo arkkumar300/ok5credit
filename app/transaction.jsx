@@ -558,7 +558,7 @@ export default function TransactionScreen() {
                 multiline
               />
               <TouchableOpacity style={styles.micButton}>
-                <Mic size={20} color="#666" />
+                <ArrowRight size={20} color="#666" />
               </TouchableOpacity>
             </View>
             {

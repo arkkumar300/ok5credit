@@ -4,23 +4,11 @@ import { Appbar, FAB } from 'react-native-paper';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Delete, Eye, Pencil, Plus, Trash2 } from 'lucide-react-native';
 import ApiService from './components/ApiServices';
+import LottieView from 'lottie-react-native';
 
 export default function Items() {
     const router = useRouter();
-    const [items, setItems] = useState([
-        {
-            id: '1',
-            itemName: 'shou',
-            quantity: '10',
-            price: '100',
-            mrp: '100',
-            barcode: '568848705',
-            description: 'wfxdvscrf',
-            cess: '5',
-            unitValue: 'Nos',
-            gstValue: '0.25',
-        },
-    ]);
+    const [items, setItems] = useState([]);
 
     const [editItem, setEditItem] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
@@ -39,24 +27,24 @@ export default function Items() {
     };
 
     const deleteItem = async (id) => {
-        console.log("delete item id",id)
+        console.log("delete item id", id)
         try {
-         const response= await ApiService.delete(`/item/${id}`);
-          if (response?.data?.success === false) {
-            throw new Error(response.data.message || "Delete failed");
-          }
-      
-          console.log("Item deleted successfully:", response.data);
-                
+            const response = await ApiService.delete(`/item/${id}`);
+            if (response?.data?.success === false) {
+                throw new Error(response.data.message || "Delete failed");
+            }
+
+            console.log("Item deleted successfully:", response.data);
+
         } catch (err) {
-          console.error("Error deleting item:", err.message);
-          throw err;
-        }finally{
+            console.error("Error deleting item:", err.message);
+            throw err;
+        } finally {
             fetchItems()
             setModalVisible(false)
         }
-      };
-      
+    };
+
     const handleDelete = (id) => {
         Alert.alert('Confirm Delete', 'Are you sure you want to delete this item?', [
             { text: 'Cancel', style: 'cancel' },
@@ -133,6 +121,20 @@ export default function Items() {
                 keyExtractor={(item) => item.id}
                 renderItem={renderItem}
                 contentContainerStyle={{ paddingBottom: 50 }}
+                ListEmptyComponent={() => {
+                    return (
+                        <View style={styles.emptyContainer}>
+                            <LottieView
+                                source={require('../assets/animations/noData.json')} // 👈 local JSON file
+                                autoPlay
+                                loop
+                                style={{ width: 200, height: 150, alignSelf: 'center' }}
+                            />
+                            <Text style={styles.emptyText}>No data found</Text>
+
+                        </View>
+                    )
+                }}
             />
 
             {/* Edit Modal */}
@@ -194,7 +196,7 @@ export default function Items() {
                                         <Pencil size={20} color="#1e88e5" />
                                     </TouchableOpacity>
                                     <TouchableOpacity
-                                        onPress={()=>handleDelete(selectedItem.id)}
+                                        onPress={() => handleDelete(selectedItem.id)}
                                         style={styles.iconButton}
                                     >
                                         <Delete size={20} color="#1e88e5" />
@@ -269,7 +271,11 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
     },
-
+    emptyText: {
+        fontSize: 16, fontWeight: '700',
+        color: '#666',
+        textAlign: 'center',
+    },
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',

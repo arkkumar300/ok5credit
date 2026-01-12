@@ -15,10 +15,12 @@ import * as Sharing from 'expo-sharing';
 
 const updateUserData = async (payload) => {
   const userData = await AsyncStorage.getItem("userData");
-  if (!userData) return;
+  if (!userData) return null; 
 
   const parsedUserData = JSON.parse(userData);
   const userId = parsedUserData.id;
+  try {
+    
   const response = await ApiService.put(`/user/${userId}`, payload);
 
   if (response?.data) {
@@ -33,10 +35,14 @@ const updateUserData = async (payload) => {
       "userData",
       JSON.stringify(updatedUserData)
     );
-
     console.log('Updated successfully & AsyncStorage synced');
+    return updatedUserData;
 
   }
+} catch (error) {
+  console.log('error::',error);
+}
+return null;
 }
 
 const ProfileScreen = () => {
@@ -227,7 +233,13 @@ const ProfileScreen = () => {
   const removeImage = (indexToRemove) => {
     setImages(prevImages => prevImages.filter((_, index) => index !== indexToRemove));
   };
-
+  const handleUserUpdate = async (payload) => {
+    const updated = await updateUserData(payload);
+    if (updated) {
+      setUserData(updated); // ✅ LIVE UI UPDATE
+    }
+  };
+  
 
   return (
     <SafeAreaView style={styles.container}>
@@ -250,11 +262,11 @@ const ProfileScreen = () => {
         {/* Business Info List */}
         <View style={styles.card}>
           <ProfileItem icon={Share2} label="Share your business card" onPress={() => openModal('businessCard')} />
-          <ProfileItem icon={Store} label={userData?.businessName || "ARK STORES"} subtitle="Profile name will be visible to your customers" onPress={() => openModal('storeName')} />
-          <ProfileItem icon={Phone} label={userData?.mobile || "9494130839"} isEditable />
-          <ProfileItem icon={FileText} label={userData?.GST || "Enter your GST number"} onPress={() => openModal('gst')} />
+          <ProfileItem icon={Store} label={userData?.businessName || "Enter Business Name"} subtitle="Profile name will be visible to your customers" onPress={() => openModal('storeName')} />
+          <ProfileItem icon={Phone} label={userData?.mobile || "Enter your Number"} isEditable />
+          <ProfileItem icon={FileText} label={userData?.GST || "Enter your GST Number"} onPress={() => openModal('gst')} />
           {/* <ProfileItem icon={Hash} label="Enter your Udyam number" onPress={() => openModal('udyam')} /> */}
-          <ProfileItem icon={Building2} label={userData?.businessType || "Select your business type"} onPress={() => openModal('businessType')} />
+          <ProfileItem icon={Building2} label={userData?.businessType || "Select Your Business Type"} onPress={() => openModal('businessType')} />
           {/* <ProfileItem icon={Building2} label="Select your category" onPress={() => openModal('category')} /> */}
           <ProfileItem icon={User} label={userData?.name || "Enter your Name"} onPress={() => openModal('UserName')} />
           <ProfileItem icon={Mail} label={userData?.email || "Enter your Email"} onPress={() => openModal('Email')} />
@@ -263,15 +275,15 @@ const ProfileScreen = () => {
 
         {/* Modals (You can customize each one separately below) */}
         <BusinessCardModal visible={activeModal === 'businessCard'} onClose={closeModal} userDetails={userData} onPress={() => shareCardOnWhatsApp(userData)} />
-        <StoreNameModal visible={activeModal === 'storeName'} onClose={closeModal} businessName={userData?.businessName || ""} />
+        <StoreNameModal visible={activeModal === 'storeName'} onClose={closeModal} businessName={userData?.businessName || ""} onUpdate={handleUserUpdate} />
         {/* <ProfileModal visible={activeModal === 'phone'} onClose={closeModal} title="Phone Number" phone={userData?.mobile} /> */}
-        <GSTModal visible={activeModal === 'gst'} onClose={closeModal} userGST={userData?.GST || ""} />
+        <GSTModal visible={activeModal === 'gst'} onClose={closeModal} userGST={userData?.GST || ""} onUpdate={handleUserUpdate} />
         {/* <ProfileModal visible={activeModal === 'udyam'} onClose={closeModal} title="Udyam Number" /> */}
-        <BusinessTypeModal visible={activeModal === 'businessType'} onClose={closeModal} businessType={userData?.businessType || ""} />
+        <BusinessTypeModal visible={activeModal === 'businessType'} onClose={closeModal} businessType={userData?.businessType || ""} onUpdate={handleUserUpdate} />
         {/* <ProfileModal visible={activeModal === 'category'} onClose={closeModal} title="Category" /> */}
-        <UseNameModal visible={activeModal === 'UserName'} onClose={closeModal} name={userData?.name || ""} />
+        <UseNameModal visible={activeModal === 'UserName'} onClose={closeModal} name={userData?.name || "" } onUpdate={handleUserUpdate} />
         <OTPModal visible={activeModal === 'OTP'} onClose={closeModal} />
-        <UserEmailModal visible={activeModal === 'Email'} onClose={closeModal} email={userData?.email || ""} />
+        <UserEmailModal visible={activeModal === 'Email'} onClose={closeModal} email={userData?.email || ""}  onUpdate={handleUserUpdate}/>
         <AddressModal visible={activeModal === 'address'} onClose={closeModal} userAddress={userData?.address || ""} />
       </ScrollView>
     </SafeAreaView>
@@ -361,14 +373,17 @@ const BusinessCardModal = ({ visible, onClose, userDetails, onPress }) => {
   )
 };
 
-const StoreNameModal = ({ visible, onClose, businessName }) => {
+const StoreNameModal = ({ visible, onClose, businessName,onUpdate }) => {
   const [storeName, setStoreName] = useState();
+
   useEffect(() => {
     setStoreName(businessName)
   }, [businessName])
+
   const payload = { businessName: storeName };
-  const handleConfirm = () => {
-    updateUserData(payload)
+
+const handleConfirm = async () => {
+    await onUpdate(payload);
     onClose();
   };
 
@@ -405,17 +420,18 @@ const StoreNameModal = ({ visible, onClose, businessName }) => {
   )
 };
 
-const UseNameModal = ({ visible, onClose, name }) => {
+const UseNameModal = ({ visible, onClose, name,onUpdate }) => {
   const [userName, setUserName] = useState('');
   useEffect(() => {
     setUserName(name)
   }, [name])
 
-  const handleConfirm = () => {
-    const payload = { name: userName }
-    updateUserData(payload)
+  const payload = { name: userName }
+  const handleConfirm = async () => {
+    await onUpdate(payload);
     onClose();
   };
+
 
   return (
     <Modal
@@ -542,7 +558,7 @@ const OTPModal = ({ visible, onClose, onOpen }) => {
   )
 };
 
-const UserEmailModal = ({ visible, onClose, email }) => {
+const UserEmailModal = ({ visible, onClose, email,onUpdate }) => {
   const [userEmail, setUserEmail] = useState('');
   const [emailError, setEmailError] = useState('');
 
@@ -556,7 +572,8 @@ const UserEmailModal = ({ visible, onClose, email }) => {
     return emailRegex.test(value);
   };
 
-  const handleConfirm = () => {
+
+  const handleConfirm = async () => {
     if (!validateEmail(userEmail)) {
       setEmailError('Please enter a valid email address');
       return;
@@ -564,7 +581,7 @@ const UserEmailModal = ({ visible, onClose, email }) => {
 
     setEmailError('');
     const payload = { email: userEmail };
-    updateUserData(payload);
+    await onUpdate(payload);
     onClose();
   };
 
@@ -623,15 +640,16 @@ const UserEmailModal = ({ visible, onClose, email }) => {
   );
 };
 
-const AddressModal = ({ visible, onClose, userAddress }) => {
+const AddressModal = ({ visible, onClose, userAddress,onUpdate }) => {
   const [address, setAddress] = useState('');
   useEffect(() => {
     setAddress(userAddress)
   }, [userAddress])
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     const payload = { address: address }
-    updateUserData(payload)
+    await onUpdate(payload);
+
     onClose();
   };
 
@@ -668,15 +686,15 @@ const AddressModal = ({ visible, onClose, userAddress }) => {
   )
 };
 
-const GSTModal = ({ visible, onClose, userGST }) => {
+const GSTModal = ({ visible, onClose, userGST,onUpdate }) => {
   const [GST, setGST] = useState('');
   const payload = { GST: GST }
   useEffect(() => {
     setGST(userGST)
   }, [userGST])
 
-  const handleConfirm = () => {
-    updateUserData(payload)
+  const handleConfirm = async () => {
+    await onUpdate(payload);
     onClose();
   };
 
@@ -713,7 +731,7 @@ const GSTModal = ({ visible, onClose, userGST }) => {
   )
 };
 
-const BusinessTypeModal = ({ visible, onClose, businessType }) => {
+const BusinessTypeModal = ({ visible, onClose, businessType,onUpdate }) => {
   const businessTypes = [
     'Retail Shop',
     'Wholesale/Distributor',
@@ -721,9 +739,9 @@ const BusinessTypeModal = ({ visible, onClose, businessType }) => {
     'Online Services',
   ];
 
-  const handleSelect = (type) => {
+  const handleSelect = async (type) => {
     const payload = { businessType: type }
-    updateUserData(payload)
+    await onUpdate(payload);
     onClose();
   };
 

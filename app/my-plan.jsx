@@ -141,6 +141,8 @@ export default function MyPlanScreen() {
     } catch (error) {
       console.log("Error:", error);
       Alert.alert("Error", "Something went wrong");
+    }finally{
+      router.push('/dashboard');    
     }
   };
 
@@ -173,7 +175,7 @@ export default function MyPlanScreen() {
       if (user.subscribeEndAt) {
         // Parse DB string correctly
         const endAt = moment.utc(user.subscribeEndAt, "YYYY-MM-DD HH:mm:ss");
-  console.log("now ::",moment.utc())
+
         // Compare with current UTC time
         if (endAt.isAfter(moment.utc())) {
           return { eligible: false, reason: "SUBSCRIPTION_EXPIRED" };

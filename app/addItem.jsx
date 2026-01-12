@@ -9,6 +9,7 @@ import ApiService from './components/ApiServices';
 export default function AddEditItem() {
   const { item } = useLocalSearchParams();
   const [selectedItem, setSelectedItem] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (item) {
@@ -73,44 +74,79 @@ export default function AddEditItem() {
     { label: 'Rate Excluding Tax', value: 'exclusive' }
   ]);
 
-  const qty = parseFloat(quantity) || 0;
-  const basePrice = parseFloat(price) || 0;
-  const gstPercent = parseFloat(gstValue) || 0;
-  const cessPercent = parseFloat(cess) || 0;
+  // const qty = parseFloat(quantity) || 0;
+  // const basePrice = parseFloat(price) || 0;
+  // const gstPercent = parseFloat(gstValue) || 0;
+  // const cessPercent = parseFloat(cess) || 0;
 
-  const taxableAmount =
-    (basePrice * qty * 100) / (100 + gstPercent + cessPercent);
-  const gstAmount = (taxableAmount * gstPercent) / 100;
-  const cessAmount = (taxableAmount * cessPercent) / 100;
-  const total = basePrice * qty;
+  // const taxableAmount =
+  //   (basePrice * qty * 100) / (100 + gstPercent + cessPercent);
+  // const gstAmount = (taxableAmount * gstPercent) / 100;
+  // const cessAmount = (taxableAmount * cessPercent) / 100;
+  // const total = basePrice * qty;
+  const calculateTax = ({
+    qty,
+    rate,
+    gstPercent,
+    cessPercent,
+    rateType,
+  }) => {
+    qty = Number(qty) || 0;
+    rate = Number(rate) || 0;
+    gstPercent = Number(gstPercent) || 0;
+    cessPercent = Number(cessPercent) || 0;
+  
+    const totalTaxPercent = gstPercent + cessPercent;
+  
+    let taxableAmount = 0;
+    let gstAmount = 0;
+    let cessAmount = 0;
+    let totalAmount = 0;
+  
+    if (rateType === 'inclusive') {
+      // Rate includes tax
+      totalAmount = rate * qty;
+      taxableAmount = (totalAmount * 100) / (100 + totalTaxPercent);
+      gstAmount = (taxableAmount * gstPercent) / 100;
+      cessAmount = (taxableAmount * cessPercent) / 100;
+    } else {
+      // Rate excludes tax
+      taxableAmount = rate * qty;
+      gstAmount = (taxableAmount * gstPercent) / 100;
+      cessAmount = (taxableAmount * cessPercent) / 100;
+      totalAmount = taxableAmount + gstAmount + cessAmount;
+    }
+  
+    return {
+      taxableAmount,
+      gstAmount,
+      cessAmount,
+      totalAmount,
+    };
+  };
+
+  const {
+    taxableAmount,
+    gstAmount,
+    cessAmount,
+    totalAmount,
+  } = calculateTax({
+    qty: quantity,
+    rate: price,
+    gstPercent: gstValue,
+    cessPercent: cess,
+    rateType: rateTypeValue,
+  });
+  
 
   const router = useRouter();
 
-  // useEffect(() => {
-  //   console.log("item::", item)
-  //   if (item) {
-  //     try {
-  //       const parsedItem = JSON.parse(decodeURIComponent(item));
-
-  //       setSelectedItem(parsedItem);
-  //       setItemName(parsedItem.itemName || '');
-  //       setId(parsedItem.id || '');
-  //       setQuantity(parsedItem.quantity || '');
-  //       setPrice(parsedItem.price || '');
-  //       setMrp(parsedItem.mrp || '');
-  //       setBarcode(parsedItem.barcode || '');
-  //       setDescription(parsedItem.description || '');
-  //       setCess(parsedItem.cess || '');
-  //       setUnitValue(parsedItem.unitValue || 'Nos');
-  //       setGstValue(parsedItem.gstValue || '0.25');
-  //       setRateTypeValue(parsedItem.rateType || 'inclusive');
-  //     } catch (e) {
-  //       console.error('Invalid item param:', e);
-  //     }
-  //   }
-  // }, [item]);
-
+  
   const handleSave = async () => {
+    if (saving) return; // prevent double tap
+  
+    setSaving(true);
+  
     const newItem = {
       itemName,
       quantity: Number(quantity),
@@ -122,33 +158,32 @@ export default function AddEditItem() {
       cess,
       unitValue,
       rateType: rateTypeValue,
+    
+      taxableAmount: Number(taxableAmount.toFixed(2)),
+      gstAmount: Number(gstAmount.toFixed(2)),
+      cessAmount: Number(cessAmount.toFixed(2)),
+      totalAmount: Number(totalAmount.toFixed(2)),
     };
-    let response = null;
+      
     try {
+      let response;
+  
       if (id) {
         response = await ApiService.put(`/item/${id}`, newItem);
       } else {
         response = await ApiService.post('/item', newItem);
       }
-
-
-      if (!response.data) {
-        throw new Error(`HTTP error! status: ${res.status}, ${errorText}`);
+  
+      if (response?.data) {
+        router.replace('./items'); // better UX than push
       }
-
-      if (response.data) {
-
-        const data = await response.data;
-        console.log("data ::", data)
-        router.push('./items')
-      }
-
     } catch (err) {
-      console.error("Error creating item:", err);
-      throw err;
+      console.error("Error saving item:", err);
+    } finally {
+      setSaving(false);
     }
   };
-
+  
   return (
     <>
       <Appbar.Header>
@@ -282,42 +317,72 @@ export default function AddEditItem() {
           style={styles.input}
         />
 
-        <Divider style={{ marginVertical: 16 }} />
+<View style={styles.totalBox}>
+  <Text variant="titleMedium" style={{ fontWeight: '600' }}>
+    Total: ₹ {totalAmount.toFixed(2)}
+  </Text>
 
-        <View style={styles.totalBox}>
-          <Text variant="titleMedium">Total: ₹ {total.toFixed(2)}</Text>
-          <Text>GST @ {gstValue}% = ₹ {gstAmount.toFixed(2)}</Text>
-          <Text>CESS @ {cess || 0}% = ₹ {cessAmount.toFixed(2)}</Text>
-          <Text>{qty} x ₹ {basePrice.toFixed(2)} = ₹ {total.toFixed(2)}</Text>
-        </View>
+  <Divider style={{ marginVertical: 8 }} />
+
+  <Text>Taxable Amount: ₹ {taxableAmount.toFixed(2)}</Text>
+  <Text>GST @ {gstValue}% : ₹ {gstAmount.toFixed(2)}</Text>
+  <Text>CESS @ {cess || 0}% : ₹ {cessAmount.toFixed(2)}</Text>
+
+  <Text style={{ marginTop: 6 }}>
+    Qty {quantity || 0} × Rate ₹ {Number(price || 0).toFixed(2)}
+    {rateTypeValue === 'inclusive' ? ' (incl. tax)' : ' (excl. tax)'}
+  </Text>
+</View>
 
         <View style={styles.buttonRow}>
-          <Button mode="outlined" onPress={handleSave} style={{ flex: 1, marginRight: 8 }}>
-            {selectedItem ? 'Update' : '+ Save & New'}
-          </Button>
-          <Button mode="contained" onPress={handleSave} style={{ flex: 1 }}>
-            Done
-          </Button>
-        </View>
+  <Button
+    mode="outlined"
+    loading={saving}
+    disabled={saving}
+    onPress={handleSave}
+    style={{ flex: 1 }}
+  >
+    {selectedItem ? 'Update' : '+ Save & New'}
+  </Button>
+
+  <Button
+    mode="contained"
+    loading={saving}
+    disabled={saving}
+    onPress={handleSave}
+    style={{ flex: 1 }}
+  >
+    Done
+  </Button>
+</View>
       </ScrollView>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, backgroundColor: '#fff' },
-  input: { marginBottom: 16, color: '#333333' },
+  container: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    backgroundColor: '#fff',
+  },
+    input: {
+    marginBottom: 16,
+    backgroundColor: '#fff',
+    height: 52,
+  },
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     gap: 10,
-    marginBottom: 16
+    marginBottom: 16,
+    zIndex: 1,
   },
-  dropdown: {
+    dropdown: {
     borderColor: '#ccc',
-    minHeight: 52
+    minHeight: 52,
+    borderRadius: 6,zIndex:9999
   },
-  totalBox: {
+    totalBox: {
     padding: 16,
     backgroundColor: '#f1f8f5',
     borderRadius: 8,

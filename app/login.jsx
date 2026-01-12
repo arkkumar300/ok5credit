@@ -37,7 +37,6 @@ export default function LoginScreen() {
 
   const handleChange = (text) => {
     setPhoneNumber(text);
-console.log("rrr:::",text)
     // Clear error while typing if valid
     if (validatePhoneNumber(text)) {
       setPhoneError('valid number');

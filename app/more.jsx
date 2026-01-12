@@ -45,13 +45,20 @@ export default function MoreScreen() {
     const userDetails = await AsyncStorage.getItem("userData");
     const rrr = JSON.parse(userDetails);
     setUserData(rrr)
+    // const name = rrr?.name?.trim() || '';
+    // const initials = name
+    //   .split(' ')
+    //   .filter(Boolean)             // removes empty strings
+    //   .map(word => word[0]?.toUpperCase())
+    //   .join('');
+    // setInitialsLetter(initials)
     const name = rrr?.name?.trim() || '';
-    const initials = name
-      .split(' ')
-      .filter(Boolean)             // removes empty strings
-      .map(word => word[0]?.toUpperCase())
-      .join('');
-    setInitialsLetter(initials)
+
+    const firstWord = name.split(' ')[0] || '';
+    const initials = firstWord.charAt(0).toUpperCase();
+
+    setInitialsLetter(initials);
+
   };
 
   useFocusEffect(
@@ -71,7 +78,7 @@ export default function MoreScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Appbar.Header>
-        <Avatar.Text label={initialsLetter} size={45} color='#ffffff' style={{ backgroundColor: '#2E7D32', marginStart: 8 }} />
+        <Avatar.Text label={initialsLetter} size={34} color='#ffffff' style={{ backgroundColor: '#2E7D32', marginStart: 8, padding: 0 }} />
         <Appbar.Content title="More Details" titleStyle={{ textAlign: 'center', fontWeight: 'bold' }} />
         <Avatar.Icon icon={() => <Share size={22} color={'#2E7D32'} />} size={45} style={{
           backgroundColor: '#F1F8E9', shadowColor: '#2E7D32',
@@ -299,7 +306,7 @@ const styles = StyleSheet.create({
   },
 
   modalContainer: {
-    width: '80%',height:180,
+    width: '80%', height: 180,
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,

@@ -194,7 +194,6 @@ export default function DashboardScreen() {
             key={option}
             style={styles.optionRow}
             onPress={() => {
-              console.log("option:::", option)
               setSelectedOption(option)
             }}
           >

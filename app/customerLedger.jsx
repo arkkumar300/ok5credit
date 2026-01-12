@@ -11,6 +11,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
 import moment from 'moment';
+import LottieView from 'lottie-react-native';
 
 const transactions = [
     {
@@ -28,7 +29,7 @@ const transactions = [
 ];
 
 export default function CustomerLedger() {
-    const [filteredData, setFilteredData] = useState(transactions);
+    const [filteredData, setFilteredData] = useState([]);
     const [allTransactions, setAllTransactions] = useState([]);
     const [customer, setCustomer] = useState(null);
     const [result, setResult] = useState("NO-DUE");
@@ -163,7 +164,7 @@ export default function CustomerLedger() {
             {/* Header */}
             <Appbar.Header style={{ backgroundColor: "#ffffff", borderBottomWidth: 2, borderColor: '#f2f7f6' }}>
                 <ArrowLeft size={24} color={'#2E7D32'} style={{ marginStart: 10 }} onPress={() => router.back()} />
-                <Appbar.Content title={`${personName} Statement ${roleType === "CUSTOMER"? "(C)":"(S)"}`} titleStyle={{ color: '#333333', fontWeight: 'bold', marginLeft: 20 }} />
+                <Appbar.Content title={`${personName} Statement ${roleType === "CUSTOMER"? "(C)":"(S)"}`} titleStyle={{ color: '#333333', fontWeight: 'bold', marginLeft: 20,textTransform:'capitalize' }} />
             </Appbar.Header>
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
                 <Text style={[styles.subText, { marginTop: 20 }]}>Current Balance <Text style={{ color: result === "NO-DUE" ? "green" : 'red' }}>₹ {Math.abs(Number(customer?.current_balance))}</Text>{result === "DUE" && <Text style={{ color: 'red' }}>  {`(due)`}</Text>}</Text>
@@ -212,6 +213,20 @@ export default function CustomerLedger() {
                         data={filteredData}
                         keyExtractor={(item) => item.id}
                         renderItem={renderItem}
+                        ListEmptyComponent={() => {
+                            return (
+                                <View style={styles.emptyContainer}>
+                                    <LottieView
+                                        source={require('../assets/animations/noData.json')} // 👈 local JSON file
+                                        autoPlay
+                                        loop
+                                        style={{ width: 200, height: 150, alignSelf: 'center' }}
+                                    />
+                                    <Text style={styles.emptyText}>No data found</Text>
+        
+                                </View>
+                            )
+                        }}
                     />
                 </DataTable>
             </ScrollView>
@@ -287,6 +302,21 @@ const styles = StyleSheet.create({
         color: 'red',
         fontWeight: 'bold',
     },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+      },
+      image: {
+        width: 250, justifyContent: 'center',
+        height: 250, alignSelf: 'center'
+      },
+      emptyText: {
+        fontSize: 16, fontWeight: '700',
+        color: '#666',
+        textAlign: 'center',
+      },
+    
     balanceDate: {
         fontSize: 12,
         color: '#555',
