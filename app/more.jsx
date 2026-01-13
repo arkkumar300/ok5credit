@@ -80,15 +80,7 @@ export default function MoreScreen() {
       <Appbar.Header>
         <Avatar.Text label={initialsLetter} size={34} color='#ffffff' style={{ backgroundColor: '#2E7D32', marginStart: 8, padding: 0 }} />
         <Appbar.Content title="More Details" titleStyle={{ textAlign: 'center', fontWeight: 'bold' }} />
-        <Avatar.Icon icon={() => <Share size={22} color={'#2E7D32'} />} size={45} style={{
-          backgroundColor: '#F1F8E9', shadowColor: '#2E7D32',
-          shadowColor: '#2E7D32',       // Dark green
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.2,
-          shadowRadius: 4,
-          elevation: 5, marginEnd: 8,  // For Android
-          borderRadius: 8
-        }} />
+      
       </Appbar.Header>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>

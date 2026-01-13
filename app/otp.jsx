@@ -84,8 +84,7 @@ export default function OTPScreen() {
 
       if (!response.data.success)
         throw new Error(response.data.message || "OTP resend failed");
-
-      const genrateOTP=response.data.otp
+      const genrateOTP=response.data.otps
       await sendSMS(cleanMobile, genrateOTP);
 
     } catch (error) {

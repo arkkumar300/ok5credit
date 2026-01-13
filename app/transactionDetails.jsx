@@ -6,9 +6,9 @@ import {
 import { Calendar, Check, FileText, HelpCircle, ArrowLeft, Edit, Delete } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Appbar, Avatar } from 'react-native-paper';
-import { useLocalSearchParams } from 'expo-router';
 import moment from 'moment';
 import ApiService from './components/ApiServices';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 export default function TransactionDetails() {
   const navigation = useNavigation();
@@ -20,6 +20,26 @@ export default function TransactionDetails() {
   // Modal states
   const [showEditModal, setShowEditModal] = useState(false);
   const [newAmount, setNewAmount] = useState("");
+  const router = useRouter();
+
+  const transactionImages = Array.isArray(transaction?.transaction_pic)
+    ? (() => {
+      const firstItem = transaction.transaction_pic[0];
+
+      // If backend sent a JSON string, parse it
+      if (typeof firstItem === 'string' && firstItem.startsWith('[')) {
+        try {
+          return JSON.parse(firstItem);
+        } catch (e) {
+          console.error('Invalid transaction_pic JSON', e);
+          return [];
+        }
+      }
+
+      // Already a normal array
+      return transaction.transaction_pic;
+    })()
+    : [];
 
   const formateDate = (date) =>
     date ? moment(date).format("DD MMM YYYY") : "";
@@ -62,14 +82,12 @@ export default function TransactionDetails() {
   useEffect(() => {
     if (!transactionDetails) return;
     const tx = JSON.parse(transactionDetails);
-
     setTransaction(tx);
     setTransactionType(tx?.transaction_type);
   }, [transactionDetails]);
 
   // ---------------------- HANDLE EDIT API ----------------------
   const handleUpdateTransaction = async () => {
-    console.log("transaction::", transaction)
     if (!newAmount || isNaN(Number(newAmount))) {
       Alert.alert("Invalid Amount", "Please enter a valid number.");
       return;
@@ -128,7 +146,8 @@ export default function TransactionDetails() {
           <Text style={[styles.userName, { marginLeft: 10 }]}>{Name}</Text>
         </View>
 
-        <HelpCircle color="#555" size={24} />
+        <HelpCircle color="#555" size={24} onPress={()=>router.replace('./help') // better UX than push
+} />
       </Appbar.Header>
 
       {/* Amount */}
@@ -138,32 +157,30 @@ export default function TransactionDetails() {
 
       {/* Details */}
       <ScrollView style={styles.detailsContainer}>
-        {Array.isArray(transaction?.transaction_pic) &&
-          transaction.transaction_pic.length > 0 && (
-            <View style={{ marginTop: 20,backgroundColor:'#f3f3f3',padding:10,borderRadius:10 }}>
-              <Text style={{ fontWeight: "bold", marginBottom: 10 }}>
-                Transaction Images
-              </Text>
+      {transactionImages.length > 0 && (
+  <View style={{ marginTop: 20, backgroundColor: '#f3f3f3', padding: 10, borderRadius: 10 }}>
+    <Text style={{ fontWeight: "bold", marginBottom: 10 }}>
+      Transaction Images
+    </Text>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {transaction?.transaction_pic.map((img, index) => (
-                  <Image
-                    key={index}
-                    source={{ uri: img }}
-                    style={{
-                      width: 85,
-                      height: 85,
-                      marginRight: 10,
-                      borderRadius: 8,
-                      backgroundColor: "#ffffff",
-                    }}
-                    resizeMode="cover"
-                  />
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      {transactionImages.map((img, index) => (
+        <Image
+          key={index}
+          source={{ uri: img }}
+          style={{
+            width: 85,
+            height: 85,
+            marginRight: 10,
+            borderRadius: 8,
+            backgroundColor: "#ffffff",
+          }}
+          resizeMode="cover"
+        />
+      ))}
+    </ScrollView>
+  </View>
+)}
         <View style={styles.row}>
           <FileText size={18} color="#555" />
           <Text style={styles.rowText}>Bill Number: {transaction?.bill_id ?? "N/A"}</Text>

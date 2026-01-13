@@ -377,7 +377,7 @@ export default function SupplierDetails() {
             params: {
               personId: personId,
               personName: personName,
-              roleType: "CUSTOMER"
+              roleType: "SUPPLIER"
             }
           })
           }>

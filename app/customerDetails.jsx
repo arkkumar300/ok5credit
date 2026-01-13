@@ -250,7 +250,6 @@ export default function CustomerDetails() {
 
   const renderItem = ({ item }) => {
     const isReceived = item.transaction_type === "you_got" || item.transaction_type === "you_discount";
-    console.log("items::::", item)
     // ⬇️ Compute rrr balance
     if (isReceived) {
       rrr = Number(rrr) + Number(item.amount);

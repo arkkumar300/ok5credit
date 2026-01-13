@@ -237,7 +237,7 @@ export default function CustomerLedger() {
                     icon={({ size, color }) => (
                         <Download size={size} color={color} />
                     )}
-                    onPress={() => handleCustomerLedgerPDF(filteredData,personName)} 
+                    onPress={() => handleCustomerLedgerPDF(filteredData,personName,personId,roleType)} 
                     style={styles.fab}
                     color="#007B83" // Icon color
                     customSize={60} // optional, for resizing FAB

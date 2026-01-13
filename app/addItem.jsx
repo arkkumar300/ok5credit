@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet, SafeAreaView } from 'react-native';
 import { Text, TextInput, Button, Appbar, Divider } from 'react-native-paper';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { ArrowLeft, File, Barcode, IndianRupee, PercentCircle } from 'lucide-react-native';
@@ -10,7 +10,7 @@ export default function AddEditItem() {
   const { item } = useLocalSearchParams();
   const [selectedItem, setSelectedItem] = useState(null);
   const [saving, setSaving] = useState(false);
-
+  const router = useRouter();
   useEffect(() => {
     if (item) {
       try {
@@ -52,10 +52,16 @@ export default function AddEditItem() {
   const [unitItems, setUnitItems] = useState([
     { label: 'Nos', value: 'Nos' },
     { label: 'Items', value: 'Items' },
+    { label: 'Grams', value: 'Grams' },
+    { label: 'Kg', value: 'Kg' },
+    { label: 'Liter', value: 'Liter' },
+    { label: 'Meter', value: 'Meter' },
     { label: 'Packages', value: 'Packages' },
     { label: 'Boxes', value: 'Boxes' },
+    { label: 'Pieces', value: 'Pieces' },
     { label: 'Dozens', value: 'Dozens' },
-    { label: 'Pairs', value: 'Pairs' }
+    { label: 'Pairs', value: 'Pairs' },
+    { label: 'Units', value: 'Units' }
   ]);
 
   const [gstOpen, setGstOpen] = useState(false);
@@ -95,14 +101,14 @@ export default function AddEditItem() {
     rate = Number(rate) || 0;
     gstPercent = Number(gstPercent) || 0;
     cessPercent = Number(cessPercent) || 0;
-  
+
     const totalTaxPercent = gstPercent + cessPercent;
-  
+
     let taxableAmount = 0;
     let gstAmount = 0;
     let cessAmount = 0;
     let totalAmount = 0;
-  
+
     if (rateType === 'inclusive') {
       // Rate includes tax
       totalAmount = rate * qty;
@@ -116,7 +122,7 @@ export default function AddEditItem() {
       cessAmount = (taxableAmount * cessPercent) / 100;
       totalAmount = taxableAmount + gstAmount + cessAmount;
     }
-  
+
     return {
       taxableAmount,
       gstAmount,
@@ -137,16 +143,12 @@ export default function AddEditItem() {
     cessPercent: cess,
     rateType: rateTypeValue,
   });
-  
 
-  const router = useRouter();
-
-  
   const handleSave = async () => {
     if (saving) return; // prevent double tap
-  
+
     setSaving(true);
-  
+
     const newItem = {
       itemName,
       quantity: Number(quantity),
@@ -158,22 +160,22 @@ export default function AddEditItem() {
       cess,
       unitValue,
       rateType: rateTypeValue,
-    
+
       taxableAmount: Number(taxableAmount.toFixed(2)),
       gstAmount: Number(gstAmount.toFixed(2)),
       cessAmount: Number(cessAmount.toFixed(2)),
       totalAmount: Number(totalAmount.toFixed(2)),
     };
-      
+
     try {
       let response;
-  
+
       if (id) {
         response = await ApiService.put(`/item/${id}`, newItem);
       } else {
         response = await ApiService.post('/item', newItem);
       }
-  
+
       if (response?.data) {
         router.replace('./items'); // better UX than push
       }
@@ -183,9 +185,9 @@ export default function AddEditItem() {
       setSaving(false);
     }
   };
-  
+
   return (
-    <>
+    <SafeAreaView>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => router.back()} icon={() => <ArrowLeft size={22} />} />
         <Appbar.Content title={selectedItem ? 'Edit Item' : 'Add New Item'} />
@@ -317,47 +319,46 @@ export default function AddEditItem() {
           style={styles.input}
         />
 
-<View style={styles.totalBox}>
-  <Text variant="titleMedium" style={{ fontWeight: '600' }}>
-    Total: ₹ {totalAmount.toFixed(2)}
-  </Text>
+        <View style={styles.totalBox}>
+          <Text variant="titleMedium" style={{ fontWeight: '600' }}>
+            Total: ₹ {totalAmount.toFixed(2)}
+          </Text>
 
-  <Divider style={{ marginVertical: 8 }} />
+          <Divider style={{ marginVertical: 8 }} />
 
-  <Text>Taxable Amount: ₹ {taxableAmount.toFixed(2)}</Text>
-  <Text>GST @ {gstValue}% : ₹ {gstAmount.toFixed(2)}</Text>
-  <Text>CESS @ {cess || 0}% : ₹ {cessAmount.toFixed(2)}</Text>
+          <Text>Taxable Amount: ₹ {taxableAmount.toFixed(2)}</Text>
+          <Text>GST @ {gstValue}% : ₹ {gstAmount.toFixed(2)}</Text>
+          <Text>CESS @ {cess || 0}% : ₹ {cessAmount.toFixed(2)}</Text>
 
-  <Text style={{ marginTop: 6 }}>
-    Qty {quantity || 0} × Rate ₹ {Number(price || 0).toFixed(2)}
-    {rateTypeValue === 'inclusive' ? ' (incl. tax)' : ' (excl. tax)'}
-  </Text>
-</View>
+          <Text style={{ marginTop: 6 }}>
+            Qty {quantity || 0} × Rate ₹ {Number(price || 0).toFixed(2)}
+            {rateTypeValue === 'inclusive' ? ' (incl. tax)' : ' (excl. tax)'}
+          </Text>
+        </View>
 
         <View style={styles.buttonRow}>
-  <Button
-    mode="outlined"
-    loading={saving}
-    disabled={saving}
-    onPress={handleSave}
-    style={{ flex: 1 }}
-  >
-    {selectedItem ? 'Update' : '+ Save & New'}
-  </Button>
+          <Button
+            mode="outlined"
+            loading={saving}
+            disabled={saving}
+            onPress={handleSave}
+            style={{ flex: 1 }}
+          >
+            {selectedItem ? 'Update' : '+ Save & New'}
+          </Button>
 
-  <Button
-    mode="contained"
-    loading={saving}
-    disabled={saving}
-    onPress={handleSave}
-    style={{ flex: 1 }}
-  >
-    Done
-  </Button>
-</View>
+          <Button
+            mode="contained"
+            loading={saving}
+            disabled={saving}
+            onPress={handleSave}
+            style={{ flex: 1 }}
+          >
+            Done
+          </Button>
+        </View>
       </ScrollView>
-    </>
-  );
+    </SafeAreaView>);
 }
 
 const styles = StyleSheet.create({
@@ -366,7 +367,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     backgroundColor: '#fff',
   },
-    input: {
+  input: {
     marginBottom: 16,
     backgroundColor: '#fff',
     height: 52,
@@ -377,12 +378,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     zIndex: 1,
   },
-    dropdown: {
+  dropdown: {
     borderColor: '#ccc',
     minHeight: 52,
-    borderRadius: 6,zIndex:9999
+    borderRadius: 6, zIndex: 9999
   },
-    totalBox: {
+  totalBox: {
     padding: 16,
     backgroundColor: '#f1f8f5',
     borderRadius: 8,

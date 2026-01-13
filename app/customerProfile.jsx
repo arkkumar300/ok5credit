@@ -17,15 +17,17 @@ const updateData = async (payload, ID,profileType) => {
     ...payload,
     userId
   };
-  console.log("payload : ",payload);
-  console.log("ID : ",ID);
-  console.log("profileType : ",profileType);
   const URL = profileType === 'customer' ? `/customers/${ID}` : `/supplier/${ID}`
 
   const response = await ApiService.put(URL, payload);
-  console.log("response::",response.data)
   if (response?.data) {
-    Alert.alert('updated successfully')
+    if (profileType === 'customer') {
+      console.log("response::",response.data.customer)
+      return response.data.customer
+    } else {
+      console.log("response::",response.data.supplier)
+      return response.data.supplier
+    }
   }
 }
 
@@ -188,6 +190,12 @@ const OtherProfile = () => {
     }
   };
 
+  const handleUserUpdate = async (payload) => {
+    const updated = await updateData(payload,ID,profileType);
+    if (updated) {
+      setProfile(updated); // ✅ LIVE UI UPDATE
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -211,7 +219,7 @@ const OtherProfile = () => {
         {/* Business Info List */}
         <View style={styles.card}>
           <ProfileItem icon={User} label={profile?.name || "Enter your Name"} onPress={() => openModal('UserName')} />
-          <ProfileItem icon={Phone} label={profile?.mobile || "9494130830"} isEditable onPress={() => openModal('phone')} />
+          <ProfileItem icon={Phone} label={profile?.mobile || "9494130830"}  />
           <ProfileItem icon={MapPin} label={profile?.address || "Enter your address"} onPress={() => openModal('address')} />
           <ProfileItem icon={Mail} label={profile?.email || "Enter your Email"} onPress={() => openModal('Email')} />
           <TouchableOpacity style={styles.item} onPress={() => openModal('DeleteCustomer')}>
@@ -226,11 +234,11 @@ const OtherProfile = () => {
         </View>
 
         {/* Modals (You can customize each one separately below) */}
-        <UseNameModal visible={activeModal === 'UserName'} onClose={closeModal} ID={ID} profileType={profileType} value={profile?.name} />
+        <UseNameModal visible={activeModal === 'UserName'} onClose={closeModal} ID={ID} profileType={profileType} value={profile?.name}  onUpdate={handleUserUpdate} />
         <DeleteCustomerModal visible={activeModal === 'DeleteCustomer'} onClose={closeModal} ID={ID} profileType={profileType} />
-        <ProfileModal visible={activeModal === 'phone'} onClose={closeModal} title="Phone Number" profileType={profileType} value={profile?.mobile}/>
-        <AddressModal visible={activeModal === 'address'} onClose={closeModal} ID={ID} profileType={profileType} value={profile?.address} />
-        <UserEmailModal visible={activeModal === 'Email'} onClose={closeModal} ID={ID} profileType={profileType} value={profile?.email}/>
+        <ProfileModal visible={activeModal === 'phone'} onClose={closeModal} title="Phone Number" profileType={profileType} value={profile?.mobile}  onUpdate={handleUserUpdate}/>
+        <AddressModal visible={activeModal === 'address'} onClose={closeModal} ID={ID} profileType={profileType} value={profile?.address}  onUpdate={handleUserUpdate} />
+        <UserEmailModal visible={activeModal === 'Email'} onClose={closeModal} ID={ID} profileType={profileType} value={profile?.email}  onUpdate={handleUserUpdate}/>
       </ScrollView>
     </SafeAreaView>
   ); 
@@ -249,7 +257,7 @@ const ProfileItem = ({ icon: Icon, label, subtitle, isEditable, onPress }) => (
   </TouchableOpacity>
 );
 
-const UseNameModal = ({ visible, onClose, ID,profileType,value }) => {
+const UseNameModal = ({ visible, onClose, ID,profileType,value,onUpdate }) => {
   const [userName, setUserName] = useState(value || '');
   useEffect(() => {
     setUserName(value || '');
@@ -257,7 +265,7 @@ const UseNameModal = ({ visible, onClose, ID,profileType,value }) => {
 
     const payload = { name: userName };
   const handleConfirm = () => {
-    updateData(payload, ID,profileType)
+    onUpdate(payload)
     onClose();
   };
 
@@ -336,14 +344,14 @@ const DeleteCustomerModal = ({ visible, onClose, ID,profileType }) => {
   )
 };
 
-const UserEmailModal = ({ visible, onClose, ID,profileType,value }) => {
+const UserEmailModal = ({ visible, onClose, ID,profileType,value,onUpdate }) => {
   const [userEmail, setUserEmail] = useState(value);
   useEffect(() => {
     setUserEmail(value || '');
   }, [value]);
   const payload = { email: userEmail };
   const handleConfirm = () => {
-    updateData(payload, ID,profileType)
+    onUpdate(payload)
     onClose();
   };
 
@@ -380,14 +388,14 @@ const UserEmailModal = ({ visible, onClose, ID,profileType,value }) => {
   )
 };
 
-const AddressModal = ({ visible, onClose, ID,profileType,value }) => {
+const AddressModal = ({ visible, onClose, ID,profileType,value,onUpdate }) => {
   const [address, setAddress] = useState(value);
   useEffect(() => {
     setAddress(value || '');
   }, [value]);
   const payload = { address: address };
   const handleConfirm = () => {
-    updateData(payload, ID,profileType)
+    onUpdate(payload)
     onClose();
   };
   return (
@@ -423,14 +431,14 @@ const AddressModal = ({ visible, onClose, ID,profileType,value }) => {
   )
 };
 
-const ProfileModal = ({ visible, onClose, title, ID,profileType,value }) => {
+const ProfileModal = ({ visible, onClose, title, ID,profileType,value,onUpdate }) => {
   const [mobile, setMobile] = useState(value);
   useEffect(() => {
     setMobile(value || '');
   }, [value]);
   const payload = { mobile: mobile };
   const handleConfirm = () => {
-    updateData(payload, ID,profileType)
+    onUpdate(payload)
     onClose();
   };
   return (

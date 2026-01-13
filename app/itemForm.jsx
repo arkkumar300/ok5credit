@@ -34,10 +34,16 @@ export default function ItemForm({ setItem, setNewItem }) {
   const [unitItems, setUnitItems] = useState([
     { label: 'Nos', value: 'Nos' },
     { label: 'Items', value: 'Items' },
+    { label: 'Grams', value: 'Grams' },
+    { label: 'Kg', value: 'Kg' },
+    { label: 'Liter', value: 'Liter' },
+    { label: 'Meter', value: 'Meter' },
     { label: 'Packages', value: 'Packages' },
     { label: 'Boxes', value: 'Boxes' },
+    { label: 'Pieces', value: 'Pieces' },
     { label: 'Dozens', value: 'Dozens' },
     { label: 'Pairs', value: 'Pairs' },
+    { label: 'Units', value: 'Units' }
   ]);
 
   // Show form only when user types item name
