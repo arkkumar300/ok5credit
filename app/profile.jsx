@@ -314,7 +314,7 @@ const BusinessCardModal = ({ visible, onClose, userDetails, onPress }) => {
       if (!isAvailable) {
         Alert.alert('Sharing not available');
         return;
-      }
+      } 
 
       await Sharing.shareAsync(uri, {
         mimeType: 'image/png',

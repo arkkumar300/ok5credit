@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking,Alert } from 'react-native';
-import { PhoneCall, MessageSquare, ArrowDown, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar } from 'lucide-react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking, Alert } from 'react-native';
+import { PhoneCall, MessageSquare, ArrowDown, Send, MessageCircle, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Divider } from 'react-native-paper';
 import moment from 'moment';
@@ -8,7 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
 import ErrorModal from './components/ErrorModal';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import DateModal from './components/DateModal';
+import * as Sharing from "expo-sharing";
+import ViewShot from "react-native-view-shot";
 
 const transactions = [
   {
@@ -45,6 +46,8 @@ export default function SupplierDetails() {
   const [credit_given_count_user, setCredit_given_count_user] = useState(0);
   const [payment_got_count_user, setPayment_got_count_user] = useState(0);
   const [subscribePlan, setSubscribePlan_user] = useState("");
+  const viewShotRef = useRef(null);
+
   var rrr = 0
   const [dueDate, setDueDate] = useState(
     supplier?.due_date ? new Date(supplier?.due_date) : null
@@ -99,6 +102,54 @@ export default function SupplierDetails() {
       return;
     }
     Linking.openURL(`tel:${supplierMobile}`);
+  };
+  const sendSMS = () => {
+    if (!supplierMobile) {
+      Alert.alert("Phone number not available");
+      return;
+    }
+
+    const message = `Hi ${personName},
+  Your current balance is ₹${Math.abs(
+      supplier?.current_balance || 0
+    )} ${Number(supplier?.current_balance) > 0 ? "Advance" : "Due"}`;
+
+    const smsUrl = `sms:${supplierMobile}?body=${encodeURIComponent(message)}`;
+
+    Linking.openURL(smsUrl).catch(() =>
+      Alert.alert("Unable to open SMS app")
+    );
+  };
+
+  const openWhatsAppWithImage = async () => {
+    if (!supplierMobile) {
+      Alert.alert("Phone number not available");
+      return;
+    }
+
+    try {
+      // Capture screenshot
+      await viewShotRef.current.capture();
+
+      const phone = `91${supplierMobile}`; // country code
+      const message = `Hi ${personName}, please find your account details below.`;
+
+      const url = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(
+        message
+      )}`;
+
+      const supported = await Linking.canOpenURL(url);
+
+      if (!supported) {
+        Alert.alert("WhatsApp not installed");
+        return;
+      }
+
+      Linking.openURL(url);
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Failed to open WhatsApp",error);
+    }
   };
 
   useEffect(() => {
@@ -156,7 +207,7 @@ export default function SupplierDetails() {
       const response = await ApiService.put(
         `transactions/updateTransactions/DueDate`,
         dueDatePayload
-      ); 
+      );
 
       if (response.status === 200) {
         Alert.alert("DueDate updated successfully")
@@ -267,7 +318,7 @@ export default function SupplierDetails() {
                     return (
                       <Image
                         source={{ uri: url }}
-                        style={{ width: 80, height: 80,borderRadius:3 }}
+                        style={{ width: 80, height: 80, borderRadius: 3 }}
                         resizeMode="cover"
                       />
                     );
@@ -372,6 +423,7 @@ export default function SupplierDetails() {
             <PhoneCall size={24} color="#555" />
             <Text style={styles.actionText}>Call</Text>
           </TouchableOpacity>
+
           <TouchableOpacity style={styles.actionButton} onPress={() => router.push({
             pathname: '/customerLedger',
             params: {
@@ -384,6 +436,22 @@ export default function SupplierDetails() {
             <MessageSquare size={24} color="#555" />
             <Text style={styles.actionText}>Ledgers</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={sendSMS}
+          >
+            <MessageCircle size={24} color="#555" />
+            <Text style={styles.actionText}>SMS</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={openWhatsAppWithImage}
+          >
+            <Send size={24} color="#25D366" />
+            <Text style={styles.actionText}>WhatsApp</Text>
+          </TouchableOpacity>
+
         </View>
         {isSubscribe_user === false &&
           <>
@@ -516,7 +584,34 @@ export default function SupplierDetails() {
         onClose={() => setError(null)}
       />
 
+      <ViewShot
+        ref={viewShotRef}
+        options={{
+          format: "png",
+          quality: 0.9,
+          result: "tmpfile",
+        }}
+      >
+        <View style={styles.bottomContainer} collapsable={false}>
+          {/* ACTION ROW */}
+          <View style={styles.actionsRow}>
+            {/* Your existing buttons */}
+          </View>
 
+          {/* BALANCE */}
+          <View style={styles.balanceRow}>
+            <Text style={styles.balanceLabel}>Balance Due</Text>
+            <Text style={styles.balanceAmount}>
+              ₹ {Math.abs(supplier?.current_balance || 0)}
+            </Text>
+          </View>
+
+          {/* BOTTOM BUTTONS */}
+          <View style={styles.bottomButtonsRow}>
+            {/* Received / Given buttons */}
+          </View>
+        </View>
+      </ViewShot>
       {/* <DateModal
         visible={showPicker}
         initialDate={dueDate}

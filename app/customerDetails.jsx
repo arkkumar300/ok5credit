@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking, Animated } from 'react-native';
-import { PhoneCall, Delete, MessageSquare, ArrowDown, Percent, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar } from 'lucide-react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TextInput, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking, Animated, Alert } from 'react-native';
+import { PhoneCall, Delete, MessageSquare, Send, MessageCircle, ArrowDown, Percent, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Divider, Modal } from 'react-native-paper';
 import moment from 'moment';
@@ -8,8 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
 import ErrorModal from './components/ErrorModal';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import DateModal from './components/DateModal';
-import { Alert } from 'react-native';
+import * as Sharing from "expo-sharing";
+import ViewShot from "react-native-view-shot";
 
 const transactions = [
   {
@@ -56,7 +56,7 @@ export default function CustomerDetails() {
   const [discountLoading, setDiscountLoading] = useState(false); // disable button
   const [animateOpacity] = useState(new Animated.Value(0));
   const [animateTranslate] = useState(new Animated.Value(50));
-
+  const viewShotRef = useRef(null);
 
   var rrr = 0
   const [dueDate, setDueDate] = useState(
@@ -113,6 +113,57 @@ export default function CustomerDetails() {
     }
     Linking.openURL(`tel:${customerMobile}`);
   };
+
+  const sendSMS = () => {
+    if (!customerMobile) {
+      Alert.alert("Phone number not available");
+      return;
+    }
+
+    const message = `Hi ${personName},
+  Your current balance is ₹${Math.abs(
+      customer?.current_balance || 0
+    )} ${Number(customer?.current_balance) > 0 ? "Advance" : "Due"}`;
+
+    const smsUrl = `sms:${customerMobile}?body=${encodeURIComponent(message)}`;
+
+    Linking.openURL(smsUrl).catch(() =>
+      Alert.alert("Unable to open SMS app")
+    );
+  };
+
+
+  const openWhatsAppWithImage = async () => {
+    if (!customerMobile) {
+      Alert.alert("Phone number not available");
+      return;
+    }
+
+    try {
+      // Capture screenshot
+      await viewShotRef.current.capture();
+
+      const phone = `91${customerMobile}`; // country code
+      const message = `Hi ${personName}, please find your account details below.`;
+
+      const url = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(
+        message
+      )}`;
+
+      const supported = await Linking.canOpenURL(url);
+
+      if (!supported) {
+        Alert.alert("WhatsApp not installed");
+        return;
+      }
+
+      Linking.openURL(url);
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Failed to open WhatsApp");
+    }
+  };
+
 
   useEffect(() => {
     isEligible()
@@ -381,8 +432,8 @@ export default function CustomerDetails() {
                     return (
                       <View>
                         <Image
-                          source={{ uri:url }}
-                          style={{width:80,height:80,borderRadius:3 }}
+                          source={{ uri: url }}
+                          style={{ width: 80, height: 80, borderRadius: 3 }}
                           resizeMode="contain"
                         />
 
@@ -513,6 +564,21 @@ export default function CustomerDetails() {
           >
             <Percent size={24} color="#555" />
             <Text style={styles.actionText}>Discount</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={sendSMS}
+          >
+            <MessageCircle size={24} color="#555" />
+            <Text style={styles.actionText}>SMS</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={openWhatsAppWithImage}
+          >
+            <Send size={24} color="#25D366" />
+            <Text style={styles.actionText}>WhatsApp</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
@@ -663,7 +729,6 @@ export default function CustomerDetails() {
         onClose={() => setError(null)}
       />
       {/* ---------------- DISCOUNT MODAL --------------------- */}
-      {/* ---------------- DISCOUNT MODAL --------------------- */}
       <Modal visible={showDiscountModal} transparent animationType="fade">
         <View style={styles.overlay}>
           <Animated.View
@@ -754,6 +819,34 @@ export default function CustomerDetails() {
           </Animated.View>
         </View>
       </Modal>
+      <ViewShot
+        ref={viewShotRef}
+        options={{
+          format: "png",
+          quality: 0.9,
+          result: "tmpfile",
+        }}
+      >
+        <View style={styles.bottomContainer} collapsable={false}>
+          {/* ACTION ROW */}
+          <View style={styles.actionsRow}>
+            {/* Your existing buttons */}
+          </View>
+
+          {/* BALANCE */}
+          <View style={styles.balanceRow}>
+            <Text style={styles.balanceLabel}>Balance Due</Text>
+            <Text style={styles.balanceAmount}>
+              ₹ {Math.abs(customer?.current_balance || 0)}
+            </Text>
+          </View>
+
+          {/* BOTTOM BUTTONS */}
+          <View style={styles.bottomButtonsRow}>
+            {/* Received / Given buttons */}
+          </View>
+        </View>
+      </ViewShot>
 
     </SafeAreaView >
 
