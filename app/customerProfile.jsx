@@ -219,7 +219,7 @@ const OtherProfile = () => {
         {/* Business Info List */}
         <View style={styles.card}>
           <ProfileItem icon={User} label={profile?.name || "Enter your Name"} onPress={() => openModal('UserName')} />
-          <ProfileItem icon={Phone} label={profile?.mobile || "9494130830"}  />
+          <ProfileItem icon={Phone} label={profile?.mobile || "Enter Mobile Number"}  />
           <ProfileItem icon={MapPin} label={profile?.address || "Enter your address"} onPress={() => openModal('address')} />
           <ProfileItem icon={Mail} label={profile?.email || "Enter your Email"} onPress={() => openModal('Email')} />
           <TouchableOpacity style={styles.item} onPress={() => openModal('DeleteCustomer')}>

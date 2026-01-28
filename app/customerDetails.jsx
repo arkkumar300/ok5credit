@@ -1,578 +1,620 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking, Animated, Alert } from 'react-native';
-import { PhoneCall, Delete, MessageSquare, Send, MessageCircle, ArrowDown, Percent, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar } from 'lucide-react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  FlatList,
+  SafeAreaView,
+  TouchableOpacity,
+  Image,
+  Linking,
+  Animated,
+  Alert,
+  ScrollView,
+  Platform
+} from 'react-native';
+import {
+  PhoneCall,
+  Delete,
+  MessageSquare,
+  Send,
+  MessageCircle,
+  ArrowDown,
+  Percent,
+  ArrowUp,
+  ArrowLeft,
+  CheckIcon,
+  File,
+  ChevronRight,
+  Calendar
+} from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Appbar, Divider, Modal } from 'react-native-paper';
+import { Appbar, Divider } from 'react-native-paper';
 import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
 import ErrorModal from './components/ErrorModal';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import * as Sharing from "expo-sharing";
-import ViewShot from "react-native-view-shot";
+import * as Sharing from 'expo-sharing';
+import ViewShot from 'react-native-view-shot';
+import Modal from 'react-native-modal';
 
-const transactions = [
-  {
-    id: '1',
-    type: 'received',
-    amount: 100,
-    time: '02:34 PM',
-    file: false,
-    description: 'Capita amounts',
-    note: '₹100 Advance',
-  },
-  {
-    id: '2',
-    type: 'given',
-    amount: 1000,
-    time: '02:44 PM',
-    file: true,
-    description: '',
-    note: '₹900 Due',
-  },
-];
+// Modal component for discount
+const DiscountModal = ({ visible, onClose, onSubmit, loading }) => {
+  const [discountAmount, setDiscountAmount] = useState('');
+  const [discountNote, setDiscountNote] = useState('');
+  const [animateOpacity] = useState(new Animated.Value(0));
+  const [animateTranslate] = useState(new Animated.Value(50));
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(animateOpacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animateTranslate, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      animateOpacity.setValue(0);
+      animateTranslate.setValue(50);
+    }
+  }, [visible]);
+
+  const handleSubmit = () => {
+    if (!discountAmount || isNaN(discountAmount) || parseFloat(discountAmount) <= 0) {
+      Alert.alert('Invalid', 'Enter a valid discount amount');
+      return;
+    }
+    
+    onSubmit({
+      amount: parseFloat(discountAmount),
+      note: discountNote,
+    });
+    
+    setDiscountAmount('');
+    setDiscountNote('');
+  };
+
+  return (
+    <Modal
+      isVisible={visible}
+      onBackdropPress={onClose}
+      onBackButtonPress={onClose}
+      animationIn="fadeIn"
+      animationOut="fadeOut"
+      backdropOpacity={0.5}
+    >
+      <Animated.View
+        style={[
+          styles.modalContainer,
+          {
+            opacity: animateOpacity,
+            transform: [{ translateY: animateTranslate }],
+          },
+        ]}
+      >
+        <Text style={styles.modalTitle}>Add Discount</Text>
+
+        <TextInput
+          placeholder="Enter discount amount"
+          placeholderTextColor="#aaaaaa"
+          keyboardType="numeric"
+          value={discountAmount}
+          onChangeText={setDiscountAmount}
+          style={styles.input}
+        />
+
+        <TextInput
+          placeholder="Note (optional)"
+          placeholderTextColor="#aaaaaa"
+          value={discountNote}
+          onChangeText={setDiscountNote}
+          style={[styles.input, styles.textArea]}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+        />
+
+        <View style={styles.modalButtonRow}>
+          <TouchableOpacity
+            style={[styles.modalButton, styles.cancelButton]}
+            onPress={onClose}
+            disabled={loading}
+          >
+            <Text style={[styles.modalButtonText, styles.cancelButtonText]}>
+              Cancel
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.modalButton,
+              styles.submitButton,
+              loading && styles.disabledButton,
+            ]}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            <Text style={[styles.modalButtonText, styles.submitButtonText]}>
+              {loading ? 'Saving...' : 'Submit'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+    </Modal>
+  );
+};
+
+// Transaction Item Component
+const TransactionItem = React.memo(({ item, personName, router, customer }) => {
+  const isReceived = item.transaction_type === 'you_got' || item.transaction_type === 'you_discount';
+
+  if (item.is_Deleted) {
+    return (
+      <View
+        style={[
+          styles.transactionWrapper,
+          isReceived ? styles.leftContainer : styles.rightContainer,
+        ]}
+      >
+        <View style={[styles.transactionBox, styles.deletedTransaction]}>
+          <View style={styles.amountRow}>
+            <Delete size={20} color="gray" />
+            <Text style={[styles.amountText, styles.deletedText]}>
+              ₹ {item.amount}
+            </Text>
+          </View>
+          <Text style={[styles.timeText, styles.deletedText]}>
+            Deleted on: {moment(item.delete_date).format('DD/MM/YYYY')}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  const handlePress = () => {
+    router.push({
+      pathname: '/transactionDetails',
+      params: {
+        transactionDetails: JSON.stringify(item),
+        Name: personName,
+      },
+    });
+  };
+
+  const handleBillPress = () => {
+    const encoded = encodeURIComponent(JSON.stringify(customer));
+    router.push({
+      pathname: '/billDetails',
+      params: {
+        billId: item.bill_id,
+        customerInfo: encoded,
+        bill: item.bill_id,
+      },
+    });
+  };
+
+  const renderImage = () => {
+    let pics = item.transaction_pic;
+    if (typeof pics === 'string') {
+      try {
+        pics = JSON.parse(pics);
+      } catch {
+        pics = [];
+      }
+    }
+    if (!Array.isArray(pics)) pics = [];
+
+    const url =
+      pics?.length > 0
+        ? pics[0]
+        : 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg';
+
+    return (
+      <Image
+        source={{ uri: url }}
+        style={styles.transactionImage}
+        resizeMode="contain"
+      />
+    );
+  };
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.transactionWrapper,
+        isReceived ? styles.leftContainer : styles.rightContainer,
+      ]}
+      onPress={handlePress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.transactionBox}>
+        <View style={styles.amountRow}>
+          {isReceived ? (
+            <ArrowDown size={20} color="green" />
+          ) : (
+            <ArrowUp size={20} color="red" />
+          )}
+          <Text style={styles.amountText}>₹ {item.amount}</Text>
+          <Text style={styles.timeText}>
+            {moment(item.transaction_date).format('DD/MM/YYYY')}
+          </Text>
+          <CheckIcon size={20} color="green" style={styles.checkIcon} />
+        </View>
+
+        {item?.bill_id && (
+          <>
+            <Divider style={styles.divider} />
+            <TouchableOpacity
+              style={styles.billRow}
+              onPress={handleBillPress}
+              activeOpacity={0.7}
+            >
+              <File size={24} color="green" />
+              <Text style={styles.billText}>{item.bill_id}</Text>
+              <Text style={[styles.amountText, styles.billAmount]}>
+                ₹ {item.amount}
+              </Text>
+              <ChevronRight size={24} color="green" />
+            </TouchableOpacity>
+          </>
+        )}
+
+        {item?.transaction_pic?.length > 0 && (
+          <>
+            <Divider style={styles.divider} />
+            <TouchableOpacity
+              style={styles.imageRow}
+              onPress={handlePress}
+              activeOpacity={0.7}
+            >
+              {renderImage()}
+              <Text style={[styles.amountText, styles.imageAmount]}>
+                ₹ {item.amount}
+              </Text>
+              <ChevronRight size={24} color="green" />
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 export default function CustomerDetails() {
   const router = useRouter();
   const { personName, personType, personId } = useLocalSearchParams();
+  
   const [customer, setCustomer] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isModelView, setIsModelView] = useState(false);
   const [error, setError] = useState(null);
   const [customerMobile, setCustomerMobile] = useState('');
   const [isSubscribe_user, setIsSubscribe_user] = useState(null);
   const [subscribeEndAt_user, setSubscribeEndAt_user] = useState(null);
   const [credit_given_count_user, setCredit_given_count_user] = useState(0);
   const [payment_got_count_user, setPayment_got_count_user] = useState(0);
-  const [subscribePlan, setSubscribePlan_user] = useState("");
+  const [subscribePlan, setSubscribePlan_user] = useState('');
   const [showDiscountModal, setShowDiscountModal] = useState(false);
-  const [discountAmount, setDiscountAmount] = useState("");
-  const [amount, setAmount] = useState(0);
-  const [discountNote, setDiscountNote] = useState("");
-  const [note, setNote] = useState(0);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [success, setSuccess] = useState(false);
-  const [discountLoading, setDiscountLoading] = useState(false); // disable button
-  const [animateOpacity] = useState(new Animated.Value(0));
-  const [animateTranslate] = useState(new Animated.Value(50));
+  const [discountLoading, setDiscountLoading] = useState(false);
+  const [dueDate, setDueDate] = useState(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const viewShotRef = useRef(null);
 
-  var rrr = 0
-  const [dueDate, setDueDate] = useState(
-    customer?.due_date ? new Date(customer?.due_date) : null
-  );
-  const [showPicker, setShowPicker] = useState(false);
-
-  const fetchCustomer = async () => {
-    const userData = await AsyncStorage.getItem("userData");
-    const userId = JSON.parse(userData).id;
+  const fetchCustomer = useCallback(async () => {
     try {
+      const userData = await AsyncStorage.getItem('userData');
+      if (!userData) {
+        setError('User data not found');
+        return;
+      }
+      
+      const userId = JSON.parse(userData).id;
       const response = await ApiService.post(`/customers/${personId}`, { userId });
       const data = response.data;
 
       setCustomer(data.customer);
-      const customerPhone = data.customer.mobile;
-      const customerDueDate = data.customer.due_date;
-      const customer_id = data.customer.id;
-
-      fetchCustomerDueDate(customer_id);
-      setCustomerMobile(customerPhone);
-      setTransactions(data.transactions);
+      setCustomerMobile(data.customer.mobile);
+      setTransactions(data.transactions || []);
+      
+      // Fetch due date if exists
+      if (data.customer.due_date) {
+        setDueDate(new Date(data.customer.due_date));
+      }
     } catch (err) {
-      console.error(err);
-      setError('Failed to load data');
+      console.error('Error fetching customer:', err);
+      setError('Failed to load customer data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [personId]);
+
+  const fetchUserSubscription = useCallback(async () => {
+    try {
+      const userData = await AsyncStorage.getItem('userData');
+      if (!userData) return;
+
+      const userId = JSON.parse(userData).id;
+      const response = await ApiService.get(`/user/${userId}`);
+
+      if (response.data) {
+        const {
+          isSubscribe,
+          subscribeEndAt,
+          credit_given_count,
+          subscribePlan,
+          payment_got_count,
+        } = response.data;
+
+        setIsSubscribe_user(isSubscribe);
+        setSubscribeEndAt_user(subscribeEndAt);
+        setCredit_given_count_user(credit_given_count || 0);
+        setPayment_got_count_user(payment_got_count || 0);
+        setSubscribePlan_user(subscribePlan || '');
+      }
+    } catch (err) {
+      console.error('Error fetching subscription:', err);
+    }
+  }, []);
 
   useEffect(() => {
     fetchCustomer();
-  }, []);
-
-  const fetchCustomerDueDate = async (customer_id) => {
-    const userData = await AsyncStorage.getItem("userData");
-    const userId = JSON.parse(userData).id;
-    try {
-      const response = await ApiService.post(`/customers/upcoming/DueDate`, { customer_id, user_id: userId });
-      const data = response.data;
-      setDueDate(data.upcoming_due_date);
-    } catch (err) {
-      console.error(err);
-      setError('Failed to load data');
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchUserSubscription();
+  }, [fetchCustomer, fetchUserSubscription]);
 
   const handleCall = () => {
     if (!customerMobile) {
-      alert("Phone number not available");
+      Alert.alert('Error', 'Phone number not available');
       return;
     }
-    Linking.openURL(`tel:${customerMobile}`);
+    Linking.openURL(`tel:${customerMobile}`).catch(() => {
+      Alert.alert('Error', 'Unable to make a call');
+    });
   };
 
   const sendSMS = () => {
     if (!customerMobile) {
-      Alert.alert("Phone number not available");
+      Alert.alert('Error', 'Phone number not available');
       return;
     }
 
+    const balance = Math.abs(customer?.current_balance || 0);
+    const balanceType = Number(customer?.current_balance) > 0 ? 'Advance' : 'Due';
+    
     const message = `Hi ${personName},
-  Your current balance is ₹${Math.abs(
-      customer?.current_balance || 0
-    )} ${Number(customer?.current_balance) > 0 ? "Advance" : "Due"}`;
+Your current balance is ₹${balance} ${balanceType}`;
 
     const smsUrl = `sms:${customerMobile}?body=${encodeURIComponent(message)}`;
 
-    Linking.openURL(smsUrl).catch(() =>
-      Alert.alert("Unable to open SMS app")
-    );
+    Linking.openURL(smsUrl).catch(() => {
+      Alert.alert('Error', 'Unable to open SMS app');
+    });
   };
-
 
   const openWhatsAppWithImage = async () => {
     if (!customerMobile) {
-      Alert.alert("Phone number not available");
+      Alert.alert('Error', 'Phone number not available');
       return;
     }
 
     try {
-      // Capture screenshot
-      await viewShotRef.current.capture();
-
-      const phone = `91${customerMobile}`; // country code
+      const phone = `91${customerMobile}`;
       const message = `Hi ${personName}, please find your account details below.`;
-
-      const url = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(
-        message
-      )}`;
+      const url = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(message)}`;
 
       const supported = await Linking.canOpenURL(url);
-
       if (!supported) {
-        Alert.alert("WhatsApp not installed");
+        Alert.alert('Error', 'WhatsApp not installed');
         return;
+      }
+
+      // Capture screenshot if ref exists
+      if (viewShotRef.current) {
+        await viewShotRef.current.capture();
       }
 
       Linking.openURL(url);
     } catch (error) {
-      console.error(error);
-      Alert.alert("Failed to open WhatsApp");
+      console.error('WhatsApp error:', error);
+      Alert.alert('Error', 'Failed to open WhatsApp');
     }
   };
 
+  const handleAddTransaction = async (transactionType) => {
+    if (!isSubscribe_user) {
+      if (transactionType === 'you_got' && payment_got_count_user >= 4) {
+        setError('You have reached the limit for received transactions in Basic plan');
+        return;
+      }
+      if (transactionType === 'you_gave' && credit_given_count_user >= 2) {
+        setError('You have reached the limit for given transactions in Basic plan');
+        return;
+      }
+    } else {
+      const today = new Date();
+      const endDate = new Date(subscribeEndAt_user);
+      if (endDate < today) {
+        setError('Your subscription has expired');
+        return;
+      }
+    }
 
-  useEffect(() => {
-    isEligible()
-  }, [])
-
-  const isEligible = async () => {
-    const userData = await AsyncStorage.getItem("userData");
-    const userId = JSON.parse(userData).id;
-
-    const response = await ApiService.get(`/user/${userId}`);
-
-    if (!response.data) return false;
-
-    const {
-      isSubscribe,
-      subscribeEndAt,
-      credit_given_count,
-      subscribePlan,
-      payment_got_count
-    } = response.data;
-
-    setIsSubscribe_user(isSubscribe)
-    setSubscribeEndAt_user(subscribeEndAt)
-    setCredit_given_count_user(credit_given_count)
-    setPayment_got_count_user(payment_got_count)
-    setSubscribePlan_user(subscribePlan)
-
-    console.log("isSubscribe::", isSubscribe);
-    console.log("subscribeEndAt::", subscribeEndAt);
-    console.log("credit_given_count::", credit_given_count);
-    console.log("payment_got_count::", payment_got_count);
-    console.log("subscribePlan::", subscribePlan);
-
-    // if (isSubscribe) {
-    //   const today = new Date();
-    //   const endDate = new Date(subscribeEndAt);
-
-    //   return endDate >= today;
-    // }
-
-
+    router.push({
+      pathname: '/transaction',
+      params: {
+        transactionType,
+        transaction_for: 'customer',
+        id: personId,
+        mobile: customerMobile,
+        personName: personName,
+        isSubscribe_user,
+        transaction_limit:
+          transactionType === 'you_got' ? payment_got_count_user : credit_given_count_user,
+      },
+    });
   };
 
-  const addTransaction = async () => {
-    if (loading) return; // Prevent double taps
-    const date = moment().format('YYYY-MM-DD');
-    setUploadProgress(0);
-    setLoading(true);
-
+  const handleDiscountSubmit = async ({ amount, note }) => {
+    setDiscountLoading(true);
     try {
-      // Get user details
-      const userData = await AsyncStorage.getItem("userData");
+      const userData = await AsyncStorage.getItem('userData');
+      if (!userData) throw new Error('User data not found');
+      
       const userId = JSON.parse(userData).id;
-      const userName = JSON.parse(userData).name;
-      // -----------------------
-      // 📌 Build Base Payload
-      // -----------------------
+      const date = moment().format('YYYY-MM-DD');
 
-      const formattedDueDate = undefined;
-      // Add image fields only if available
       const payload = {
         customer_id: customer.id,
         userId,
-        transaction_type: "you_discount",
-        transaction_for: "customer",
-        amount: Number(discountAmount),
-        description: discountNote,
-        paidAmount: Number(discountAmount),
-        remainingAmount: Number(discountAmount),
+        transaction_type: 'you_discount',
+        transaction_for: 'customer',
+        amount: Number(amount),
+        description: note,
+        paidAmount: Number(amount),
+        remainingAmount: Number(amount),
         transaction_date: date,
-        due_date: formattedDueDate,
         paymentType: 'paid',
       };
-      console.log("payload:::", payload)
 
-      // -----------------------
-      // 📌 API Endpoint
-      // -----------------------
-      const url = "/transactions/customer";
-
-      // -----------------------
-      // 📌 Submit Transaction
-      // -----------------------
-      const response = await ApiService.post(url, payload, {
-        headers: { "Content-Type": "application/json" },
-      }, {
-        onUploadProgress: (e) => {
-          if (e.total > 0) {
-            setUploadProgress(e.loaded / e.total);
-          }
-        },
+      await ApiService.post('/transactions/customer', payload, {
+        headers: { 'Content-Type': 'application/json' },
       });
-      // -----------------------
-      // 🎉 Success animation + navigation
-      // -----------------------
-      setTimeout(() => {
-        setSuccess(true);
-        setLoading(false);
 
-      }, 1000);
-    } catch (error) {
-      console.error("Error:", error);
-      setLoading(false);
-      Alert.alert("Error", "Failed to add transaction");
-    } finally {
+      Alert.alert('Success', 'Discount added successfully');
       await fetchCustomer();
-    }
-  };
-
-  const updateTransactionDueDate = async (newDuedate) => {
-    const dueDatePayload = {
-      customer_id: customer.id,
-      isDuedateChange: true,
-      dueDate: newDuedate
-    }
-
-    try {
-
-      // Use the selected date (date), NOT dueDate
-      const response = await ApiService.put(
-        `transactions/updateTransactions/DueDate`,
-        dueDatePayload
-      );
-
-      if (response.status === 200) {
-        Alert.alert("DueDate updated successfully")
-      } else {
-        alert("Failed to update due date");
-      }
+      setShowDiscountModal(false);
     } catch (error) {
-      console.error(error);
-      alert("Error updating due date");
+      console.error('Error adding discount:', error);
+      Alert.alert('Error', 'Failed to add discount');
+    } finally {
+      setDiscountLoading(false);
     }
-  }
-
-  const renderItem = ({ item }) => {
-    const isReceived = item.transaction_type === "you_got" || item.transaction_type === "you_discount";
-    // ⬇️ Compute rrr balance
-    if (isReceived) {
-      rrr = Number(rrr) + Number(item.amount);
-    } else {
-      rrr = Number(rrr) - Number(item.amount);
-    }
-
-    const aaa = rrr < 0 ? `${Math.abs(rrr)} Due` : `${rrr} Advance`;
-
-    // 🔥 If deleted → show disabled card
-    if (item.is_Deleted) {
-      return (
-        <View style={[styles.transactionWrapper,
-        isReceived ? styles.leftContainer : styles.rightContainer,
-        ]}>
-          <View style={styles.transactionBox}>
-            <View style={styles.amountRow}>
-              <Delete size={20} color="gray" />
-              <Text style={[styles.amountText, { color: "gray" }]}>₹ {item.amount}</Text>
-            </View>
-
-            <Text style={[styles.timeText, { color: "gray", marginTop: 5 }]}>
-              Deleted on: {moment(item.delete_date).format("DD/MM/YYYY")}
-            </Text>
-          </View>
-        </View>
-      );
-    }
-
-    // 🔥 Normal (non-deleted) item
-    return (
-      <TouchableOpacity
-        style={[
-          styles.transactionWrapper,
-          isReceived ? styles.leftContainer : styles.rightContainer,
-        ]}
-        onPress={() =>
-          router.push({
-            pathname: "/transactionDetails",
-            params: {
-              transactionDetails: JSON.stringify(item),
-              Name: personName,
-            },
-          })
-        }
-      >
-        <View>
-          <View style={styles.transactionBox}>
-            <View style={styles.amountRow}>
-              {isReceived ? (
-                <ArrowDown size={20} color="green" />
-              ) : (
-                <ArrowUp size={20} color="red" />
-              )}
-
-              <Text style={styles.amountText}>₹ {item.amount}</Text>
-              <Text style={styles.timeText}>
-                {moment(item.transaction_date).format("DD/MM/YYYY")}
-              </Text>
-              <CheckIcon size={20} color="green" style={{ marginHorizontal: 5 }} />
-            </View>
-
-            {/* BILLS */}
-            {item?.bill_id && (
-              <>
-                <Divider style={{ marginVertical: 5 }} />
-                <TouchableOpacity
-                  style={[
-                    styles.amountRow,
-                    { marginVertical: 5, justifyContent: "space-between" },
-                  ]}
-                  onPress={() => {
-                    const encoded = encodeURIComponent(JSON.stringify(customer));
-                    router.push({
-                      pathname: "/billDetails",
-                      params: {
-                        billId: item.bill_id,
-                        customerInfo: encoded,
-                        bill: item.bill_id,
-                      },
-                    });
-                  }}
-                >
-                  <File size={24} color="green" />
-                  <Text style={styles.amountText}>{item.bill_id}</Text>
-                  <Text style={[styles.amountText, { fontWeight: "600" }]}>
-                    ₹ {item.amount}
-                  </Text>
-                  <ChevronRight size={24} color="green" />
-                </TouchableOpacity>
-              </>
-            )}
-
-            {/* TRANSACTION IMAGES */}
-            {item?.transaction_pic?.length > 0 && (
-              <>
-                <Divider style={{ marginVertical: 5 }} />
-                <TouchableOpacity
-                  style={[
-                    styles.amountRow,
-                    { marginVertical: 5, justifyContent: "space-between" },
-                  ]}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/transactionDetails",
-                      params: {
-                        transactionDetails: JSON.stringify(item),
-                        Name: personName,
-                      },
-                    })
-                  }
-                >
-                  {(() => {
-                    let pics = item.transaction_pic;
-                    if (typeof pics === "string") {
-                      try {
-                        pics = JSON.parse(pics);
-                      } catch {
-                        pics = [];
-                      }
-                    }
-                    if (!Array.isArray(pics)) pics = [];
-
-                    const url =
-                      pics?.length > 0
-                        ? pics[0]
-                        : "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg";
-
-                    return (
-                      <View>
-                        <Image
-                          source={{ uri: url }}
-                          style={{ width: 80, height: 80, borderRadius: 3 }}
-                          resizeMode="contain"
-                        />
-
-                      </View>
-                    );
-                  })()}
-
-                  <Text style={[styles.amountText, { fontWeight: "600" }]}>
-                    ₹ {item.amount}
-                  </Text>
-                  <ChevronRight size={24} color="green" />
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-
-          <Text style={styles.noteText}>{aaa}</Text>
-        </View>
-      </TouchableOpacity>
-    );
   };
+
+  const handleDateChange = async (event, selectedDate) => {
+    setShowDatePicker(false);
+    
+    if (selectedDate) {
+      setDueDate(selectedDate);
+      
+      try {
+        const userData = await AsyncStorage.getItem('userData');
+        const userId = JSON.parse(userData)?.id;
+
+        const response = await ApiService.put(`/customers/${customer.id}`, {
+          userId: Number(userId),
+          due_date: selectedDate.toISOString(),
+        });
+
+        if (response.status === 200) {
+          Alert.alert('Success', 'Due date updated successfully');
+        } else {
+          Alert.alert('Error', 'Failed to update due date');
+        }
+      } catch (error) {
+        console.error('Error updating date:', error);
+        Alert.alert('Error', 'Failed to update due date');
+      }
+    }
+  };
+
+  const renderEmptyList = () => (
+    <View style={styles.emptyContainer}>
+      <Image
+        source={require('../assets/images/DataCaution.png')}
+        style={styles.emptyImage}
+        resizeMode="contain"
+      />
+      <Text style={styles.emptyText}>
+        Customer transactions data is private and secure
+      </Text>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-
-      <Appbar.Header style={{ backgroundColor: "#ffffff", borderBottomWidth: 2, justifyContent: 'space-between', borderColor: '#f2f7f6' }}>
-        <ArrowLeft size={24} color={'#2E7D32'} style={{ marginStart: 10 }} onPress={() => router.push('./dashboard')} />
-        <Appbar.Content title={personName} titleStyle={{ color: '#333333', fontSize: 18, fontWeight: 'bold', marginStart: 10 }} />
-        <Appbar.Content title="Customer Profile" titleStyle={{ color: '#388E3C', fontSize: 13, alignSelf: 'flex-end', marginRight: 30 }} onPress={() => router.push({ pathname: '/customerProfile', params: { ID: personId, profileType: 'customer' } })} />
+      <Appbar.Header style={styles.header}>
+        <TouchableOpacity onPress={() => router.push('./dashboard')}>
+          <ArrowLeft size={24} color="#2E7D32" />
+        </TouchableOpacity>
+        <Appbar.Content
+          title={personName}
+          titleStyle={styles.headerTitle}
+        />
+        <TouchableOpacity
+          onPress={() =>
+            router.push({
+              pathname: '/customerProfile',
+              params: { ID: personId, profileType: 'customer' },
+            })
+          }
+        >
+          <Text style={styles.profileLink}>Customer Profile</Text>
+        </TouchableOpacity>
       </Appbar.Header>
 
-      {/* Transaction List */}
       <FlatList
         data={transactions}
-        style={{ marginBottom: 50 }}
-        renderItem={renderItem}
+        style={styles.list}
+        renderItem={({ item }) => (
+          <TransactionItem
+            item={item}
+            personName={personName}
+            router={router}
+            customer={customer}
+          />
+        )}
         keyExtractor={(item) => item.id?.toString()}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        ListEmptyComponent={() => {
-          return (
-            <View style={styles.emptyContainer}>
-              <Image
-                source={require('../assets/images/DataCaution.png')}
-                style={styles.image}
-                resizeMode="contain"
-              />
-              <Text style={styles.emptyText}>customer transactions data is pravite and secure</Text>
-            </View>
-          )
-        }}
+        ListEmptyComponent={renderEmptyList}
       />
-      {/* Bottom Material Block */}
+
+      {/* Bottom Section */}
       <View style={styles.bottomContainer}>
-        {/* Actions */}
         <View style={styles.actionsRow}>
-          {Number(customer?.current_balance) < 0 && (
-            <>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => setShowPicker(true)}
-              >
-                <Calendar size={24} color="#555" />
-                <Text style={styles.actionText}>
-                  {dueDate ? new Date(dueDate).toDateString() : "Due Date"}
-                </Text>
-              </TouchableOpacity>
-
-              {showPicker && (
-                <DateTimePicker
-                  value={dueDate instanceof Date ? dueDate : new Date()}
-                  mode="date"
-                  display="spinner"
-                  onChange={async (event, date) => {
-                    setShowPicker(false); // close picker immediately
-                    if (date) {
-                      setDueDate(date); // update local state
-
-                      try {
-                        const userData = await AsyncStorage.getItem("userData");
-                        const userId = JSON.parse(userData)?.id;
-
-                        // Use the selected date (date), NOT dueDate
-                        const response = await ApiService.put(
-                          `/customers/${customer.id}`,
-                          {
-                            userId: Number(userId),
-                            due_date: date.toISOString(),
-                          }
-                        );
-
-                        if (response.status === 200) {
-
-                          updateTransactionDueDate(date.toISOString())
-                        } else {
-                          alert("Failed to update due date");
-                        }
-                      } catch (error) {
-                        console.error(error);
-                        alert("Error updating due date");
-                      }
-                    }
-                  }}
-                  style={{ width: "100%" }}
-                />
-              )}
-            </>
+          {customer?.current_balance < 0 && (
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Calendar size={24} color="#555" />
+              <Text style={styles.actionText}>
+                {dueDate ? dueDate.toLocaleDateString() : 'Due Date'}
+              </Text>
+            </TouchableOpacity>
           )}
+          
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => {
-              setShowDiscountModal(true);
-
-              // Start animation
-              Animated.parallel([
-                Animated.timing(animateOpacity, {
-                  toValue: 1,
-                  duration: 250,
-                  useNativeDriver: true,
-                }),
-                Animated.timing(animateTranslate, {
-                  toValue: 0,
-                  duration: 250,
-                  useNativeDriver: true,
-                })
-              ]).start();
-            }}
+            onPress={() => setShowDiscountModal(true)}
           >
             <Percent size={24} color="#555" />
             <Text style={styles.actionText}>Discount</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={sendSMS}
-          >
+          
+          <TouchableOpacity style={styles.actionButton} onPress={sendSMS}>
             <MessageCircle size={24} color="#555" />
             <Text style={styles.actionText}>SMS</Text>
           </TouchableOpacity>
-
+          
           <TouchableOpacity
             style={styles.actionButton}
             onPress={openWhatsAppWithImage}
@@ -580,276 +622,122 @@ export default function CustomerDetails() {
             <Send size={24} color="#25D366" />
             <Text style={styles.actionText}>WhatsApp</Text>
           </TouchableOpacity>
-
+          
           <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
             <PhoneCall size={24} color="#555" />
             <Text style={styles.actionText}>Call</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => router.push({
-            pathname: '/customerLedger',
-            params: {
-              personId: personId,
-              personName: personName,
-              roleType: "CUSTOMER"
+          
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() =>
+              router.push({
+                pathname: '/customerLedger',
+                params: {
+                  personId: personId,
+                  personName: personName,
+                  roleType: 'CUSTOMER',
+                },
+              })
             }
-          })
-          }>
+          >
             <MessageSquare size={24} color="#555" />
             <Text style={styles.actionText}>Ledgers</Text>
           </TouchableOpacity>
         </View>
-        {isSubscribe_user === false &&
+
+        {isSubscribe_user === false && (
           <>
-            <Divider style={{ height: 0.5, width: '100%', marginVertical: 3, backgroundColor: '#388E3C90' }} />
-
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}>
-              <Text style={[{
-                color: '#388E3C90',
-                fontWeight: '600',
-                fontSize: 12,
-                textTransform: 'capitalize', margin: 5
-              }]}>{isSubscribe_user === false ? "Basic Plan" : subscribePlan}</Text>
-              <Text style={{ fontSize: 12, borderRadius: 5, fontWeight: 'bold', color: '#d3d3d3' }}>Receive :   {payment_got_count_user}  / 4</Text>
-              <Text style={{ fontSize: 12, borderRadius: 5, fontWeight: 'bold', color: '#d3d3d3' }}>Give       :    {credit_given_count_user} / 2</Text>
+            <Divider style={styles.planDivider} />
+            <View style={styles.planInfo}>
+              <Text style={styles.planName}>
+                {isSubscribe_user === false ? 'Basic Plan' : subscribePlan}
+              </Text>
+              <Text style={styles.planLimit}>
+                Receive: {payment_got_count_user} / 4
+              </Text>
+              <Text style={styles.planLimit}>
+                Give: {credit_given_count_user} / 2
+              </Text>
             </View>
+            <Divider style={styles.planDivider} />
+          </>
+        )}
 
-            <Divider style={{ height: 0.5, width: '100%', marginVertical: 3, backgroundColor: '#388E3C90' }} />
-          </>}
-        {/* Balance Row */}
         <View style={styles.balanceRow}>
-          <Text style={[styles.balanceLabel, { fontWeight: 'bold' }]}>Balance Due</Text>
-          <Text style={[styles.balanceAmount, { color: customer?.current_balance > 0 ? '#388E3C' : "#d32f2f" }]}>₹ {Math.abs(customer?.current_balance || 0)} {Number(customer?.current_balance) > 0 ? 'Advance' : "Due"}</Text>
+          <Text style={styles.balanceLabel}>Balance Due</Text>
+          <Text
+            style={[
+              styles.balanceAmount,
+              customer?.current_balance > 0
+                ? styles.positiveBalance
+                : styles.negativeBalance,
+            ]}
+          >
+            ₹ {Math.abs(customer?.current_balance || 0)}{' '}
+            {Number(customer?.current_balance) > 0 ? 'Advance' : 'Due'}
+          </Text>
         </View>
 
-        {/* Received and Given Buttons */}
         <View style={styles.bottomButtonsRow}>
           <TouchableOpacity
             style={styles.receivedButton}
-            onPress={async () => {          // MAKE ASYNC
-              if (isSubscribe_user) {
-                const today = new Date();
-                const endDate = new Date(subscribeEndAt_user);
-                if (endDate >= today) {
-                  router.push({
-                    pathname: '/transaction',
-                    params: {
-                      transactionType: "you_got",
-                      transaction_for: "customer",
-                      id: personId,
-                      mobile: customerMobile,
-                      personName: personName,
-                      isSubscribe_user,
-                      transaction_limit: payment_got_count_user || 0
-                    }
-                  });
-                } else {
-                  setError("You are in Basic plan so son't have eligiblity to add recived transaction");
-                  // setIsModelView(true)
-                }
-              } else {
-                if (payment_got_count_user < 10) {
-                  router.push({
-                    pathname: '/transaction',
-                    params: {
-                      transactionType: "you_got",
-                      transaction_for: "customer",
-                      id: personId,
-                      mobile: customerMobile,
-                      personName: personName,
-                      isSubscribe_user,
-                      transaction_limit: payment_got_count_user || 0
-                    }
-                  });
-                } else {
-                  setError("You are in Basic plan and limit has Crossed so you don't have eligiblity to add recived transaction");
-                  // setIsModelView(true)
-                }
-              }
-            }}
+            onPress={() => handleAddTransaction('you_got')}
           >
             <Text style={styles.receivedText}>↓ Received</Text>
           </TouchableOpacity>
-
+          
           <TouchableOpacity
             style={styles.givenButton}
-            onPress={async () => {
-              if (isSubscribe_user) {
-                const today = new Date();
-                const endDate = new Date(subscribeEndAt_user);
-                if (endDate >= today) {
-                  router.push({
-                    pathname: '/transaction',
-                    params: {
-                      transactionType: "you_gave",
-                      transaction_for: "customer",
-                      id: personId,
-                      mobile: customerMobile,
-                      personName: personName,
-                      isSubscribe_user,
-                      transaction_limit: credit_given_count_user || 0
-
-                    }
-                  });
-                } else {
-                  setError("You are in Basic plan so you don't have eligiblity to give amount");
-                  // setIsModelView(true)
-                }
-              } else {
-                if (credit_given_count_user < 40) {
-                  router.push({
-                    pathname: '/transaction',
-                    params: {
-                      transactionType: "you_gave",
-                      transaction_for: "customer",
-                      id: personId,
-                      mobile: customerMobile,
-                      personName: personName,
-                      isSubscribe_user,
-                      transaction_limit: credit_given_count_user || 0
-                    }
-                  });
-                } else {
-                  setError("You are in Basic plan and limit has Crossed so you don't have eligiblity to give amount");
-                  // setIsModelView(true)
-                }
-              }
-            }}
+            onPress={() => handleAddTransaction('you_gave')}
           >
             <Text style={styles.givenText}>↑ Given</Text>
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Date Picker */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={dueDate || new Date()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleDateChange}
+          minimumDate={new Date()}
+        />
+      )}
+
       <ErrorModal
         visible={!!error}
         message={error}
         onClose={() => setError(null)}
       />
-      {/* ---------------- DISCOUNT MODAL --------------------- */}
-      <Modal visible={showDiscountModal} transparent animationType="fade">
-        <View style={styles.overlay}>
-          <Animated.View
-            style={[
-              styles.modalContainer,
-              {
-                opacity: animateOpacity,
-                transform: [{ translateY: animateTranslate }],
-              },
-            ]}
-          >
-            <Text style={styles.title}>Add Discount</Text>
 
-            <TextInput
-              placeholder="Enter discount amount"
-              placeholderTextColor={"#aaaaaa"}
-              keyboardType="numeric"
-              value={discountAmount}
-              onChangeText={setDiscountAmount}
-              style={styles.input}
-            />
+      <DiscountModal
+        visible={showDiscountModal}
+        onClose={() => setShowDiscountModal(false)}
+        onSubmit={handleDiscountSubmit}
+        loading={discountLoading}
+      />
 
-            <TextInput
-              placeholder="Note (optional)"
-              placeholderTextColor={"#aaaaaa"}
-              value={discountNote}
-              onChangeText={setDiscountNote}
-              style={[styles.input, { height: 80 }]}
-              multiline
-            />
-
-            <View style={styles.buttonRow}>
-
-              {/* CANCEL BTN */}
-              <TouchableOpacity
-                style={[styles.button, { backgroundColor: "#ccc" }]}
-                onPress={() => {
-                  setShowDiscountModal(false);
-                  setDiscountAmount("");
-                  setDiscountNote("");
-                }}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-
-              {/* SUBMIT BTN */}
-              <TouchableOpacity
-                disabled={discountLoading}
-                style={[
-                  styles.button,
-                  {
-                    backgroundColor: discountLoading ? "#9CCC9C" : "#2E7D32",
-                    opacity: discountLoading ? 0.6 : 1,
-                  },
-                ]}
-                onPress={async () => {
-                  if (!discountAmount || isNaN(discountAmount)) {
-                    Alert.alert("Invalid", "Enter a valid discount amount");
-                    return;
-                  }
-                  // setDiscountLoading(true);
-                  // set values for your addTransaction function
-                  setAmount(discountAmount);
-                  setNote(discountNote);
-
-                  // Clear for next use
-
-                  await addTransaction();
-
-                  setDiscountLoading(false);
-                  setDiscountAmount("");
-                  setDiscountNote("");
-
-                  // Close popup
-                  setShowDiscountModal(false);
-
-                  // Wait for animation reset
-                  animateOpacity.setValue(0);
-                  animateTranslate.setValue(50);
-
-                }}
-              >
-                <Text style={[styles.buttonText, { color: "#fff" }]}>
-                  {discountLoading ? "Saving..." : "Submit"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        </View>
-      </Modal>
       <ViewShot
         ref={viewShotRef}
         options={{
-          format: "png",
+          format: 'png',
           quality: 0.9,
-          result: "tmpfile",
         }}
+        style={styles.hiddenView}
       >
-        <View style={styles.bottomContainer} collapsable={false}>
-          {/* ACTION ROW */}
-          <View style={styles.actionsRow}>
-            {/* Your existing buttons */}
-          </View>
-
-          {/* BALANCE */}
-          <View style={styles.balanceRow}>
-            <Text style={styles.balanceLabel}>Balance Due</Text>
-            <Text style={styles.balanceAmount}>
-              ₹ {Math.abs(customer?.current_balance || 0)}
-            </Text>
-          </View>
-
-          {/* BOTTOM BUTTONS */}
-          <View style={styles.bottomButtonsRow}>
-            {/* Received / Given buttons */}
-          </View>
+        <View style={styles.screenshotContent}>
+          {/* Add content you want to capture in screenshot */}
+          <Text style={styles.screenshotText}>Customer: {personName}</Text>
+          <Text style={styles.screenshotText}>
+            Balance: ₹{Math.abs(customer?.current_balance || 0)}{' '}
+            {customer?.current_balance > 0 ? 'Advance' : 'Due'}
+          </Text>
         </View>
       </ViewShot>
-
-    </SafeAreaView >
-
+    </SafeAreaView>
   );
 }
 
@@ -857,33 +745,50 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
-    paddingTop: 24,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
-    marginBottom: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 2,
+    borderColor: '#f2f7f6',
+    justifyContent: 'space-between',
+    elevation: 0,
   },
-  name: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#222',
+  headerTitle: {
+    color: '#333333',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginStart: 10,
   },
-  date: {
-    fontSize: 14,
-    color: 'gray',
-    marginTop: 4,
+  profileLink: {
+    color: '#388E3C',
+    fontSize: 13,
+    fontWeight: '500',
+    marginRight: 20,
+  },
+  list: {
+    marginBottom: 50,
+  },
+  listContent: {
+    paddingBottom: 180,
+    paddingTop: 20,
+    paddingHorizontal: 10,
   },
   transactionWrapper: {
     marginVertical: 8,
-    flexDirection: 'row',
   },
   leftContainer: {
-    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
   },
   rightContainer: {
-    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
   },
   transactionBox: {
-    maxWidth: '100%',
+    width: '90%',
     borderWidth: 1,
     borderColor: '#e0e0e0',
     borderRadius: 12,
@@ -895,44 +800,92 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
+  deletedTransaction: {
+    opacity: 0.6,
+    backgroundColor: '#f5f5f5',
+  },
   amountRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
   },
-  deletedItem: {
-    opacity: 0.4,
-    backgroundColor: "#f5f5f5",
+  checkIcon: {
+    marginHorizontal: 5,
   },
   amountText: {
     fontSize: 18,
     color: '#333',
+    marginLeft: 8,
+  },
+  deletedText: {
+    color: 'gray',
   },
   timeText: {
     fontSize: 16,
     color: 'gray',
+    marginLeft: 8,
   },
-  descriptionText: {
+  divider: {
+    marginVertical: 5,
+  },
+  billRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginVertical: 5,
+  },
+  billText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 8,
+  },
+  billAmount: {
+    fontWeight: '600',
+  },
+  imageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginVertical: 5,
+  },
+  transactionImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 3,
+  },
+  imageAmount: {
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyImage: {
+    width: '90%',
+    height: 150,
+  },
+  emptyText: {
     fontSize: 14,
-    marginTop: 2,
-    color: '#444',
+    fontWeight: '700',
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 20,
   },
-  noteText: {
-    fontSize: 13,
-    color: 'gray',
-  },
-
-  /*** Bottom Block ***/
   bottomContainer: {
     position: 'absolute',
     bottom: 0,
-    alignSelf: 'center',
-    width: '100%',
+    left: 0,
+    right: 0,
     backgroundColor: '#f2f7f6',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    paddingVertical: 16, borderWidth: 2,
-    paddingHorizontal: 20, borderColor: '#E8F5E9',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderWidth: 2,
+    borderColor: '#E8F5E9',
     elevation: 5,
     shadowColor: '#000',
     shadowOpacity: 0.1,
@@ -944,26 +897,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 14,
   },
-  listContent: {
-    paddingBottom: 180,
-    paddingTop: 30,
-    paddingHorizontal: 10,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  image: {
-    width: '90%', justifyContent: 'center',
-    height: 150, alignSelf: 'center'
-  },
-  emptyText: {
-    fontSize: 14, fontWeight: '700',
-    color: '#666',
-    textAlign: 'center'
-  },
   actionButton: {
     alignItems: 'center',
     flex: 1,
@@ -972,6 +905,30 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 13,
     color: '#444',
+  },
+  planDivider: {
+    height: 0.5,
+    width: '100%',
+    marginVertical: 3,
+    backgroundColor: '#388E3C90',
+  },
+  planInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  planName: {
+    color: '#388E3C90',
+    fontWeight: '600',
+    fontSize: 12,
+    textTransform: 'capitalize',
+    margin: 5,
+  },
+  planLimit: {
+    fontSize: 12,
+    borderRadius: 5,
+    fontWeight: 'bold',
+    color: '#888',
   },
   balanceRow: {
     flexDirection: 'row',
@@ -982,11 +939,18 @@ const styles = StyleSheet.create({
   balanceLabel: {
     fontSize: 14,
     color: '#777',
-    marginRight: 6, marginTop: 8
+    marginRight: 6,
+    marginTop: 8,
   },
   balanceAmount: {
     fontSize: 16,
-    fontWeight: 'bold', marginTop: 8,
+    fontWeight: 'bold',
+    marginTop: 8,
+  },
+  positiveBalance: {
+    color: '#388E3C',
+  },
+  negativeBalance: {
     color: '#d32f2f',
   },
   bottomButtonsRow: {
@@ -1028,37 +992,72 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   modalContainer: {
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderRadius: 14,
     padding: 20,
-    elevation: 8,
+    marginHorizontal: 20,
   },
-  title: {
+  modalTitle: {
     fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
+    fontWeight: 'bold',
+    textAlign: 'center',
     marginBottom: 15,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#bbb",
+    borderColor: '#bbb',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     marginBottom: 15,
+    color: '#333',
   },
-  buttonRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
   },
-  button: {
+  modalButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  modalButton: {
     padding: 12,
-    width: "48%",
+    width: '48%',
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
   },
-  buttonText: {
+  cancelButton: {
+    backgroundColor: '#ccc',
+  },
+  submitButton: {
+    backgroundColor: '#2E7D32',
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  modalButtonText: {
     fontSize: 16,
-    fontWeight: "600",
-  }
+    fontWeight: '600',
+  },
+  cancelButtonText: {
+    color: '#333',
+  },
+  submitButtonText: {
+    color: '#fff',
+  },
+  hiddenView: {
+    position: 'absolute',
+    opacity: 0,
+    width: 1,
+    height: 1,
+  },
+  screenshotContent: {
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  screenshotText: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 10,
+  },
 });
