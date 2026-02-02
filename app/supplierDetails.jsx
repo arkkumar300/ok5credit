@@ -1,30 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  SafeAreaView,
-  TouchableOpacity,
-  Image,
-  Linking,
-  Alert,
-  Platform,
-  ActivityIndicator,
-} from 'react-native';
-import {
-  PhoneCall,
-  MessageSquare,
-  ArrowDown,
-  Send,
-  MessageCircle,
-  ArrowUp,
-  ArrowLeft,
-  CheckIcon,
-  File,
-  ChevronRight,
-  Calendar,
-} from 'lucide-react-native';
+import React, { useState, useEffect, useRef,useMemo, useCallback } from 'react';
+import {View,Text,StyleSheet,FlatList,SafeAreaView,TouchableOpacity,Image,Linking,Alert,Platform,ActivityIndicator} from 'react-native';
+import {PhoneCall,MessageSquare,ArrowDown,Send,MessageCircle,ArrowUp,ArrowLeft,CheckIcon,File,ChevronRight,Calendar} from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Divider } from 'react-native-paper';
 import moment from 'moment';
@@ -38,9 +14,9 @@ import * as FileSystem from 'expo-file-system';
 
 // Transaction Item Component
 const TransactionItem = React.memo(
-  ({ item, personName, router, supplier, calculateBalance }) => {
+  ({ item, personName, router, supplier }) => {
     const isReceived = item.transaction_type === 'you_got';
-    const balanceText = calculateBalance(item, isReceived);
+    const balanceText =  item.balanceText
 
     const handlePress = () => {
       router.push({
@@ -186,7 +162,7 @@ export default function SupplierDetails() {
   const router = useRouter();
   const { personName, personType, personId } = useLocalSearchParams();
   const [isCapturing, setIsCapturing] = useState(false);
-    const [supplier, setSupplier] = useState(null);
+  const [supplier, setSupplier] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -198,8 +174,8 @@ export default function SupplierDetails() {
   const [subscribePlan, setSubscribePlan_user] = useState('');
   const [dueDate, setDueDate] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [runningBalance, setRunningBalance] = useState(0);
-  
+  // const [runningBalance, setRunningBalance] = useState(0);
+
   const viewShotRef = useRef(null);
 
   const fetchSupplier = useCallback(async () => {
@@ -209,7 +185,7 @@ export default function SupplierDetails() {
         setError('User data not found');
         return;
       }
-      
+
       const userId = JSON.parse(userData).id;
       const response = await ApiService.post(`/supplier/${personId}`, { userId });
       const data = response.data;
@@ -217,11 +193,11 @@ export default function SupplierDetails() {
       setSupplier(data.supplier);
       setSupplierMobile(data.supplier.mobile);
       setTransactions(data.transactions || []);
-      
+
       if (data.supplier.due_date) {
         setDueDate(new Date(data.supplier.due_date));
       }
-      
+
       if (data.supplier.id) {
         fetchSupplierDueDate(data.supplier.id);
       }
@@ -233,17 +209,39 @@ export default function SupplierDetails() {
     }
   }, [personId]);
 
+  const transactionsWithBalance = useMemo(() => {
+    let balance = 0;
+  
+    return transactions.map((item) => {
+      if (!item.is_Deleted) {
+        balance +=
+          item.transaction_type === 'you_got'
+            ? Number(item.amount)
+            : -Number(item.amount);
+      }
+  
+      return {
+        ...item,
+        runningBalance: balance,
+        balanceText:
+          balance < 0
+            ? `${Math.abs(balance)} Due`
+            : `${balance} Advance`,
+      };
+    });
+  }, [transactions]);
+  
   const fetchSupplierDueDate = async (supplierId) => {
     try {
       const userData = await AsyncStorage.getItem('userData');
       if (!userData) return;
-      
+
       const userId = JSON.parse(userData).id;
       const response = await ApiService.post(`/supplier/upcoming/DueDate`, {
         supplier_id: supplierId,
         user_id: userId,
       });
-      
+
       if (response.data?.upcoming_due_date) {
         setDueDate(new Date(response.data.upcoming_due_date));
       }
@@ -278,7 +276,7 @@ export default function SupplierDetails() {
     } catch (err) {
       console.error('Error fetching subscription:', err);
     }
-  }, []);
+  }, [personId]);
 
   useEffect(() => {
     fetchSupplier();
@@ -290,7 +288,7 @@ export default function SupplierDetails() {
       Alert.alert('Error', 'Phone number not available');
       return;
     }
-    
+
     Linking.openURL(`tel:${supplierMobile}`).catch(() => {
       Alert.alert('Error', 'Unable to make a call');
     });
@@ -304,7 +302,7 @@ export default function SupplierDetails() {
 
     const balance = Math.abs(supplier?.current_balance || 0);
     const balanceType = Number(supplier?.current_balance) > 0 ? 'Advance' : 'Due';
-    
+
     const message = `Hi ${personName},
 Your current balance is ₹${balance} ${balanceType}`;
 
@@ -323,18 +321,18 @@ Your current balance is ₹${balance} ${balanceType}`;
 
     try {
       setIsCapturing(true);
-      
+
       // Wait a bit for UI to render properly
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Capture the screenshot
       if (!viewShotRef.current) {
         Alert.alert('Error', 'Cannot capture screenshot');
         return;
       }
-      
+
       const uri = await viewShotRef.current.capture();
-      
+
       if (!uri) {
         Alert.alert('Error', 'Failed to capture screenshot');
         return;
@@ -374,7 +372,7 @@ Your current balance is ₹${balance} ${balanceType}`;
             dialogTitle: 'Share to WhatsApp',
             UTI: 'image/png',
           });
-          
+
           // Then send the text separately if user wants
           const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
           const supported = await Linking.canOpenURL(whatsappUrl);
@@ -398,13 +396,14 @@ Your current balance is ₹${balance} ${balanceType}`;
           Alert.alert('Error', 'WhatsApp is not installed');
         }
       }
-      
+
     } catch (error) {
       console.error('WhatsApp sharing error:', error);
       Alert.alert('Error', 'Failed to share: ' + error.message);
     } finally {
       setIsCapturing(false);
-    }  };
+    }
+  };
 
   const checkTransactionEligibility = useCallback(
     (transactionType) => {
@@ -417,11 +416,11 @@ Your current balance is ₹${balance} ${balanceType}`;
         }
         return true;
       } else {
-        if (transactionType === 'you_got' && payment_got_count_user >= 4) {
+        if (transactionType === 'you_got' && payment_got_count_user >= 6) {
           setError('You have reached the limit for received transactions in Basic plan');
           return false;
         }
-        if (transactionType === 'you_gave' && credit_given_count_user >= 2) {
+        if (transactionType === 'you_gave' && credit_given_count_user >= 4) {
           setError('You have reached the limit for given transactions in Basic plan');
           return false;
         }
@@ -446,6 +445,7 @@ Your current balance is ₹${balance} ${balanceType}`;
           mobile: supplierMobile,
           personName: personName,
           isSubscribe_user,
+          userAmountStatus:`₹ ${Math.abs(supplier?.current_balance || 0)} ${Number(supplier?.current_balance) > 0 ? 'Advance' : 'Due'}`,
           transaction_limit:
             transactionType === 'you_got'
               ? payment_got_count_user
@@ -467,10 +467,10 @@ Your current balance is ₹${balance} ${balanceType}`;
 
   const handleDateChange = async (event, selectedDate) => {
     setShowDatePicker(false);
-    
+
     if (selectedDate && supplier) {
       setDueDate(selectedDate);
-      
+
       try {
         const userData = await AsyncStorage.getItem('userData');
         const userId = JSON.parse(userData)?.id;
@@ -504,31 +504,31 @@ Your current balance is ₹${balance} ${balanceType}`;
     }
   };
 
-  const calculateBalance = useCallback(
-    (item, isReceived) => {
-      let balance = runningBalance;
-      
-      if (item.is_Deleted) {
-        // Don't update balance for deleted transactions
-        return balance < 0
-          ? `${Math.abs(balance)} Due`
-          : `${balance} Advance`;
-      }
+  // const calculateBalance = useCallback(
+  //   (item, isReceived) => {
+  //     let balance = runningBalance;
 
-      if (isReceived) {
-        balance += Number(item.amount);
-      } else {
-        balance -= Number(item.amount);
-      }
+  //     if (item.is_Deleted) {
+  //       // Don't update balance for deleted transactions
+  //       return balance < 0
+  //         ? `${Math.abs(balance)} Due`
+  //         : `${balance} Advance`;
+  //     }
 
-      setRunningBalance(balance);
-      
-      return balance < 0
-        ? `${Math.abs(balance)} Due`
-        : `${balance} Advance`;
-    },
-    [runningBalance]
-  );
+  //     if (isReceived) {
+  //       balance += Number(item.amount);
+  //     } else {
+  //       balance -= Number(item.amount);
+  //     }
+
+  //     setRunningBalance(balance);
+
+  //     return balance < 0
+  //       ? `${Math.abs(balance)} Due`
+  //       : `${balance} Advance`;
+  //   },
+  //   [runningBalance]
+  // );
 
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
@@ -597,17 +597,17 @@ Your current balance is ₹${balance} ${balanceType}`;
       </Appbar.Header>
 
       <FlatList
-        data={transactions}
+        data={transactionsWithBalance}
+        keyExtractor={(item, index) => item.id?.toString() || index.toString()}
         renderItem={({ item }) => (
           <TransactionItem
             item={item}
             personName={personName}
             router={router}
             supplier={supplier}
-            calculateBalance={calculateBalance}
+            // calculateBalance={calculateBalance}
           />
         )}
-        keyExtractor={(item) => item.id?.toString()}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={renderEmptyList}
@@ -621,18 +621,18 @@ Your current balance is ₹${balance} ${balanceType}`;
               style={styles.actionButton}
               onPress={() => setShowDatePicker(true)}
             >
-              <Calendar size={24} color="#555" />
+              <Calendar size={20} color="#555" />
               <Text style={styles.actionText}>
                 {dueDate ? dueDate.toLocaleDateString() : 'Due Date'}
               </Text>
             </TouchableOpacity>
           )}
-          
+
           <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
-            <PhoneCall size={24} color="#555" />
+            <PhoneCall size={20} color="#555" />
             <Text style={styles.actionText}>Call</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() =>
@@ -646,15 +646,15 @@ Your current balance is ₹${balance} ${balanceType}`;
               })
             }
           >
-            <MessageSquare size={24} color="#555" />
+            <MessageSquare size={20} color="#555" />
             <Text style={styles.actionText}>Ledgers</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.actionButton} onPress={sendSMS}>
-            <MessageCircle size={24} color="#555" />
+            <MessageCircle size={20} color="#555" />
             <Text style={styles.actionText}>SMS</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={styles.actionButton}
             onPress={openWhatsAppWithImage} // Most reliable option
@@ -695,7 +695,7 @@ Your current balance is ₹${balance} ${balanceType}`;
           >
             <Text style={styles.receivedText}>↓ Received</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={styles.givenButton}
             onPress={() => navigateToTransaction('you_gave')}
@@ -737,10 +737,10 @@ Your current balance is ₹${balance} ${balanceType}`;
             {supplier?.current_balance > 0 ? 'Advance' : 'Due'}
           </Text>
           {dueDate && supplier?.current_balance < 0 && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Due Date:</Text>
-                <Text style={styles.infoValue}>{dueDate.toLocaleDateString()}</Text>
-              </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Due Date:</Text>
+              <Text style={styles.infoValue}>{dueDate.toLocaleDateString()}</Text>
+            </View>
           )}
         </View>
       </ViewShot>
@@ -920,7 +920,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     marginTop: 6,
-    fontSize: 13,
+    fontSize: 10,
     color: '#444',
   },
   planDivider: {

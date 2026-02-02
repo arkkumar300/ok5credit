@@ -32,7 +32,7 @@ export default function Bills() {
 
     const addBill = async () => {
         await AsyncStorage.setItem("billType", activeTab === 'bill' ? 'BILL' : 'QUOTATION')
-        router.push({ pathname: './billGenaration', params: { bill_type: activeTab === 'bill' ? 'BILL' : 'QUOTATION',mode:"edit", bill_date: moment().format('DD MMM YYYY') } })
+        router.push({ pathname: './billGenaration', params: { bill_type: activeTab === 'bill' ? 'BILL' : 'QUOTATION',mode:"add",transaction_for:"customer", bill_date: moment().format('DD MMM YYYY') } })
     }
 
     useFocusEffect(

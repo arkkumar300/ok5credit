@@ -1,37 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  FlatList,
-  SafeAreaView,
-  TouchableOpacity,
-  Image,
-  Linking,
-  Animated,
-  Alert,
-  ScrollView,
-  Platform
-} from 'react-native';
-import {
-  PhoneCall,
-  Delete,
-  MessageSquare,
-  Send,
-  MessageCircle,
-  ArrowDown,
-  Percent,
-  ArrowUp,
-  ArrowLeft,
-  CheckIcon,
-  File,
-  ChevronRight,
-  Calendar
-} from 'lucide-react-native';
+import {View,Text,TextInput,StyleSheet,FlatList,SafeAreaView,TouchableOpacity,Image,Linking,Animated,Alert,ScrollView,Platform} from 'react-native';
+import {PhoneCall,Bell,Delete,MessageSquare,Send,MessageCircle,ArrowDown,Percent,ArrowUp,ArrowLeft,CheckIcon,File,ChevronRight,Calendar,HelpCircle, DeleteIcon} from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Divider } from 'react-native-paper';
 import moment from 'moment';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
 import ErrorModal from './components/ErrorModal';
@@ -72,12 +45,12 @@ const DiscountModal = ({ visible, onClose, onSubmit, loading }) => {
       Alert.alert('Invalid', 'Enter a valid discount amount');
       return;
     }
-    
+
     onSubmit({
       amount: parseFloat(discountAmount),
       note: discountNote,
     });
-    
+
     setDiscountAmount('');
     setDiscountNote('');
   };
@@ -291,7 +264,7 @@ const TransactionItem = React.memo(({ item, personName, router, customer }) => {
 export default function CustomerDetails() {
   const router = useRouter();
   const { personName, personType, personId } = useLocalSearchParams();
-  
+
   const [customer, setCustomer] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -315,7 +288,7 @@ export default function CustomerDetails() {
         setError('User data not found');
         return;
       }
-      
+
       const userId = JSON.parse(userData).id;
       const response = await ApiService.post(`/customers/${personId}`, { userId });
       const data = response.data;
@@ -323,7 +296,7 @@ export default function CustomerDetails() {
       setCustomer(data.customer);
       setCustomerMobile(data.customer.mobile);
       setTransactions(data.transactions || []);
-      
+
       // Fetch due date if exists
       if (data.customer.due_date) {
         setDueDate(new Date(data.customer.due_date));
@@ -364,10 +337,13 @@ export default function CustomerDetails() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchCustomer();
-    fetchUserSubscription();
-  }, [fetchCustomer, fetchUserSubscription]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchCustomer();
+      fetchUserSubscription();
+      },  [fetchCustomer, fetchUserSubscription])
+  )
 
   const handleCall = () => {
     if (!customerMobile) {
@@ -387,7 +363,7 @@ export default function CustomerDetails() {
 
     const balance = Math.abs(customer?.current_balance || 0);
     const balanceType = Number(customer?.current_balance) > 0 ? 'Advance' : 'Due';
-    
+
     const message = `Hi ${personName},
 Your current balance is ₹${balance} ${balanceType}`;
 
@@ -429,11 +405,11 @@ Your current balance is ₹${balance} ${balanceType}`;
 
   const handleAddTransaction = async (transactionType) => {
     if (!isSubscribe_user) {
-      if (transactionType === 'you_got' && payment_got_count_user >= 4) {
+      if (transactionType === 'you_got' && payment_got_count_user >= 10) {
         setError('You have reached the limit for received transactions in Basic plan');
         return;
       }
-      if (transactionType === 'you_gave' && credit_given_count_user >= 2) {
+      if (transactionType === 'you_gave' && credit_given_count_user >= 10) {
         setError('You have reached the limit for given transactions in Basic plan');
         return;
       }
@@ -455,8 +431,8 @@ Your current balance is ₹${balance} ${balanceType}`;
         mobile: customerMobile,
         personName: personName,
         isSubscribe_user,
-        transaction_limit:
-          transactionType === 'you_got' ? payment_got_count_user : credit_given_count_user,
+        userAmountStatus: `₹ ${Math.abs(customer?.current_balance || 0)} ${Number(customer?.current_balance) > 0 ? 'Advance' : 'Due'}`,
+        transaction_limit: transactionType === 'you_got' ? payment_got_count_user : credit_given_count_user,
       },
     });
   };
@@ -466,7 +442,7 @@ Your current balance is ₹${balance} ${balanceType}`;
     try {
       const userData = await AsyncStorage.getItem('userData');
       if (!userData) throw new Error('User data not found');
-      
+
       const userId = JSON.parse(userData).id;
       const date = moment().format('YYYY-MM-DD');
 
@@ -500,10 +476,10 @@ Your current balance is ₹${balance} ${balanceType}`;
 
   const handleDateChange = async (event, selectedDate) => {
     setShowDatePicker(false);
-    
+
     if (selectedDate) {
       setDueDate(selectedDate);
-      
+
       try {
         const userData = await AsyncStorage.getItem('userData');
         const userId = JSON.parse(userData)?.id;
@@ -595,26 +571,26 @@ Your current balance is ₹${balance} ${balanceType}`;
               style={styles.actionButton}
               onPress={() => setShowDatePicker(true)}
             >
-              <Calendar size={24} color="#555" />
+              <Calendar size={20} color="#555" />
               <Text style={styles.actionText}>
                 {dueDate ? dueDate.toLocaleDateString() : 'Due Date'}
               </Text>
             </TouchableOpacity>
           )}
-          
+
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => setShowDiscountModal(true)}
           >
-            <Percent size={24} color="#555" />
+            <Percent size={20} color="#555" />
             <Text style={styles.actionText}>Discount</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.actionButton} onPress={sendSMS}>
-            <MessageCircle size={24} color="#555" />
+            <MessageCircle size={20} color="#555" />
             <Text style={styles.actionText}>SMS</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={styles.actionButton}
             onPress={openWhatsAppWithImage}
@@ -622,12 +598,36 @@ Your current balance is ₹${balance} ${balanceType}`;
             <Send size={24} color="#25D366" />
             <Text style={styles.actionText}>WhatsApp</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
-            <PhoneCall size={24} color="#555" />
+            <PhoneCall size={20} color="#555" />
             <Text style={styles.actionText}>Call</Text>
           </TouchableOpacity>
-          
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push('./help')
+            }
+          >
+            <HelpCircle color="#555" size={24} />
+            <Text style={styles.actionText}>Help</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push({
+              pathname: '/deleteCustomer',
+              params: {
+                transaction_for: 'customer',
+                id: personId,
+              },
+            })
+        
+            }
+          >
+            <DeleteIcon color="#555" size={24} />
+            <Text style={styles.actionText}>Delete</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() =>
@@ -641,7 +641,7 @@ Your current balance is ₹${balance} ${balanceType}`;
               })
             }
           >
-            <MessageSquare size={24} color="#555" />
+            <MessageSquare size={20} color="#555" />
             <Text style={styles.actionText}>Ledgers</Text>
           </TouchableOpacity>
         </View>
@@ -686,7 +686,7 @@ Your current balance is ₹${balance} ${balanceType}`;
           >
             <Text style={styles.receivedText}>↓ Received</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={styles.givenButton}
             onPress={() => handleAddTransaction('you_gave')}
@@ -903,7 +903,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     marginTop: 6,
-    fontSize: 13,
+    fontSize: 10,
     color: '#444',
   },
   planDivider: {

@@ -7,14 +7,17 @@ import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Modal } from 'react-native-paper';
+import { Appbar, Modal } from 'react-native-paper';
 import ProgressButton from './components/ProgressButton';
 import DateModal from './components/DateModal';
 import { sendTransaction } from '../hooks/sendSMS';
 
 export default function TransactionScreen() {
-  const [amount, setAmount] = useState("");
-  const [note, setNote] = useState('');
+  const router = useRouter();
+  const { mobile, transactionType, transaction_for, id, personName, isSubscribe_user, transaction_limit, userAmountStatus,transactionAmount } = useLocalSearchParams();
+
+  const [amount, setAmount] = useState(Number(transactionAmount) || "")
+    const [note, setNote] = useState('');
   // const [selectedDate, setSelectedDate] = useState(moment().format('DD MMM YYYY'));
   const [activeType, setActiveType] = useState(null);
   const [images, setImages] = useState([]);
@@ -33,8 +36,6 @@ export default function TransactionScreen() {
   const [changeUpcommigDueDate, setChangeUpcommigDueDate] = useState(new Date());
   const [upcommigDueDate, setUpcommigDueDate] = useState(new Date());
 
-  const router = useRouter();
-  const { mobile, transactionType, transaction_for, id, personName, isSubscribe_user, transaction_limit } = useLocalSearchParams();
 
   const handleNumberPress = (num) => {
     if (amount === '0') {
@@ -107,17 +108,17 @@ export default function TransactionScreen() {
   const fetchCustomerDueDate = async () => {
     const userData = await AsyncStorage.getItem("userData");
     const userId = JSON.parse(userData).id;
-    const payload={
-      user_id: userId 
+    const payload = {
+      user_id: userId
     }
     if (transaction_for === "customer") {
-      payload.customer_id =id ;
+      payload.customer_id = id;
     } else {
-      payload.supplier_id =id ;
-    }   
-     try {
+      payload.supplier_id = id;
+    }
+    try {
       const url =
-      transaction_for === "customer"
+        transaction_for === "customer"
           ? "/customers/upcoming/DueDate"
           : "/supplier/upcoming/DueDate";
 
@@ -138,13 +139,13 @@ export default function TransactionScreen() {
       isDuedateChange: true,
       dueDate: newDuedate
     };
-  
+
     if (transaction_for === "customer") {
-      dueDatePayload.customer_id =id ;
+      dueDatePayload.customer_id = id;
     } else {
-      dueDatePayload.supplier_id =id ;
+      dueDatePayload.supplier_id = id;
     }
-  
+
     try {
 
       // Use the selected date (date), NOT dueDate
@@ -251,7 +252,7 @@ export default function TransactionScreen() {
       const invoice = response.data.transaction.id
       sendTransaction(mobile, personName, amount, userName, invoice)
 
-      if (transactionType==='you_got') {
+      if (transactionType === 'you_got') {
         updateTransactionDueDate(changeUpcommigDueDate)
       }
       // -----------------------
@@ -399,7 +400,7 @@ export default function TransactionScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
+      <Appbar.Header style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <ArrowLeft size={24} color="#333" />
           </TouchableOpacity>
@@ -409,14 +410,21 @@ export default function TransactionScreen() {
             </View>
             <View>
               <Text style={styles.personName}>{personName}</Text>
-              <Text style={styles.balanceText}>₹0</Text>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: userAmountStatus?.includes('Due') ? 'red' : 'green',
+                }}
+              >
+                {userAmountStatus}
+              </Text>
             </View>
           </View>
           <View style={styles.securedBadge}>
             <Text style={styles.securedText}>SECURED</Text>
             <Text style={styles.lockIcon}>🔒</Text>
           </View>
-        </View>
+        </Appbar.Header>
         {isSubscribe_user === false &&
           <>
             <View style={{
@@ -611,9 +619,9 @@ export default function TransactionScreen() {
                   </Text>
                   <Text style={styles.dropdownArrow}>📅</Text>
                 </TouchableOpacity>
-                <Text style={[styles.dateText,{marginVertical:10}]}>
-                   Upcomming DueData: {moment(upcommigDueDate).format('DD MMM YYYY')}
-                  </Text>
+                <Text style={[styles.dateText, { marginVertical: 10 }]}>
+                  Upcomming DueData: {moment(upcommigDueDate).format('DD MMM YYYY')}
+                </Text>
                 {showDueDatePicker && (
                   <DateTimePicker
                     value={dueDate}
@@ -641,9 +649,9 @@ export default function TransactionScreen() {
                   </Text>
                   <Text style={styles.dropdownArrow}>📅</Text>
                 </TouchableOpacity>
-                <Text style={[styles.dateText,{marginVertical:10}]}>
-                   Upcomming DueData: {moment(upcommigDueDate).format('DD MMM YYYY')}
-                  </Text>
+                <Text style={[styles.dateText, { marginVertical: 10 }]}>
+                  Upcomming DueData: {moment(upcommigDueDate).format('DD MMM YYYY')}
+                </Text>
                 {showChangeDueDatePicker && (
                   <DateTimePicker
                     value={changeUpcommigDueDate}

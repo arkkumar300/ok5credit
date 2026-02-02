@@ -194,15 +194,15 @@ export default function BillGenaration() {
     const fetchClientData = async () => {
         const userData = await AsyncStorage.getItem("userData");
         const userId = JSON.parse(userData).id;
-        const URL = transaction_for === 'customer' ? `/customers/${Id}` : `/supplier/${Id}`
+        const URL = transaction_for === 'supplier' ? `/supplier/${Id}` :`/customers/${Id}`
 
         try {
             const response = await ApiService.post(URL, { userId });
             const data = response.data;
-            if (transaction_for === 'customer') {
-                setSupplier(data.customer);
-            } else {
+            if (transaction_for === 'supplier') {
                 setSupplier(data.supplier);
+            } else {
+                setSupplier(data.customer);
             }
         } catch (err) {
             console.error(err);
@@ -213,15 +213,15 @@ export default function BillGenaration() {
     const getSupplier = async () => {
         const userData = await AsyncStorage.getItem("userData");
         const userId = JSON.parse(userData).id;
-        const URL = transaction_for === 'customer' ? `/customers/getAllCustomers/ByUserId` : `/supplier/getAllSuppliers/ByUserId`
+        const URL = transaction_for === 'supplier' ? `/supplier/getAllSuppliers/ByUserId` :  `/customers/getAllCustomers/ByUserId`
 
         try {
             const response = await ApiService.post(URL, { userId });
             const data = response.data;
-            if (transaction_for === 'customer') {
-                setSuppliersList(data.customers);
-            } else {
+            if (transaction_for === 'supplier') {
                 setSuppliersList(data.suppliers);
+            } else {
+                setSuppliersList(data.customers);
             }
 
         } catch (err) {

@@ -66,17 +66,18 @@ export default function BillPreview() {
 
       setUploadProgress(0.33); // 33% complete
       const uploadedPath = `https://aquaservices.esotericprojects.tech/uploads/${uploadRes.data.file_info.filename}`;
-
       if (mode === "add") {
+        console.log(mode, ":::")
         /** STEP 3 → Save bill */
         const savedBill = await saveBillToServer(uploadedPath);
         await addTransaction(savedBill);
       } else {
+        console.log(mode, "@@@")
         /** STEP 3 → Update bill */
         const updateBill = await updateBillToServer(uploadedPath);
         await sendTransaction(supplierInfo?.mobile, supplierInfo?.name, totalAmount, userDetails.name, uploadedPath);
-        
-    
+
+
       }
       /** 🎉 ALL SUCCESS */
       setSuccess(true);
@@ -93,7 +94,6 @@ export default function BillPreview() {
 
   const saveBillToServer = async (uploadedPath) => {
     setUploadProgress(0.66); // 66% complete
-
     const billType = await AsyncStorage.getItem("billType");
 
     const payload = {
@@ -118,13 +118,11 @@ export default function BillPreview() {
       bill_id: bill,
       description: `i have given ${totalAmount} to ${supplierInfo?.name} on ${moment().format('YYYY-MM-DD')}`,
       bill_date: moment().format("YYYY-MM-DD"),
-      ...(transaction_for === "customer"
-        ? { customer_id: supplierInfo?.id }
-        : { supplier_id: supplierInfo?.id }),
+      ...(transaction_for === "supplier"
+        ? { supplier_id: supplierInfo?.id } 
+        : { customer_id: supplierInfo?.id }),
     };
-
     const billResponse = await ApiService.post(`/bill`, payload);
-
     return billResponse.data.bill;
   };
 
@@ -136,11 +134,11 @@ export default function BillPreview() {
     const formattedDueDate = format === 'unpaid'
       ? moment(dueDate).format('YYYY-MM-DD')
       : undefined;
-
+console.log("rrr::",transaction_for)
     const payload = {
       userId,
       transaction_type: "you_gave",
-      transaction_for,
+      transaction_for:transaction_for,
       amount: Number(totalAmount),
       paidAmount: format === 'unpaid' ? 0 : Number(totalAmount),
       remainingAmount: format === 'unpaid' ? Number(totalAmount) : 0,
@@ -151,16 +149,17 @@ export default function BillPreview() {
       ...(format === 'unpaid' && formattedDueDate
         ? { due_date: formattedDueDate }
         : {}),
-      ...(transaction_for === "customer"
-        ? { customer_id: supplierInfo?.id }
-        : { supplier_id: supplierInfo?.id }),
+      ...(transaction_for === "supplier"
+        ? { supplier_id: supplierInfo?.id }
+        : { customer_id: supplierInfo?.id }),
     };
+    const URL = transaction_for === "supplier"
+      ?`/transactions/supplier` 
+      : `/transactions/customer`;
+      console.log('URL :::',payload)
+      const response = await ApiService.post(URL, payload);
+    console.log('transaction savedBill:::',response)
 
-    const URL = transaction_for === "customer"
-      ? `/transactions/customer`
-      : `/transactions/supplier`;
-
-    const response = await ApiService.post(URL, payload);
     const invoice = response.data.transaction.id
     sendTransaction(supplierInfo.mobile, supplierInfo.name, totalAmount, userName, invoice)
     const encodedCustomer = encodeURIComponent(JSON.stringify(supplierInfo));
@@ -182,9 +181,9 @@ export default function BillPreview() {
     setUploadProgress(0.66); // 66% complete
 
     const formattedDueDate = format === 'unpaid'
-    ? moment(dueDate).format('YYYY-MM-DD')
-    : undefined;
-    
+      ? moment(dueDate).format('YYYY-MM-DD')
+      : undefined;
+
     const payload = {
       payment_status: format,
       items: parsedItems.map(it => ({
@@ -208,7 +207,7 @@ export default function BillPreview() {
         ? { due_date: formattedDueDate }
         : {}),
     };
-    
+
     const billResponse = await ApiService.put(`/bill/${bill_prm_id}`, payload);
     const encodedCustomer = encodeURIComponent(JSON.stringify(supplierInfo));
 

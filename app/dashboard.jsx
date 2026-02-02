@@ -424,12 +424,17 @@ export default function DashboardScreen() {
           </Text>
         </TouchableOpacity>
         <View style={styles.tabActions}>
-          <TouchableOpacity style={styles.iconButton} onPress={toggleModal}>
+          <TouchableOpacity style={[styles.iconButton, styles.activeTab]} onPress={toggleModal}>
             <Filter size={20} color="#666" />
           </TouchableOpacity>
-          {/* <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity style={[styles.iconButton, styles.activeTab]} onPress={() => router.navigate({
+            pathname: '/search',
+            params: {
+              addTo: activeTab,
+            }
+          })}>
             <Search size={20} color="#666" />
-          </TouchableOpacity> */}
+          </TouchableOpacity>
         </View>
       </View>
 
