@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef,useMemo, useCallback } from 'react';
 import {View,Text,StyleSheet,FlatList,SafeAreaView,TouchableOpacity,Image,Linking,Alert,Platform,ActivityIndicator} from 'react-native';
-import {PhoneCall,MessageSquare,ArrowDown,Send,MessageCircle,ArrowUp,ArrowLeft,CheckIcon,File,ChevronRight,Calendar} from 'lucide-react-native';
+import {PhoneCall,MessageSquare,ArrowDown,Send,MessageCircle,ArrowUp,ArrowLeft,CheckIcon,File,ChevronRight,Calendar, DeleteIcon} from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Divider } from 'react-native-paper';
 import moment from 'moment';
@@ -187,7 +187,9 @@ export default function SupplierDetails() {
       }
 
       const userId = JSON.parse(userData).id;
-      const response = await ApiService.post(`/supplier/${personId}`, { userId });
+      const ownerId = JSON.parse(userData).owner_user_id;
+
+      const response = await ApiService.post(`/supplier/${personId}`, { userId,ownerId });
       const data = response.data;
 
       setSupplier(data.supplier);
@@ -653,6 +655,21 @@ Your current balance is ₹${balance} ${balanceType}`;
           <TouchableOpacity style={styles.actionButton} onPress={sendSMS}>
             <MessageCircle size={20} color="#555" />
             <Text style={styles.actionText}>SMS</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push({
+              pathname: '/deleteCustomer',
+              params: {
+                transaction_for: 'supplier',
+                id: personId,
+              },
+            })
+            }
+          >
+            <DeleteIcon color="#555" size={24} />
+            <Text style={styles.actionText}>Delete</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

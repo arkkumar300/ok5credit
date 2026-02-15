@@ -80,7 +80,6 @@ export default function UserInfo() {
         message: "Welcome to the app!",
         user_mobile:userMobile
       });
-      console.log("FCM response:", response);
 
       if (!response.data.success) throw new Error(response.data.message || 'Failed to send notification');
 

@@ -176,6 +176,7 @@ export default function TransactionScreen() {
       // Get user details
       const userData = await AsyncStorage.getItem("userData");
       const userId = JSON.parse(userData).id;
+      const ownerId = JSON.parse(userData).owner_user_id;
       const userName = JSON.parse(userData).name;
       if (paymentType === 'credit' && !dueDate) {
         Alert.alert('Validation Error', 'Please select a due date');
@@ -205,6 +206,8 @@ export default function TransactionScreen() {
       // -----------------------
       const commonPayload = {
         userId,
+        ownerId,
+        created_user:userId,
         transaction_type: transactionType,
         transaction_for: transactionFor,
         amount: Number(amount),
@@ -227,8 +230,8 @@ export default function TransactionScreen() {
       // -----------------------
       const payload =
         transactionFor === "customer"
-          ? { ...commonPayload, customer_id: id }
-          : { ...commonPayload, supplier_id: id };
+          ? { ...commonPayload, customer_id: Number(id)}
+          : { ...commonPayload, supplier_id: Number(id) };
 
       // -----------------------
       // 📌 API Endpoint

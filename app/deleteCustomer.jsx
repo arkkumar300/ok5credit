@@ -19,9 +19,13 @@ export default function DeleteCustomer() {
       if (!userData) return;
 
       const userId = JSON.parse(userData).id;
-      const response = await ApiService.post(`/customers/${id}`, { userId });
-
-      setCustomer(response.data.customer);
+      const URL = transaction_for === 'customer' ? '/customers' : '/supplier'
+      const response = await ApiService.post(`${URL}/${id}`, { userId });
+      if (transaction_for === 'customer') {
+        setCustomer(response.data.customer);
+      } else {
+        setCustomer(response.data.supplier);
+      }
     } catch (err) {
       console.error('Error fetching customer:', err);
     } finally {
@@ -78,7 +82,7 @@ export default function DeleteCustomer() {
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => {
-            console.log("rrr:::",{
+            console.log("rrr:::", {
               transactionType: isAdvance ? 'you_gave' : 'you_got',
               transaction_for,
               id: id,
@@ -107,46 +111,46 @@ export default function DeleteCustomer() {
             Add {isAdvance ? 'Credit' : 'Payment'}, of ₹{Math.abs(balance)}
           </Text>
         </TouchableOpacity>
-      ):(
+      ) : (
         <TouchableOpacity
-        style={styles.addButton}
-        onPress={async () => {
-          const userData = await AsyncStorage.getItem('userData');
-          if (!userData) return;
-    
-          const userId = JSON.parse(userData).id;
-    
-          try {
-            const response = await ApiService.delete(
-              `/customers/${id}`,{
-                userId,
+          style={styles.addButton}
+          onPress={async () => {
+            const userData = await AsyncStorage.getItem('userData');
+            if (!userData) return;
+
+            const userId = JSON.parse(userData).id;
+            const URL = transaction_for === 'customer' ? '/customers' : '/supplier'
+
+            try {
+              const response = await ApiService.put(
+                `${URL}/delete/${id}`, {
+                userId
               },
-              {
-                headers: {
-                  "Content-Type": "application/json",
-                },
+                {
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                }
+              );
+
+              if (response) {
+                console.log(response.message); // "Customer deleted successfully"
+                router.push("./dashboard")
+                // You can show a toast / alert / navigate back here
+              } else {
+                console.error("Delete failed:", data);
               }
-            );
-      
-            const data = await response.json();
-      
-            if (response.ok) {
-              console.log(data.message); // "Customer deleted successfully"
-              // You can show a toast / alert / navigate back here
-            } else {
-              console.error("Delete failed:", data);
+            } catch (error) {
+              console.error("API error:", error);
             }
-          } catch (error) {
-            console.error("API error:", error);
-          }
-        }}
-      >
-        <Delete size={20} color="#fff" />
-        <Text style={[styles.addButtonText, { textTransform: "capitalize" }]}>
-          Delete {customer.name} {transaction_for}
-        </Text>
-      </TouchableOpacity>
-      
+          }}
+        >
+          <Delete size={20} color="#fff" />
+          <Text style={[styles.addButtonText, { textTransform: "capitalize" }]}>
+            Delete {customer.name} {transaction_for}
+          </Text>
+        </TouchableOpacity>
+
       )}
 
       {/* Info Text */}

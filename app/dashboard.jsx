@@ -65,6 +65,7 @@ export default function DashboardScreen() {
 
   const fetchDashboardData = async () => {
     const userDetails = await AsyncStorage.getItem("userData");
+    console.log("userDate:",userDetails)
     const userId = JSON.parse(userDetails).id;
     const rrr = JSON.parse(userDetails);
     setUserData(rrr)
@@ -74,7 +75,7 @@ export default function DashboardScreen() {
 
     try {
 
-      const response = await ApiService.post("/dashboard/businessOwner", { userId });
+      const response = await ApiService.post("/dashboard/businessOwner", { userId,created_user:userId });
       if (response.data.success) {
         const fetchedCustomers = response.data.Customers.map((c) => ({
           id: c.id,
@@ -119,6 +120,7 @@ export default function DashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
+
       fetchDashboardData();
     }, [])
   )

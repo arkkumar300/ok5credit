@@ -18,6 +18,7 @@ import * as Contacts from 'expo-contacts';
 import ApiService from './components/ApiServices';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import cleanMobileNumber from './components/cleanMobileNumber';
+import { ActivityIndicator } from 'react-native';
 
 export default function AddCustomerScreen() {
   const [name, setName] = useState('');
@@ -25,55 +26,67 @@ export default function AddCustomerScreen() {
   const [mobile, setMobile] = useState('');
   const [contacts, setContacts] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   const router = useRouter();
-  
+
   const handleConfirm = async () => {
+    setLoading(true)
     const userData = await AsyncStorage.getItem("userData");
     const userId = JSON.parse(userData).id;
-    console.log("rrr ::", userId)
+    const ownerId = JSON.parse(userData).owner_user_id;
     if (name.trim() && mobile.trim()) {
       try {
         const response = await ApiService.post("/customers", {
-          userId: Number(userId),
+          ownerId: Number(ownerId),
+          userId,
           name: name.trim(),
-          mobile: mobile.trim()
+          mobile: mobile.trim(),
+          created_user: Number(userId)
         });
 
         if (response.status === 200 || response.status === 201) {
           alert('Customer added successfully');
-          router.push('/dashboard'); 
+          router.push('/dashboard');
         } else {
           alert('Something went wrong while adding the customer.');
         }
       } catch (error) {
         console.error(error);
         alert('API request failed. Check your server.');
+      } finally {
+        setLoading(false)
       }
     }
   };
+  const isValid = name.trim().length > 0;
+  const isDisabled = !isValid || loading;
 
   const handleSearch = async () => {
     const userData = await AsyncStorage.getItem("userData");
+    console.log("userdata::", userData)
     const userId = JSON.parse(userData).id;
+    const ownerId = JSON.parse(userData).owner_user_id;
     if (mobile.trim()) {
       try {
         const response = await ApiService.post("/customers/getCustomersByMobile/WithUserID", {
-          userId: Number(userId),
+          ownerId: Number(ownerId),
+          userId,
           mobile: mobile
-        },{
-          headers:{
-            "Content-Type":"application/json"
+        }, {
+          headers: {
+            "Content-Type": "application/json"
           }
         });
-          if (response.data.data) {
-            alert('Customer Already Exists');
-            setMobile('');
-            setName('');
-            setIsExist(true)
-          } else {
-            setIsExist(false)
-          }
-        
+        if (response.data.success) {
+          alert('Customer Already Exists');
+          setMobile('');
+          setName('');
+          setIsExist(true)
+        } else {
+          setIsExist(false)
+        }
+
       } catch (error) {
         console.error(error);
         alert('API request failed. Check your server.');
@@ -101,12 +114,12 @@ export default function AddCustomerScreen() {
   const handleContactSelect = (contact) => {
     const rawNumber = contact.phoneNumbers[0]?.number || "";
     const cleanedNumber = cleanMobileNumber(rawNumber);
-  
+
     setName(contact.name);
     setMobile(cleanedNumber);
     setModalVisible(false);
   };
-  
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -170,13 +183,18 @@ export default function AddCustomerScreen() {
         <TouchableOpacity
           style={[
             styles.confirmButton,
-            name.trim() ? styles.confirmButtonActive : styles.confirmButtonDisabled,
+            isDisabled ? styles.confirmButtonDisabled : styles.confirmButtonActive,
           ]}
           onPress={handleConfirm}
-          disabled={!name.trim()}
+          disabled={isDisabled}
         >
-          <Text style={styles.confirmButtonText}>Confirm</Text>
-        </TouchableOpacity>}
+          {loading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.confirmButtonText}>Confirm</Text>
+          )}
+        </TouchableOpacity>
+      }
 
       {/* Modal for Contacts List */}
       <Modal
@@ -271,7 +289,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: 40,
-    color:"#333333"
+    color: "#333333"
   },
   confirmButton: {
     marginHorizontal: 20,

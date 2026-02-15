@@ -157,6 +157,7 @@ const TransactionItem = React.memo(({ item, personName, router, customer }) => {
       pathname: '/transactionDetails',
       params: {
         transactionDetails: JSON.stringify(item),
+        mobile: customer.mobile,
         Name: personName,
       },
     });
@@ -290,7 +291,8 @@ export default function CustomerDetails() {
       }
 
       const userId = JSON.parse(userData).id;
-      const response = await ApiService.post(`/customers/${personId}`, { userId });
+      const ownerId = JSON.parse(userData).owner_user_id;
+      const response = await ApiService.post(`/customers/${personId}`, { userId,ownerId });
       const data = response.data;
 
       setCustomer(data.customer);
@@ -444,11 +446,14 @@ Your current balance is ₹${balance} ${balanceType}`;
       if (!userData) throw new Error('User data not found');
 
       const userId = JSON.parse(userData).id;
+      const ownerId = JSON.parse(userData).owner_user_id;
       const date = moment().format('YYYY-MM-DD');
 
       const payload = {
         customer_id: customer.id,
         userId,
+        ownerId,
+        created_user:userId,
         transaction_type: 'you_discount',
         transaction_for: 'customer',
         amount: Number(amount),
@@ -621,7 +626,6 @@ Your current balance is ₹${balance} ${balanceType}`;
                 id: personId,
               },
             })
-        
             }
           >
             <DeleteIcon color="#555" size={24} />

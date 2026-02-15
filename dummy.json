@@ -591,3 +591,29 @@
         }
     ]
 }
+
+{
+    "transaction_pic": [
+        "[\"https://aquaservices.esotericprojects.tech/uploads/processed-files-1770119567478-870425871.jpeg\",\"https://aquaservices.esotericprojects.tech/uploads/processed-files-1770119567479-540906323.jpeg\",\"https://aquaservices.esotericprojects.tech/uploads/processed-file-1770119584422-949253876.jpg\"]"
+    ],
+    "id": 77,
+    "business_owner_id": 1,
+    "customer_id": 1,
+    "supplier_id": null,
+    "transaction_type": "you_gave",
+    "transaction_for": "customer",
+    "paymentType": "paid",
+    "amount": "1000.00",
+    "paidAmount": "1000.00",
+    "remainingAmount": "0.00",
+    "description": "",
+    "is_Approved": false,
+    "is_Deleted": false,
+    "is_Bill": false,
+    "bill_id": null,
+    "transaction_date": "2026-02-03T00:00:00.000Z",
+    "due_date": null,
+    "delete_date": null,
+    "created_at": "2026-02-03T11:52:47.000Z",
+    "updated_at": "2026-02-03T11:53:04.000Z"
+}

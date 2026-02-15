@@ -1,16 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  SafeAreaView,
-  Modal,
-  FlatList,
-  Image,
-  Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, Modal, FlatList, Image, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, User, Phone, Contact } from 'lucide-react-native';
 import { Appbar } from 'react-native-paper';
@@ -18,62 +7,73 @@ import * as Contacts from 'expo-contacts';
 import ApiService from './components/ApiServices';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import cleanMobileNumber from './components/cleanMobileNumber';
+import { ActivityIndicator } from 'react-native';
 
 export default function AddSupplierScreen() {
   const [name, setName] = useState('');
   const [isExist, setIsExist] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [mobile, setMobile] = useState('');
   const [contacts, setContacts] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const router = useRouter();
-  
+
   const handleConfirm = async () => {
+    setLoading(true)
     const userData = await AsyncStorage.getItem("userData");
     const userId = JSON.parse(userData).id;
-    console.log("rrr ::", userId)
+    const ownerId = JSON.parse(userData).owner_user_id;
     if (name.trim() && mobile.trim()) {
       try {
         const response = await ApiService.post("/supplier", {
-          userId: Number(userId),
+          ownerId: Number(ownerId),
+          userId,
           name: name.trim(),
-          mobile: mobile.trim()
-        });
+          mobile: mobile.trim(),
+          created_user: Number(userId)
+        }); 
 
         if (response.status === 200 || response.status === 201) {
           alert('Supplier added successfully');
-          router.push('/dashboard'); 
+          router.push('/dashboard');
         } else {
           alert('Something went wrong while adding the supplier.');
         }
       } catch (error) {
         console.error(error);
         alert('API request failed. Check your server.');
+      } finally {
+        setLoading(false)
       }
     }
   };
+  const isValid = name.trim().length > 0;
+  const isDisabled = !isValid || loading;
 
   const handleSearch = async () => {
     const userData = await AsyncStorage.getItem("userData");
     const userId = JSON.parse(userData).id;
+    const ownerId = JSON.parse(userData).owner_user_id;
     if (mobile.trim()) {
       try {
         const response = await ApiService.post("/supplier/getSupplierByMobile/WithUserID", {
-          userId: Number(userId),
+          ownerId: Number(ownerId),
+          userId,
           mobile: mobile
-        },{
-          headers:{
-            "Content-Type":"application/json"
+        }, {
+          headers: {
+            "Content-Type": "application/json"
           }
         });
-          if (response.data.data) {
-            alert('Supplier Already Exists');
-            setMobile('');
-            setName('');
-            setIsExist(true)
-          } else {
-            setIsExist(false)
-          }
-        
+        if (response.data.data) {
+          alert('Supplier Already Exists');
+          setMobile('');
+          setName('');
+          setIsExist(true)
+        } else {
+          setIsExist(false)
+        }
+
       } catch (error) {
         console.error(error);
         alert('API request failed. Check your server.');
@@ -83,7 +83,7 @@ export default function AddSupplierScreen() {
 
   const openContacts = async () => {
     const { status } = await Contacts.requestPermissionsAsync();
-console.log("rrr:::",status)
+    console.log("rrr:::", status)
     if (status === 'granted') {
       const { data } = await Contacts.getContactsAsync({
         fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Image],
@@ -101,12 +101,12 @@ console.log("rrr:::",status)
   const handleContactSelect = (contact) => {
     const rawNumber = contact.phoneNumbers[0]?.number || "";
     const cleanedNumber = cleanMobileNumber(rawNumber);
-  
+
     setName(contact.name);
     setMobile(cleanedNumber);
     setModalVisible(false);
   };
-  
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -170,13 +170,18 @@ console.log("rrr:::",status)
         <TouchableOpacity
           style={[
             styles.confirmButton,
-            name.trim() ? styles.confirmButtonActive : styles.confirmButtonDisabled,
+            isDisabled ? styles.confirmButtonDisabled : styles.confirmButtonActive,
           ]}
           onPress={handleConfirm}
-          disabled={!name.trim()}
+          disabled={isDisabled}
         >
-          <Text style={styles.confirmButtonText}>Confirm</Text>
-        </TouchableOpacity>}
+          {loading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.confirmButtonText}>Confirm</Text>
+          )}
+        </TouchableOpacity>
+      }
 
       {/* Modal for Contacts List */}
       <Modal
@@ -271,7 +276,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: 40,
-    color:'#333333'
+    color: '#333333'
   },
   confirmButton: {
     marginHorizontal: 20,

@@ -13,9 +13,11 @@ import ApiService from './components/ApiServices';
 const updateData = async (payload, ID,profileType) => {
   const userData = await AsyncStorage.getItem("userData");
   const userId = JSON.parse(userData).id;
+  const ownerId = JSON.parse(userData).owner_user_id;
+
   payload = {
     ...payload,
-    userId
+    userId,ownerId
   };
   const URL = profileType === 'customer' ? `/customers/${ID}` : `/supplier/${ID}`
 
@@ -46,11 +48,11 @@ const OtherProfile = () => {
     const fetchProfile = async () => {
       const userData = await AsyncStorage.getItem("userData");
       const userId = JSON.parse(userData).id;
-
+      const ownerId = JSON.parse(userData).owner_user_id;
       const URL = profileType === 'customer' ? `/customers/${ID}` : `/supplier/${ID}`
 
       try {
-        const response = await ApiService.post(URL, { userId });
+        const response = await ApiService.post(URL, { userId,ownerId });
         const data = response.data;
         if (profileType === 'customer') {
           setProfile(data?.customer);
@@ -222,7 +224,14 @@ const OtherProfile = () => {
           <ProfileItem icon={Phone} label={profile?.mobile || "Enter Mobile Number"}  />
           <ProfileItem icon={MapPin} label={profile?.address || "Enter your address"} onPress={() => openModal('address')} />
           <ProfileItem icon={Mail} label={profile?.email || "Enter your Email"} onPress={() => openModal('Email')} />
-          <TouchableOpacity style={styles.item} onPress={() => openModal('DeleteCustomer')}>
+          <TouchableOpacity style={styles.item}  onPress={() => router.push({
+              pathname: '/deleteCustomer',
+              params: {
+                transaction_for:profileType,
+                id: ID,
+              },
+            })
+            }>
             <View style={styles.iconContainer}>
               <Delete size={24} color="red" />
             </View>
