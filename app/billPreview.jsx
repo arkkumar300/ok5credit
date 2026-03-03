@@ -67,12 +67,10 @@ export default function BillPreview() {
       setUploadProgress(0.33); // 33% complete
       const uploadedPath = `https://aquaservices.esotericprojects.tech/uploads/${uploadRes.data.file_info.filename}`;
       if (mode === "add") {
-        console.log(mode, ":::")
         /** STEP 3 → Save bill */
         const savedBill = await saveBillToServer(uploadedPath);
         await addTransaction(savedBill);
       } else {
-        console.log(mode, "@@@")
         /** STEP 3 → Update bill */
         const updateBill = await updateBillToServer(uploadedPath);
         await sendTransaction(supplierInfo?.mobile, supplierInfo?.name, totalAmount, userDetails.name, uploadedPath);
@@ -119,7 +117,7 @@ export default function BillPreview() {
       description: `i have given ${totalAmount} to ${supplierInfo?.name} on ${moment().format('YYYY-MM-DD')}`,
       bill_date: moment().format("YYYY-MM-DD"),
       ...(transaction_for === "supplier"
-        ? { supplier_id: supplierInfo?.id } 
+        ? { supplier_id: supplierInfo?.id }
         : { customer_id: supplierInfo?.id }),
     };
     const billResponse = await ApiService.post(`/bill`, payload);
@@ -130,15 +128,17 @@ export default function BillPreview() {
     const date = moment().format("YYYY-MM-DD");
     const userData = await AsyncStorage.getItem("userData");
     const userId = JSON.parse(userData)?.id;
+    const ownerId = JSON.parse(userData).owner_user_id;
     const userName = JSON.parse(userData)?.name;
     const formattedDueDate = format === 'unpaid'
       ? moment(dueDate).format('YYYY-MM-DD')
       : undefined;
-console.log("rrr::",transaction_for)
     const payload = {
       userId,
+      ownerId,
+      created_user: userId,
       transaction_type: "you_gave",
-      transaction_for:transaction_for,
+      transaction_for: transaction_for,
       amount: Number(totalAmount),
       paidAmount: format === 'unpaid' ? 0 : Number(totalAmount),
       remainingAmount: format === 'unpaid' ? Number(totalAmount) : 0,
@@ -154,17 +154,15 @@ console.log("rrr::",transaction_for)
         : { customer_id: supplierInfo?.id }),
     };
     const URL = transaction_for === "supplier"
-      ?`/transactions/supplier` 
+      ? `/transactions/supplier`
       : `/transactions/customer`;
-      console.log('URL :::',payload)
-      const response = await ApiService.post(URL, payload);
-    console.log('transaction savedBill:::',response)
+    const response = await ApiService.post(URL, payload);
 
     const invoice = response.data.transaction.id
     sendTransaction(supplierInfo.mobile, supplierInfo.name, totalAmount, userName, invoice)
     const encodedCustomer = encodeURIComponent(JSON.stringify(supplierInfo));
     router.push({
-      pathname: "/billDetails",
+      pathname: "/billDetails", 
       params: {
         billId: billData.id,
         supplierInfo: encodedCustomer,
@@ -223,14 +221,29 @@ console.log("rrr::",transaction_for)
     return billResponse.data.bill;
   };
 
+  const fetchUserDetails = async () => {
+    const userData = await AsyncStorage.getItem("userData");
+    const ownerId = JSON.parse(userData).owner_user_id;
+    try {
+      setLoading(true);
 
+      const response = await ApiService.get(`/user/${ownerId}`);
+
+      if (!response) {
+        throw new Error("Failed to fetch user data");
+      }
+      console.log("ownerData::", response.data)
+      setUserDetails(response.data);
+
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchBills = async () => {
-      const userData = await AsyncStorage.getItem("userData");
-      setUserDetails(JSON.parse(userData));
-    }
-    fetchBills();
+    fetchUserDetails();
   }, []);
   return (
     <SafeAreaView>

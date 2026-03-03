@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect,useContext } from 'react';
 import {View,Text,StyleSheet,TextInput,TouchableOpacity,SafeAreaView,Alert,Platform} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 // import { router } from 'expo-router';
@@ -11,6 +11,7 @@ import { sendSMS } from '../hooks/sendSMS';
 import { useFCM } from '../hooks/usePushNotification';
 import Constants from "expo-constants";
 import FirebasePermission from './components/firebasePermission';
+import { AuthContext } from './components/AuthContext';
 
 export default function OTPScreen() {
   // const { fcmToken, notification } = useFCM();
@@ -25,8 +26,10 @@ export default function OTPScreen() {
   const router = useRouter();
   const { mobile } = useLocalSearchParams();
   const cleanMobile = String(mobile).replace(/\D/g, "").slice(-10);
-  
-  
+  const { 
+    login,
+  } = useContext(AuthContext);
+    
   // --------------------------
   //  SEND OTP ON SCREEN LOAD
   // --------------------------
@@ -139,7 +142,8 @@ export default function OTPScreen() {
         Alert.alert("Please wait", "Still generating device token...");
         return;
       }
-      await AsyncStorage.setItem("userData",JSON.stringify(response.data.user))
+      login(response.data.user)
+      // await AsyncStorage.setItem("userData",JSON.stringify(response.data.user))
       await addFCMToken(response.data.user);
 
     } catch (error) {

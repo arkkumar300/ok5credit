@@ -26,7 +26,7 @@ export default function BillGenaration() {
     const [billDates, setBillDates] = useState("");
     const [billNote, setBillNote] = useState("");
     const [billStore, setBillStore] = useState(null);
-    const { Id = "", bill_type = "", billId = "", mode = "", bill_date = "", billNo = "", transaction_for } = useLocalSearchParams();
+    const { Id = "", bill_type = "", billId = "", mode = "", bill_date = "", billNo = "", transaction_for,ownerId="" } = useLocalSearchParams();
     const router = useRouter();
     const totalAmount = Array.isArray(items)
         ? items.reduce((acc, item) => acc + Number(item?.total || 0), 0)
@@ -83,7 +83,6 @@ export default function BillGenaration() {
                 if (mode === "edit" && billId) {
                     loadExistingBill(billId);
                 } else {
-
                     const billNo = await AsyncStorage.getItem("billNo") || "";
                     if (!billNo) {
                         await getBillCount();
@@ -97,12 +96,9 @@ export default function BillGenaration() {
 
     const normalizeItem = (item) => {
         const tot = Number(item.price || 0) * Number(item.quantity || 0)
-        console.log("Item:::", Number(item.price || 0) ,"* ",Number(item.quantity || 0,"=",tot))
         const gstAmount = tot * (Number(item.gstPercent || 0) / 100);
-        console.log("Item:::",gstAmount)
 
         const cessAmount = tot * (Number(item.cessPercent || 0) / 100);
-        console.log("Item:::",cessAmount)
         return {
             itemName: item.itemName || item.name || "",   // unify name
             description: item.description || "",
@@ -195,9 +191,8 @@ export default function BillGenaration() {
         const userData = await AsyncStorage.getItem("userData");
         const userId = JSON.parse(userData).id;
         const URL = transaction_for === 'supplier' ? `/supplier/${Id}` :`/customers/${Id}`
-
         try {
-            const response = await ApiService.post(URL, { userId });
+            const response = await ApiService.post(URL, { userId,ownerId});
             const data = response.data;
             if (transaction_for === 'supplier') {
                 setSupplier(data.supplier);
@@ -231,6 +226,7 @@ export default function BillGenaration() {
     };
 
     const getBillCount = async () => {
+        console.log("billcount")
         const userData = await AsyncStorage.getItem("userData");
         const userId = JSON.parse(userData)?.id;
         try {
@@ -248,6 +244,7 @@ export default function BillGenaration() {
             console.error('Error fetching bills:', error);
         }
     }
+
     const billStorage = async (supplier) => {
         await AsyncStorage.setItem("billSupplier", JSON.stringify(supplier));
         await AsyncStorage.setItem("billNo", billID);
@@ -397,7 +394,7 @@ export default function BillGenaration() {
                         :
                         <>
                             <TouchableOpacity onPress={() => setSupplierListVisible(true)}>
-                                <Text style={{ fontWeight: '200', fontSize: 14 }}>{bill_type === "BILL" ? "Bill" : "Quote"} to {`\n`}<Text style={[styles.userName]}>Add supplier</Text></Text>
+                                <Text style={{ fontWeight: '200', fontSize: 14 }}>{bill_type === "BILL" ? "Bill" : "Quote"} to {`\n`}<Text style={[styles.userName]}>Add Customer</Text></Text>
                             </TouchableOpacity>
                         </>}
                 </View>
@@ -499,7 +496,6 @@ export default function BillGenaration() {
                 <ItemForm
                     setItem={setIsAdditem}
                     setNewItem={(newItem) => {
-                        console.log("item::",newItem)
                         setItems(prev =>
                             Array.isArray(prev)
                                 ? [...prev, newItem]

@@ -71,11 +71,33 @@ export default function BillDetails() {
     }
   };
 
+  const fetchUserDetails = async () => {
+    const userData = await AsyncStorage.getItem("userData");
+    const ownerId = JSON.parse(userData).owner_user_id;
+    try {
+      setLoading(true);
+
+      const response = await ApiService.get(`/user/${ownerId}`);
+
+      if (!response) { 
+        throw new Error("Failed to fetch user data");
+      }
+      console.log("ownerData::", response.data)
+      setUserDetails(response.data);
+
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   // ---------- FETCH BILL ----------
   useEffect(() => {
     const fetchBills = async () => {
       const userData = await AsyncStorage.getItem("userData");
-      setUserDetails(JSON.parse(userData));
+     await fetchUserDetails();
 
       try {
         setLoading(true);
@@ -215,7 +237,6 @@ export default function BillDetails() {
         <TouchableOpacity
           style={[styles.downloadBtn, { alignSelf: 'center' }]}
           onPress={() => {
-            console.log("rrr:::",supplierInfo)
             const personInfo=JSON.parse(supplierInfo)
             if (transaction_for === "customer") {
 

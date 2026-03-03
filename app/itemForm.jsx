@@ -10,7 +10,7 @@ export default function ItemForm({ setItem, setNewItem }) {
   const [quantity, setQuantity] = useState('');
   const [price, setPrice] = useState('');
   const [mrp, setMrp] = useState('');
-  const [barcode, setBarcode] = useState('568848705');
+  const [barcode, setBarcode] = useState('');
   const [isAddMore, setIsAddMore] = useState(false);
   const [description, setDescription] = useState('');
   const [cess, setCess] = useState('0');
@@ -116,6 +116,8 @@ export default function ItemForm({ setItem, setNewItem }) {
           label="Item Name"
           value={itemName}
           onChangeText={setItemName}
+          placeholder='Item Name'
+          placeholderTextColor={"#aaaaaa"}
           left={<TextInput.Icon icon={() => <File size={18} />} />}
           mode="outlined"
           style={styles.input}
@@ -131,6 +133,8 @@ export default function ItemForm({ setItem, setNewItem }) {
                 label="Quantity"
                 value={quantity}
                 onChangeText={setQuantity}
+                placeholder='Quantity'
+                placeholderTextColor={"#aaaaaa"}      
                 keyboardType="numeric"
                 mode="outlined"
                 style={[styles.input, { flex: 1 }]}
@@ -157,6 +161,8 @@ export default function ItemForm({ setItem, setNewItem }) {
                 label="Rate"
                 value={price}
                 onChangeText={setPrice}
+                placeholder='Rate'
+                placeholderTextColor={"#aaaaaa"}      
                 keyboardType="numeric"
                 left={<TextInput.Icon icon={() => <IndianRupee size={18} />} />}
                 mode="outlined"
@@ -166,6 +172,8 @@ export default function ItemForm({ setItem, setNewItem }) {
                 label="MRP"
                 value={mrp}
                 onChangeText={setMrp}
+                placeholder='MRP'
+                placeholderTextColor={"#aaaaaa"}      
                 keyboardType="numeric"
                 mode="outlined"
                 style={[styles.input, { flex: 1, marginLeft: 10 }]}
@@ -183,6 +191,8 @@ export default function ItemForm({ setItem, setNewItem }) {
                   label="Barcode"
                   value={barcode}
                   onChangeText={setBarcode}
+                  placeholder='Barcode'
+                  placeholderTextColor={"#aaaaaa"}        
                   keyboardType="numeric"
                   left={<TextInput.Icon icon={() => <Barcode size={18} />} />}
                   mode="outlined"
@@ -228,6 +238,8 @@ export default function ItemForm({ setItem, setNewItem }) {
                     label="CESS %"
                     value={cess}
                     onChangeText={setCess}
+                    placeholder='CESS'
+                    placeholderTextColor={"#aaaaaa"}          
                     keyboardType="numeric"
                     left={<TextInput.Icon icon={() => <PercentCircle size={18} />} />}
                     mode="outlined"
@@ -240,6 +252,8 @@ export default function ItemForm({ setItem, setNewItem }) {
                   label="Description"
                   value={description}
                   onChangeText={setDescription}
+                  placeholder='Description'
+                  placeholderTextColor={"#aaaaaa"}        
                   left={<TextInput.Icon icon={() => <File size={18} />} />}
                   mode="outlined"
                   style={styles.input}

@@ -500,11 +500,15 @@ export default function TransactionScreen() {
                     styles.addBillButton,
                     { marginHorizontal: 10 }
                   ]}
-                  onPress={() => {
+                  onPress={async () => {      
+                    const userData = await AsyncStorage.getItem("userData");
+                    const ownerId = JSON.parse(userData).owner_user_id;
+                     await AsyncStorage.removeItem("billNo");
                     router.push({
                       pathname: "/billGenaration",
                       params: {
                         Id: id,
+                        ownerId,
                         bill_type: "BILL",
                         mode: "add",
                         bill_date: moment(selectedDate).format("DD MMM YYYY"),

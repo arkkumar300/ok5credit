@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {View,Text,TextInput,StyleSheet,FlatList,SafeAreaView,TouchableOpacity,Image,Linking,Animated,Alert,ScrollView,Platform} from 'react-native';
-import {PhoneCall,Bell,Delete,MessageSquare,Send,MessageCircle,ArrowDown,Percent,ArrowUp,ArrowLeft,CheckIcon,File,ChevronRight,Calendar,HelpCircle, DeleteIcon} from 'lucide-react-native';
+import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
+import { View, Text, TextInput, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking, Animated, Alert, ScrollView, Platform } from 'react-native';
+import { PhoneCall, Bell, Delete, MessageSquare, Send, MessageCircle, ArrowDown, Percent, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar, HelpCircle, DeleteIcon, AlertTriangle } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Divider } from 'react-native-paper';
 import moment from 'moment';
@@ -12,6 +12,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Sharing from 'expo-sharing';
 import ViewShot from 'react-native-view-shot';
 import Modal from 'react-native-modal';
+import { AuthContext } from './components/AuthContext';
 
 // Modal component for discount
 const DiscountModal = ({ visible, onClose, onSubmit, loading }) => {
@@ -282,6 +283,14 @@ export default function CustomerDetails() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const viewShotRef = useRef(null);
 
+
+  const { subscription } = useContext(AuthContext);
+
+  const isSubscribed =
+    subscription &&
+    subscription.is_active &&
+    new Date(subscription.end_date) >= new Date();
+
   const fetchCustomer = useCallback(async () => {
     try {
       const userData = await AsyncStorage.getItem('userData');
@@ -292,7 +301,7 @@ export default function CustomerDetails() {
 
       const userId = JSON.parse(userData).id;
       const ownerId = JSON.parse(userData).owner_user_id;
-      const response = await ApiService.post(`/customers/${personId}`, { userId,ownerId });
+      const response = await ApiService.post(`/customers/${personId}`, { userId, ownerId });
       const data = response.data;
 
       setCustomer(data.customer);
@@ -344,7 +353,7 @@ export default function CustomerDetails() {
     useCallback(() => {
       fetchCustomer();
       fetchUserSubscription();
-      },  [fetchCustomer, fetchUserSubscription])
+    }, [fetchCustomer, fetchUserSubscription])
   )
 
   const handleCall = () => {
@@ -405,6 +414,15 @@ Your current balance is ₹${balance} ${balanceType}`;
     }
   };
 
+  const navigateToDefaulter = () => {
+    router.push({
+      pathname: '/defaulterDetails',
+      params: {
+        customerId: personId,
+        customerName: personName,
+      },
+    });
+  };
   const handleAddTransaction = async (transactionType) => {
     if (!isSubscribe_user) {
       if (transactionType === 'you_got' && payment_got_count_user >= 10) {
@@ -453,7 +471,7 @@ Your current balance is ₹${balance} ${balanceType}`;
         customer_id: customer.id,
         userId,
         ownerId,
-        created_user:userId,
+        created_user: userId,
         transaction_type: 'you_discount',
         transaction_for: 'customer',
         amount: Number(amount),
@@ -607,6 +625,13 @@ Your current balance is ₹${balance} ${balanceType}`;
           <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
             <PhoneCall size={20} color="#555" />
             <Text style={styles.actionText}>Call</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={navigateToDefaulter}
+          >
+            <AlertTriangle size={20} color="#FF6B6B" />
+            <Text style={styles.actionText}>Defaulter</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView, ScrollView, BackHandler, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MoreHorizontal, Users, Search, Filter, TrendingUp, Settings, X, Share } from 'lucide-react-native';
+import { MoreHorizontal, Users, Search, Filter, TrendingUp, Settings, X, Share, UserPlus } from 'lucide-react-native';
 import Modal from 'react-native-modal';
 import { Appbar, Avatar } from 'react-native-paper';
 import ApiService from './components/ApiServices';
@@ -11,6 +11,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import LottieView from 'lottie-react-native';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n/i18n';
+import { AuthContext } from './components/AuthContext';
 
 let transactionData = {
   customers: [
@@ -24,10 +25,7 @@ let transactionData = {
   ]
 };
 
-
-
 const FILTER_CATEGORIES = ['Sort By', 'Name'];
-
 const SORT_OPTIONS = [
   'Default',
   'Amount: Low to High',
@@ -35,7 +33,6 @@ const SORT_OPTIONS = [
   'Oldest First',
   'Newest First',
 ];
-
 const NAME = ['A-Z', 'Z-A'];
 
 export default function DashboardScreen() {
@@ -53,10 +50,32 @@ export default function DashboardScreen() {
   const [isVerified, setIsVerified] = useState(null); // null = loading state
   const [currentLang, setCurrentLang] = useState('hi');
   const { t } = useTranslation();
+  const {
+    user,
+    isAuthenticated,
+    isSubscribed,
+    subscription,
+    logout,
+    refreshSubscription,
+    getPurchasedUserCount,
+    getCurrentPlan
+  } = useContext(AuthContext);
 
   useEffect(() => {
     checkEligibility();
-  }, [])
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    const userDetails = await AsyncStorage.getItem("userData");
+    if (userDetails) {
+      const parsed = JSON.parse(userDetails);
+      setUserData(parsed);
+      const name = parsed?.name?.trim() || '';
+      const initials = name.trim()[0]?.toUpperCase() || '';
+      setInitialsLetter(initials);
+    }
+  };
 
   const changeLanguage = (code) => {
     i18n.changeLanguage(code);
@@ -64,18 +83,15 @@ export default function DashboardScreen() {
   };
 
   const fetchDashboardData = async () => {
-    const userDetails = await AsyncStorage.getItem("userData");
-    console.log("userDate:",userDetails)
-    const userId = JSON.parse(userDetails).id;
-    const rrr = JSON.parse(userDetails);
-    setUserData(rrr)
-    const name = rrr?.name?.trim() || '';
-    const initials = name.trim()[0]?.toUpperCase() || '';
-    setInitialsLetter(initials);
-
     try {
+      const userDetails = await AsyncStorage.getItem("userData");
+      const userId = JSON.parse(userDetails).id;
 
-      const response = await ApiService.post("/dashboard/businessOwner", { userId,created_user:userId });
+      const response = await ApiService.post("/dashboard/businessOwner", {
+        userId,
+        created_user: userId
+      });
+
       if (response.data.success) {
         const fetchedCustomers = response.data.Customers.map((c) => ({
           id: c.id,
@@ -84,7 +100,8 @@ export default function DashboardScreen() {
           type: parseFloat(c.current_balance) <= 0 ? 'Due' : 'Advance',
           date: new Date(c.created_at).toDateString(),
           initial: c.name.charAt(0).toUpperCase(),
-          color: '#4CAF50', // Default color
+          color: '#4CAF50',
+          created_by: c.created_by
         }));
 
         const fetchedSuppliers = response.data.Suppliers.map((s) => ({
@@ -94,7 +111,8 @@ export default function DashboardScreen() {
           type: parseFloat(s.current_balance) >= 0 ? 'Due' : 'Advance',
           date: new Date(s.created_at).toDateString(),
           initial: s.name.charAt(0).toUpperCase(),
-          color: '#2196F3', // Differentiate from customers
+          color: '#2196F3',
+          created_by: s.created_by
         }));
 
         setCustomers(fetchedCustomers);
@@ -111,35 +129,31 @@ export default function DashboardScreen() {
       Alert.alert('Network Error', 'Failed to load dashboard data.');
     }
   };
+
   const calculateNetBalance = (customersList, suppliersList) => {
     const totalCustomer = customersList.reduce((sum, c) => sum + c.amount, 0);
     const totalSupplier = suppliersList.reduce((sum, s) => sum + s.amount, 0);
-    const balance = totalSupplier - totalCustomer;
     setNetBalance(totalCustomer);
   };
 
   useFocusEffect(
     useCallback(() => {
-
       fetchDashboardData();
+      refreshSubscription();
     }, [])
-  )
-  const toggleModal = () => setModalVisible(!isModalVisible); const router = useRouter();
+  );
 
+  const toggleModal = () => setModalVisible(!isModalVisible);
+  const router = useRouter();
 
-  // --- CHECK ELIGIBILITY ---
   const checkEligibility = async () => {
     try {
       const userData = await AsyncStorage.getItem("userData");
       const userId = JSON.parse(userData).id;
-
       const response = await ApiService.get(`/user/${userId}`);
-
       if (!response.data) return setIsVerified(false);
-
       const { is_verified } = response.data;
-
-      setIsVerified(is_verified); // store result in state
+      setIsVerified(is_verified);
     } catch (error) {
       console.log("Error checking eligibility:", error);
       setIsVerified(false);
@@ -162,14 +176,6 @@ export default function DashboardScreen() {
         }
         break;
 
-      case 'Payment Status':
-        if (selectedOption === 'Due') {
-          data = data.filter(person => person.type === 'Due');
-        } else if (selectedOption === 'Advance') {
-          data = data.filter(person => person.type === 'Advance');
-        }
-        break;
-
       case 'Name':
         if (selectedOption === 'A-Z') {
           data.sort((a, b) => a.name.localeCompare(b.name));
@@ -185,26 +191,12 @@ export default function DashboardScreen() {
     return data;
   };
 
-
   const currentData = getFilteredData();
 
   const renderOptions = () => {
     switch (selectedCategory) {
       case 'Sort By':
         return SORT_OPTIONS.map((option) => (
-          <TouchableOpacity
-            key={option}
-            style={styles.optionRow}
-            onPress={() => {
-              setSelectedOption(option)
-            }}
-          >
-            <Text style={styles.optionText}>{option}</Text>
-            {selectedOption === option && <View style={styles.radioSelected} />}
-          </TouchableOpacity>
-        ));
-      case 'Payment Status':
-        return PAYMENT_STATUS.map((option) => (
           <TouchableOpacity
             key={option}
             style={styles.optionRow}
@@ -229,6 +221,7 @@ export default function DashboardScreen() {
         return null;
     }
   };
+
   const handleAddCustomer = () => {
     router.push('/add-customer');
   };
@@ -244,7 +237,8 @@ export default function DashboardScreen() {
         params: {
           personName: person.name,
           personType: activeTab.toLowerCase(),
-          personId: person.id
+          personId: person.id,
+          createdBy: person.created_by
         }
       });
     } else {
@@ -253,10 +247,10 @@ export default function DashboardScreen() {
         params: {
           personName: person.name,
           personType: activeTab.toLowerCase(),
-          personId: person.id
+          personId: person.id,
+          createdBy: person.created_by
         }
       });
-
     }
   };
 
@@ -268,7 +262,10 @@ export default function DashboardScreen() {
     router.push('/more');
   };
 
-  // Function to add new transaction (called from transaction success)
+  const handleEmployeesPress = () => {
+    router.push('/subscription-members');
+  };
+
   const addTransaction = (personName, personType, amount, transactionType) => {
     const newTransaction = {
       id: Date.now(),
@@ -283,38 +280,30 @@ export default function DashboardScreen() {
     if (personType === 'customer') {
       const existingCustomer = customers.find(c => c.name.toLowerCase() === personName.toLowerCase());
       if (existingCustomer) {
-        // Update existing customer
         setCustomers(prev => prev.map(c =>
           c.id === existingCustomer.id
             ? { ...c, amount: newTransaction.amount, type: newTransaction.type, date: 'Today' }
             : c
         ));
       } else {
-        // Add new customer
         setCustomers(prev => [...prev, newTransaction]);
       }
     } else {
       const existingSupplier = suppliers.find(s => s.name.toLowerCase() === personName.toLowerCase());
       if (existingSupplier) {
-        // Update existing supplier
         setSuppliers(prev => prev.map(s =>
           s.id === existingSupplier.id
             ? { ...s, amount: newTransaction.amount, type: newTransaction.type, date: 'Today' }
             : s
         ));
       } else {
-        // Add new supplier
         setSuppliers(prev => [...prev, newTransaction]);
       }
     }
   };
 
-  // Listen for new transactions (in a real app, this would be through state management)
   useEffect(() => {
-    const handleTransactionUpdate = () => {
-      // This would be called when returning from transaction success
-      // For now, we'll just refresh the data
-    };
+    const handleTransactionUpdate = () => { };
   }, []);
 
   useFocusEffect(
@@ -324,22 +313,18 @@ export default function DashboardScreen() {
           { text: 'Cancel', style: 'cancel' },
           { text: 'Exit', onPress: () => BackHandler.exitApp() },
         ]);
-        return true; // Prevent default back behavior
+        return true;
       };
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
-      return () => subscription.remove(); // Clean up on blur
+      return () => subscription.remove();
     }, [])
   );
 
   return (
     <SafeAreaView style={styles.container}>
-
       <Appbar.Header style={{ elevation: 5 }}>
-        <TouchableOpacity onPress={() => {
-          router.push('/profile')
-        }}>
+        <TouchableOpacity onPress={() => router.push('/profile')}>
           <Avatar.Text
             label={initialsLetter}
             size={38}
@@ -357,222 +342,249 @@ export default function DashboardScreen() {
           icon={() => <Share size={22} color="#2E7D32" />}
           onPress={() => {
             if (activeTab === 'Customer') {
-
               exportDataAsPDF(customersList, `${activeTab}`);
             } else {
               exportDataAsPDF(suppliersList, `${activeTab}`);
-
             }
           }}
           color="#2E7D32"
         />
-
       </Appbar.Header>
+      <ScrollView>
 
-      <View style={styles.verifyBanner}>
-        <View
-          style={[
-            styles.verifyIcon,
-            { backgroundColor: isVerified ? "#4CAF50" : "#FF6F00" } // green / red
-          ]}
-        >
-          <Text style={styles.verifyIconText}>
-            {isVerified ? "✓" : "✕"}
-          </Text>
-        </View>
-
-
-        {/* SHOW STATUS BASED ON isVerified */}
-        {isVerified === null ? (
-          <Text style={styles.verifyText}>Checking verification...</Text>
-        ) : isVerified ? (
-          <Text style={styles.verifyText}>Verified Business</Text>
-        ) : (
-          <Text style={styles.unverifyText}>Bussiness not verified / KYC pending</Text>
-        )}
-
-        <TouchableOpacity onPress={() => router.push('/profile')}>
-          <Text style={styles.verifyArrow}>›</Text>
-        </TouchableOpacity>
-      </View>
-
-      <Text style={{ margin: 10, fontWeight: 'bold', fontSize: 18, color: "green", textTransform: 'capitalize', letterSpacing: 1 }}>
-        {t('welcome', { name: userData?.name })}
-      </Text>
-
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'Customer' && styles.activeTab]}
-          onPress={() => {
-            setActiveTab('Customer');
-            setSelectedCategory('Sort By');
-            setSelectedOption('Default');
-          }}
-        >
-          <Text style={[styles.tabText, activeTab === 'Customer' && styles.activeTabText]}>
-            Customer
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'Supplier' && styles.activeTab]}
-          onPress={() => {
-            setActiveTab('Supplier');
-            setSelectedCategory('Sort By');
-            setSelectedOption('Default');
-          }}
-        >
-          <Text style={[styles.tabText, activeTab === 'Supplier' && styles.activeTabText]}>
-            Supplier
-          </Text>
-        </TouchableOpacity>
-        <View style={styles.tabActions}>
-          <TouchableOpacity style={[styles.iconButton, styles.activeTab]} onPress={toggleModal}>
-            <Filter size={20} color="#666" />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.iconButton, styles.activeTab]} onPress={() => router.navigate({
-            pathname: '/search',
-            params: {
-              addTo: activeTab,
-            }
-          })}>
-            <Search size={20} color="#666" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {activeTab === 'Customer' && <View style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>Net Balance</Text>
-        <Text style={selectedOption === 'Advance' ? styles.balanceAmount_advance : styles.balanceAmount_due}>₹ {parseFloat(netBalance).toFixed(2)}</Text>
-        <Text style={styles.balanceSubtext}>{currentData.length} Accounts</Text>
-        <Text style={styles.balanceType}>You Pay</Text>
-      </View>}
-
-      <ScrollView style={styles.listContainer}>
-        {Array.isArray(currentData) && currentData.length > 0 ? (
-          <>
-            {currentData.map((person) => (
-              <TouchableOpacity
-                key={person.id}
-                style={styles.personCard}
-                onPress={() => handlePersonClick(person)}
-              >
-                <View style={[styles.avatar, { backgroundColor: person.color }]}>
-                  <Text style={styles.avatarText}>{person.initial}</Text>
-                </View>
-                <View style={styles.personInfo}>
-                  <Text style={styles.personName}>{person.name}</Text>
-                  <View style={styles.paymentInfo}>
-                    <Text style={styles.checkMark}>✓</Text>
-                    <Text style={styles.paymentText}>
-                      ₹{person.amount} {person.type === 'Advance' ? 'Payment Added' : 'Credit Added'} {person.date}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.amountContainer}>
-                  <Text style={[styles.amount, person.type === 'Due' ? styles.dueAmount : styles.advanceAmount]}>
-                    ₹{person.amount}
-                  </Text>
-                  <Text style={styles.amountType}>{person.type}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </>
-        ) : (
-          <View style={styles.emptyContainer}>
-            <LottieView
-              source={require('../assets/animations/noData.json')} // 👈 local JSON file
-              autoPlay
-              loop
-              style={{ width: 200, height: 150, alignSelf: 'center' }}
-            />
-            <Text style={styles.emptyText}>No data found</Text>
-
+        <View style={styles.verifyBanner}>
+          <View
+            style={[
+              styles.verifyIcon,
+              { backgroundColor: isVerified ? "#4CAF50" : "#FF6F00" }
+            ]}
+          >
+            <Text style={styles.verifyIconText}>
+              {isVerified ? "✓" : "✕"}
+            </Text>
           </View>
-        )}
-      </ScrollView>
 
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={activeTab === 'Customer' ? handleAddCustomer : handleAddSupplier}
-      >
-        <Users size={20} color="white" />
-        <Text style={styles.addButtonText}>Add {activeTab}</Text>
-      </TouchableOpacity>
+          {isVerified === null ? (
+            <Text style={styles.verifyText}>Checking verification...</Text>
+          ) : isVerified ? (
+            <Text style={styles.verifyText}>Verified Business</Text>
+          ) : (
+            <Text style={styles.unverifyText}>Business not verified / KYC pending</Text>
+          )}
 
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <TrendingUp size={24} color="#4CAF50" />
-          <Text style={styles.navText}>Ledger</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={handleMyPlanPress}>
-          <Settings size={24} color="#666" />
-          <Text style={styles.navText}>My Plan</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={handleMorePress}>
-          <MoreHorizontal size={24} color="#666" />
-          <Text style={styles.navText}>More</Text>
-        </TouchableOpacity>
-      </View>
-      <Modal
-        isVisible={isModalVisible}
-        animationIn="slideInLeft"
-        animationOut="slideOutLeft"
-        style={styles.modal}
-        onBackdropPress={toggleModal}
-      >
-        <View style={styles.modalContent}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Filter Bills</Text>
-            <TouchableOpacity onPress={toggleModal}>
-              <X size={24} />
+          <TouchableOpacity onPress={() => router.push('/profile')}>
+            <Text style={styles.verifyArrow}>›</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Subscription Info Banner - Show only if subscribed */}
+        {isSubscribed && subscription && (
+          <View style={styles.subscriptionBanner}>
+            <View style={styles.subscriptionInfo}>
+              <Text style={styles.subscriptionPlanText}>
+                {subscription?.plan?.name} Plan
+              </Text>
+              <Text style={styles.subscriptionUsersText}>
+                {subscription?.members?.length || 1}/{subscription?.purchased_user_count} Users
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.manageButton}
+              onPress={handleEmployeesPress}
+            >
+              <UserPlus size={16} color="#fff" />
+              <Text style={styles.manageButtonText}>Manage</Text>
             </TouchableOpacity>
           </View>
+        )}
 
-          {/* Tabs */}
-          <View style={styles.body}>
-            <View style={styles.sidebar}>
-              {FILTER_CATEGORIES.map((category) => (
+        <Text style={{ margin: 10, fontWeight: 'bold', fontSize: 18, color: "green", textTransform: 'capitalize', letterSpacing: 1 }}>
+          {t('welcome', { name: userData?.name })}
+        </Text>
+
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'Customer' && styles.activeTab]}
+            onPress={() => {
+              setActiveTab('Customer');
+              setSelectedCategory('Sort By');
+              setSelectedOption('Default');
+            }}
+          >
+            <Text style={[styles.tabText, activeTab === 'Customer' && styles.activeTabText]}>
+              Customer
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'Supplier' && styles.activeTab]}
+            onPress={() => {
+              setActiveTab('Supplier');
+              setSelectedCategory('Sort By');
+              setSelectedOption('Default');
+            }}
+          >
+            <Text style={[styles.tabText, activeTab === 'Supplier' && styles.activeTabText]}>
+              Supplier
+            </Text>
+          </TouchableOpacity>
+          <View style={styles.tabActions}>
+            <TouchableOpacity style={[styles.iconButton, styles.activeTab]} onPress={toggleModal}>
+              <Filter size={20} color="#666" />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.iconButton, styles.activeTab]} onPress={() => router.navigate({
+              pathname: '/search',
+              params: { addTo: activeTab }
+            })}>
+              <Search size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {activeTab === 'Customer' && (
+          <View style={styles.balanceCard}>
+            <Text style={styles.balanceLabel}>Net Balance</Text>
+            <Text style={selectedOption === 'Advance' ? styles.balanceAmount_advance : styles.balanceAmount_due}>
+              ₹ {parseFloat(netBalance).toFixed(2)}
+            </Text>
+            <Text style={styles.balanceSubtext}>{currentData.length} Accounts</Text>
+            <Text style={styles.balanceType}>You Pay</Text>
+          </View>
+        )}
+
+        <ScrollView style={styles.listContainer}>
+          {Array.isArray(currentData) && currentData.length > 0 ? (
+            <>
+              {currentData.map((person) => (
                 <TouchableOpacity
-                  key={category}
-                  onPress={() => setSelectedCategory(category)}
-                  style={[
-                    styles.tabButton,
-                    selectedCategory === category && styles.tabButtonActive,
-                  ]}
+                  key={person.id}
+                  style={styles.personCard}
+                  onPress={() => handlePersonClick(person)}
                 >
-                  <Text
-                    style={[
-                      styles.tabText,
-                      selectedCategory === category && styles.tabTextActive,
-                    ]}
-                  >
-                    {category}
-                  </Text>
+                  <View style={[styles.avatar, { backgroundColor: person.color }]}>
+                    <Text style={styles.avatarText}>{person.initial}</Text>
+                  </View>
+                  <View style={styles.personInfo}>
+                    <Text style={styles.personName}>{person.name}</Text>
+                    <View style={styles.paymentInfo}>
+                      <Text style={styles.checkMark}>✓</Text>
+                      <Text style={styles.paymentText}>
+                        ₹{person.amount} {person.type === 'Advance' ? 'Payment Added' : 'Credit Added'} {person.date}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.amountContainer}>
+                    <Text style={[styles.amount, person.type === 'Due' ? styles.dueAmount : styles.advanceAmount]}>
+                      ₹{person.amount}
+                    </Text>
+                    <Text style={styles.amountType}>{person.type}</Text>
+                  </View>
                 </TouchableOpacity>
               ))}
+            </>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <LottieView
+                source={require('../assets/animations/noData.json')}
+                autoPlay
+                loop
+                style={{ width: 200, height: 150, alignSelf: 'center' }}
+              />
+              <Text style={styles.emptyText}>No data found</Text>
+            </View>
+          )}
+        </ScrollView>
+
+
+
+        <Modal
+          isVisible={isModalVisible}
+          animationIn="slideInLeft"
+          animationOut="slideOutLeft"
+          style={styles.modal}
+          onBackdropPress={toggleModal}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>Filter Bills</Text>
+              <TouchableOpacity onPress={toggleModal}>
+                <X size={24} />
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.optionsContainer}>{renderOptions()}</View>
-          </View>
+            <View style={styles.body}>
+              <View style={styles.sidebar}>
+                {FILTER_CATEGORIES.map((category) => (
+                  <TouchableOpacity
+                    key={category}
+                    onPress={() => setSelectedCategory(category)}
+                    style={[
+                      styles.tabButton,
+                      selectedCategory === category && styles.tabButtonActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.tabText,
+                        selectedCategory === category && styles.tabTextActive,
+                      ]}
+                    >
+                      {category}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <TouchableOpacity
-              style={[styles.footerButton, { backgroundColor: '#E6F0E6' }]}
-              onPress={() => {
-                setSelectedOption('Default');
-                setSelectedCategory('Sort By');
-              }}
-            >
-              <Text style={{ color: '#2F4F2F' }}>Clear All</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.footerButton, { backgroundColor: '#228B22' }]} onPress={toggleModal}>
-              <Text style={{ color: '#fff' }}>Apply</Text>
-            </TouchableOpacity>
+              <View style={styles.optionsContainer}>{renderOptions()}</View>
+            </View>
+
+            <View style={styles.footer}>
+              <TouchableOpacity
+                style={[styles.footerButton, { backgroundColor: '#E6F0E6' }]}
+                onPress={() => {
+                  setSelectedOption('Default');
+                  setSelectedCategory('Sort By');
+                }}
+              >
+                <Text style={{ color: '#2F4F2F' }}>Clear All</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.footerButton, { backgroundColor: '#228B22' }]} onPress={toggleModal}>
+                <Text style={{ color: '#fff' }}>Apply</Text>
+              </TouchableOpacity>
+            </View>
           </View>
+        </Modal>
+      </ScrollView>
+      <TouchableOpacity
+          style={styles.addButton}
+          onPress={activeTab === 'Customer' ? handleAddCustomer : handleAddSupplier}
+        >
+          <Users size={20} color="white" />
+          <Text style={styles.addButtonText}>Add {activeTab}</Text>
+        </TouchableOpacity>
+
+      <View style={styles.bottomNav}>
+          <TouchableOpacity style={styles.navItem}>
+            <TrendingUp size={24} color="#4CAF50" />
+            <Text style={styles.navText}>Ledger</Text>
+          </TouchableOpacity>
+
+          {/* Employee Button - Only show if subscribed */}
+          {isSubscribed && (
+            <TouchableOpacity style={styles.navItem} onPress={handleEmployeesPress}>
+              <UserPlus size={24} color="#4CAF50" />
+              <Text style={styles.navText}>Employees</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity style={styles.navItem} onPress={handleMyPlanPress}>
+            <Settings size={24} color="#666" />
+            <Text style={styles.navText}>My Plan</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navItem} onPress={handleMorePress}>
+            <MoreHorizontal size={24} color="#666" />
+            <Text style={styles.navText}>More</Text>
+          </TouchableOpacity>
         </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -601,11 +613,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   image: {
-    width: 250, justifyContent: 'center',
-    height: 250, alignSelf: 'center'
+    width: 250,
+    height: 250,
+    alignSelf: 'center'
   },
   emptyText: {
-    fontSize: 16, fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#666',
     textAlign: 'center',
   },
@@ -639,7 +653,6 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#4CAF50',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -665,6 +678,46 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#FF6F00',
   },
+  subscriptionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+  },
+  subscriptionInfo: {
+    flex: 1,
+  },
+  subscriptionPlanText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2E7D32',
+  },
+  subscriptionUsersText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  manageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  manageButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
+  },
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: 'white',
@@ -681,12 +734,12 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     backgroundColor: '#F1F8E9',
-    borderRadius: 6, elevation: 3,
-    shadowColor: '#2E7D32',       // Dark green
+    borderRadius: 6,
+    elevation: 3,
+    shadowColor: '#2E7D32',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-
   },
   tabText: {
     fontSize: 14,
@@ -813,7 +866,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 16,
     paddingVertical: 16,
-    borderRadius: 8, elevation: 5
+    borderRadius: 8,
+    elevation: 5
   },
   addButtonText: {
     color: 'white',
@@ -859,15 +913,6 @@ const styles = StyleSheet.create({
     paddingTop: 40,
     paddingHorizontal: 16,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
   body: {
     flexDirection: 'row',
     flex: 1,
@@ -887,14 +932,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#228B22',
     backgroundColor: '#E6F0E6',
-  },
-  tabText: {
-    fontSize: 14,
-    color: '#555',
-  },
-  tabTextActive: {
-    color: '#228B22',
-    fontWeight: 'bold',
   },
   optionsContainer: {
     flex: 1,

@@ -41,7 +41,6 @@ export default function AddBillCustomerScreen() {
     const userData = await AsyncStorage.getItem("userData");
     const userId = JSON.parse(userData).id;
     if (name.trim() && mobile.trim()) {
-      console.log("userID::", userId)
       try {
         const response = await ApiService.post("/customers", {
           userId: Number(userId),

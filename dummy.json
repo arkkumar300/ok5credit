@@ -617,3 +617,52 @@
     "created_at": "2026-02-03T11:52:47.000Z",
     "updated_at": "2026-02-03T11:53:04.000Z"
 }
+// userdata
+{
+    "id": 1,
+    "name": "Ravi",
+    "businessName": "ARK Stores",
+    "businessType": null,
+    "owner_user_id": 1,
+    "role": "owner",
+    "mobile": "9494130830",
+    "email": null,
+    "address": null,
+    "GST": null,
+    "photo": null,
+    "is_active": true,
+    "is_verified": false,
+    "current_balance": "0.00",
+    "total_credit_given": "0.00",
+    "credit_given_count": 0,
+    "total_payment_got": "0.00",
+    "payment_got_count": 0,
+    "total_discount_given": "0.00",
+    "status": "Active",
+    "created_at": "2026-02-19T05:56:34.000Z",
+    "updated_at": "2026-02-19T05:57:18.000Z"
+}
+//owner data
+{
+    "id": 1,
+    "name": "Ravi",
+    "businessName": "ARK Stores",
+    "businessType": null,
+    "owner_user_id": 1,
+    "role": "owner",
+    "mobile": "9494130830",
+    "email": null,
+    "address": null,
+    "GST": null,
+    "photo": null,
+    "is_active": true,
+    "is_verified": true,
+    "created_at": "2026-02-19T05:56:34.000Z",
+    "credit_given_count": 2,
+    "payment_got_count": 0,
+    "status": "Active",
+    "total_credit_given": "1057.00",
+    "total_discount_given": "0.00",
+    "total_payment_got": "0.00",
+    "updated_at": "2026-03-02T10:21:05.000Z"
+}
