@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef,useMemo, useCallback } from 'react';
-import {View,Text,StyleSheet,FlatList,SafeAreaView,TouchableOpacity,Image,Linking,Alert,Platform,ActivityIndicator} from 'react-native';
-import {PhoneCall,MessageSquare,ArrowDown,Send,MessageCircle,ArrowUp,ArrowLeft,CheckIcon,File,ChevronRight,Calendar, DeleteIcon} from 'lucide-react-native';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking, Alert, Platform, ActivityIndicator } from 'react-native';
+import { PhoneCall, MessageSquare, ArrowDown, Send, MessageCircle, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar, DeleteIcon } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Divider } from 'react-native-paper';
 import moment from 'moment';
@@ -16,7 +16,7 @@ import * as FileSystem from 'expo-file-system';
 const TransactionItem = React.memo(
   ({ item, personName, router, supplier }) => {
     const isReceived = item.transaction_type === 'you_got';
-    const balanceText =  item.balanceText
+    const balanceText = item.balanceText
 
     const handlePress = () => {
       router.push({
@@ -40,30 +40,35 @@ const TransactionItem = React.memo(
       });
     };
 
-    const renderTransactionImage = () => {
-      let pics = item?.transaction_pic;
+    const parseTransactionImages = (pics) => {
       try {
-        if (typeof pics === 'string') {
+        if (typeof pics === "string") {
           pics = JSON.parse(pics);
         }
-      } catch (err) {
-        console.log('Failed to parse transaction_pic:', err);
-      }
 
-      if (!Array.isArray(pics)) {
-        pics = [];
+        if (Array.isArray(pics) && typeof pics[0] === "string") {
+          pics = JSON.parse(pics[0]);
+        }
+
+        return Array.isArray(pics) ? pics : [];
+      } catch {
+        return [];
       }
+    };
+
+    const renderTransactionImage = () => {
+      const images = parseTransactionImages(item?.transaction_pic);
 
       const url =
-        pics.length > 0
-          ? pics[0]
-          : 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg';
+        images.length > 0
+          ? images[0]
+          : "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg";
 
       return (
         <Image
           source={{ uri: url }}
           style={styles.transactionImage}
-          resizeMode="cover"
+          resizeMode="stretch"
         />
       );
     };
@@ -134,7 +139,7 @@ const TransactionItem = React.memo(
               </>
             )}
 
-            {item.transaction_pic && (
+            {item?.transaction_pic?.length > 0 && (
               <>
                 <Divider style={styles.divider} />
                 <TouchableOpacity
@@ -189,7 +194,7 @@ export default function SupplierDetails() {
       const userId = JSON.parse(userData).id;
       const ownerId = JSON.parse(userData).owner_user_id;
 
-      const response = await ApiService.post(`/supplier/${personId}`, { userId,ownerId });
+      const response = await ApiService.post(`/supplier/${personId}`, { userId, ownerId });
       const data = response.data;
 
       setSupplier(data.supplier);
@@ -213,7 +218,7 @@ export default function SupplierDetails() {
 
   const transactionsWithBalance = useMemo(() => {
     let balance = 0;
-  
+
     return transactions.map((item) => {
       if (!item.is_Deleted) {
         balance +=
@@ -221,7 +226,7 @@ export default function SupplierDetails() {
             ? Number(item.amount)
             : -Number(item.amount);
       }
-  
+
       return {
         ...item,
         runningBalance: balance,
@@ -232,7 +237,7 @@ export default function SupplierDetails() {
       };
     });
   }, [transactions]);
-  
+
   const fetchSupplierDueDate = async (supplierId) => {
     try {
       const userData = await AsyncStorage.getItem('userData');
@@ -447,7 +452,7 @@ Your current balance is ₹${balance} ${balanceType}`;
           mobile: supplierMobile,
           personName: personName,
           isSubscribe_user,
-          userAmountStatus:`₹ ${Math.abs(supplier?.current_balance || 0)} ${Number(supplier?.current_balance) > 0 ? 'Advance' : 'Due'}`,
+          userAmountStatus: `₹ ${Math.abs(supplier?.current_balance || 0)} ${Number(supplier?.current_balance) > 0 ? 'Advance' : 'Due'}`,
           transaction_limit:
             transactionType === 'you_got'
               ? payment_got_count_user
@@ -607,7 +612,7 @@ Your current balance is ₹${balance} ${balanceType}`;
             personName={personName}
             router={router}
             supplier={supplier}
-            // calculateBalance={calculateBalance}
+          // calculateBalance={calculateBalance}
           />
         )}
         contentContainerStyle={styles.listContent}

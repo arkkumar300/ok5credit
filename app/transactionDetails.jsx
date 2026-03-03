@@ -372,7 +372,7 @@ export default function TransactionDetails() {
           <Text style={styles.rowText}>Added On {formateDate(transaction?.transaction_date)}</Text>
         </View>
 
-        {transactionType === "you_gave" && (
+        {/* {transactionType === "you_gave" && (
           <TouchableOpacity
             style={styles.row}
             onPress={() => {
@@ -383,7 +383,7 @@ export default function TransactionDetails() {
             <Edit size={18} color="#25D366" />
             <Text style={[styles.rowText, { color: "#25D366" }]}>Edit Transaction</Text>
           </TouchableOpacity>
-        )}
+        )} */}
 
         <TouchableOpacity
           style={styles.row}

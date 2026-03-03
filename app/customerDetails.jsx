@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useRef, useCallback,useMemo, useContext } from 'react';
 import { View, Text, TextInput, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking, Animated, Alert, ScrollView, Platform } from 'react-native';
-import { PhoneCall, Bell, Delete, MessageSquare, Send, MessageCircle, ArrowDown, Percent, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar, HelpCircle, DeleteIcon, AlertTriangle } from 'lucide-react-native';
+import { PhoneCall, Bell, Delete, MessageSquare, Send, MessageCircle, Clock, CheckCircle, ArrowDown, Percent, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar, HelpCircle, DeleteIcon, AlertTriangle } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Divider } from 'react-native-paper';
 import moment from 'moment';
@@ -129,7 +129,8 @@ const DiscountModal = ({ visible, onClose, onSubmit, loading }) => {
 // Transaction Item Component
 const TransactionItem = React.memo(({ item, personName, router, customer }) => {
   const isReceived = item.transaction_type === 'you_got' || item.transaction_type === 'you_discount';
-
+  const isApproved = item.is_Approved ;
+  const balanceText = item.balanceText;
   if (item.is_Deleted) {
     return (
       <View
@@ -176,31 +177,47 @@ const TransactionItem = React.memo(({ item, personName, router, customer }) => {
     });
   };
 
-  const renderImage = () => {
-    let pics = item.transaction_pic;
-    if (typeof pics === 'string') {
-      try {
+  const parseTransactionImages = (pics) => {
+    try {
+      if (typeof pics === "string") {
         pics = JSON.parse(pics);
-      } catch {
-        pics = [];
       }
+
+      if (Array.isArray(pics) && typeof pics[0] === "string") {
+        pics = JSON.parse(pics[0]);
+      }
+
+      return Array.isArray(pics) ? pics : [];
+    } catch {
+      return [];
     }
-    if (!Array.isArray(pics)) pics = [];
+  };
+
+  const renderImage = () => {
+    const images = parseTransactionImages(item?.transaction_pic);
 
     const url =
-      pics?.length > 0
-        ? pics[0]
-        : 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg';
+      images.length > 0
+        ? images[0]
+        : "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg";
 
     return (
       <Image
         source={{ uri: url }}
         style={styles.transactionImage}
-        resizeMode="contain"
+        resizeMode="stretch"
       />
     );
   };
 
+  // Get status icon based on approval
+  const getStatusIcon = () => {
+    if (isApproved) {
+      return <CheckCircle size={16} color="#4CAF50" />;
+    } else {
+      return <Clock size={16} color="#FF9800" />;
+    }
+  };
   return (
     <TouchableOpacity
       style={[
@@ -211,18 +228,29 @@ const TransactionItem = React.memo(({ item, personName, router, customer }) => {
       activeOpacity={0.7}
     >
       <View style={styles.transactionBox}>
-        <View style={styles.amountRow}>
-          {isReceived ? (
-            <ArrowDown size={20} color="green" />
-          ) : (
-            <ArrowUp size={20} color="red" />
-          )}
-          <Text style={styles.amountText}>₹ {item.amount}</Text>
-          <Text style={styles.timeText}>
-            {moment(item.transaction_date).format('DD/MM/YYYY')}
-          </Text>
-          <CheckIcon size={20} color="green" style={styles.checkIcon} />
+        <View style={styles.messageHeader}>
+          <View style={styles.amountContainer}>
+            {isReceived ? (
+              <ArrowDown size={16} color="#4CAF50" />
+            ) : (
+              <ArrowUp size={16} color="#F44336" />
+            )}
+            <Text style={[
+              styles.amountText,
+              isReceived ? styles.receivedAmount : styles.sentAmount
+            ]}>
+              ₹ {parseFloat(item.amount).toFixed(2)}
+            </Text>
+          </View>
+         { item.transaction_type === 'you_gave' && (<View style={styles.statusContainer}>
+            {getStatusIcon()}
+            <Text style={styles.statusText}>
+              {isApproved ? 'Approved' : 'Pending'}
+            </Text>
+          </View>)}
         </View>
+
+
 
         {item?.bill_id && (
           <>
@@ -259,6 +287,7 @@ const TransactionItem = React.memo(({ item, personName, router, customer }) => {
           </>
         )}
       </View>
+      <Text style={styles.balanceNote}>{balanceText}</Text>
     </TouchableOpacity>
   );
 });
@@ -423,6 +452,7 @@ Your current balance is ₹${balance} ${balanceType}`;
       },
     });
   };
+
   const handleAddTransaction = async (transactionType) => {
     if (!isSubscribe_user) {
       if (transactionType === 'you_got' && payment_got_count_user >= 10) {
@@ -537,6 +567,28 @@ Your current balance is ₹${balance} ${balanceType}`;
     </View>
   );
 
+  const transactionsWithBalance = useMemo(() => {
+    let balance = 0;
+
+    return transactions.map((item) => {
+      if (!item.is_Deleted) {
+        balance +=
+          item.transaction_type === 'you_got'
+            ? Number(item.amount)
+            : -Number(item.amount);
+      }
+
+      return {
+        ...item,
+        runningBalance: balance,
+        balanceText:
+          balance < 0
+            ? `${Math.abs(balance)} Due`
+            : `${balance} Advance`,
+      };
+    });
+  }, [transactions]);
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -570,16 +622,19 @@ Your current balance is ₹${balance} ${balanceType}`;
       </Appbar.Header>
 
       <FlatList
-        data={transactions}
+        data={transactionsWithBalance}
         style={styles.list}
-        renderItem={({ item }) => (
-          <TransactionItem
-            item={item}
-            personName={personName}
-            router={router}
-            customer={customer}
-          />
-        )}
+        renderItem={({ item }) => {
+          console.log(item.amount, ":::", item.is_Approved, ":::", item.is_Approved)
+          return (
+            <TransactionItem
+              item={item}
+              personName={personName}
+              router={router}
+              customer={customer}
+            />
+          )
+        }}
         keyExtractor={(item) => item.id?.toString()}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
@@ -817,7 +872,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   transactionBox: {
-    width: '90%',
+    width: '60%',
     borderWidth: 1,
     borderColor: '#e0e0e0',
     borderRadius: 12,
@@ -840,11 +895,6 @@ const styles = StyleSheet.create({
   },
   checkIcon: {
     marginHorizontal: 5,
-  },
-  amountText: {
-    fontSize: 18,
-    color: '#333',
-    marginLeft: 8,
   },
   deletedText: {
     color: 'gray',
@@ -876,12 +926,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginVertical: 5,
+    // marginVertical: 5,
   },
   transactionImage: {
     width: 80,
     height: 80,
-    borderRadius: 3,
+    borderRadius: 8,
   },
   imageAmount: {
     fontWeight: '600',
@@ -1089,4 +1139,45 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 10,
   },
+  messageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  amountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  amountText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  receivedAmount: {
+    color: '#4CAF50',
+  },
+  sentAmount: {
+    color: '#F44336',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  statusText: {
+    fontSize: 10,
+    marginLeft: 4,
+    color: '#666',
+    fontWeight: '500',
+  },
+  balanceNote: {
+    fontSize: 13,
+    color: 'gray',
+    marginTop: 4,
+  }
+
 });
