@@ -57,12 +57,21 @@ export default function CustomerLedger() {
     };
 
     const fetchData = async () => {
-        const userData = await AsyncStorage.getItem("userData");
-        const userId = JSON.parse(userData).id;
-
+        const userDetails = await AsyncStorage.getItem("userData");
+  
+        if (!userDetails) {
+          Alert.alert("Error", "User data not found");
+          return;
+        }
+    
+        const userData = JSON.parse(userDetails);
+    
+        const userId = userData?.id;
+        const ownerId = userData?.owner_user_id;
+  
         const url = roleType === "CUSTOMER" ? `/customers/${personId}` : `/supplier/${personId}`
         try {
-            const response = await ApiService.post(url, { userId });
+            const response = await ApiService.post(url, { userId,ownerId });
 
             const json = JSON.stringify(response.data);
             const parsedTransactions = JSON.parse(json).transactions.map(tx => ({

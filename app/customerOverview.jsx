@@ -71,10 +71,8 @@ export default function CustomerOverview() {
           setData(parsedTransactions);
           const filtered = parsedTransactions.filter(tx => {
             const txDate = new Date(tx.transaction_date);
-            console.log("aaa ::", txDate)
             return txDate >= startDate && txDate <= endDate;
           });
-          console.log("rrr ::", filtered)
           setFilteredTransactions(filtered);
           // Count 'you_got' and 'you_gave' types
           const paymentCount = parsedTransactions.filter(item => item.type === 'debit').length;

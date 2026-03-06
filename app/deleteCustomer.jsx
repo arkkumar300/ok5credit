@@ -15,12 +15,19 @@ export default function DeleteCustomer() {
 
   const fetchCustomer = useCallback(async () => {
     try {
-      const userData = await AsyncStorage.getItem('userData');
-      if (!userData) return;
-
-      const userId = JSON.parse(userData).id;
+      const userDetails = await AsyncStorage.getItem("userData");
+  
+      if (!userDetails) {
+        Alert.alert("Error", "User data not found");
+        return;
+      }
+  
+      const userData = JSON.parse(userDetails);
+  
+      const userId = userData?.id;
+      const ownerId = userData?.owner_user_id;
       const URL = transaction_for === 'customer' ? '/customers' : '/supplier'
-      const response = await ApiService.post(`${URL}/${id}`, { userId });
+      const response = await ApiService.post(`${URL}/${id}`, { userId,ownerId });
       if (transaction_for === 'customer') {
         setCustomer(response.data.customer);
       } else {

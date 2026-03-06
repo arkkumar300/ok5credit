@@ -319,7 +319,7 @@ export default function AddEditItem() {
           style={styles.input}
         />
 
-        <View style={styles.totalBox}>
+        {/* <View style={styles.totalBox}>
           <Text variant="titleMedium" style={{ fontWeight: '600' }}>
             Total: ₹ {totalAmount.toFixed(2)}
           </Text>
@@ -335,7 +335,7 @@ export default function AddEditItem() {
             {rateTypeValue === 'inclusive' ? ' (incl. tax)' : ' (excl. tax)'}
           </Text>
         </View>
-
+ */}
         <View style={styles.buttonRow}>
           <Button
             mode="outlined"

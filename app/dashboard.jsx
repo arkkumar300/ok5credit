@@ -85,51 +85,59 @@ export default function DashboardScreen() {
   const fetchDashboardData = async () => {
     try {
       const userDetails = await AsyncStorage.getItem("userData");
-      const userId = JSON.parse(userDetails).id;
-
+  
+      if (!userDetails) {
+        Alert.alert("Error", "User data not found");
+        return;
+      }
+  
+      const userData = JSON.parse(userDetails);
+  
+      const userId = userData?.id;
+      const ownerId = userData?.owner_user_id;
+    
       const response = await ApiService.post("/dashboard/businessOwner", {
-        userId,
-        created_user: userId
+        userId: userId,
+        ownerId: ownerId,
       });
-
-      if (response.data.success) {
-        const fetchedCustomers = response.data.Customers.map((c) => ({
+  
+      if (response?.data?.success) {
+        const fetchedCustomers = (response.data.Customers || []).map((c) => ({
           id: c.id,
           name: c.name,
           amount: parseFloat(c.current_balance),
-          type: parseFloat(c.current_balance) <= 0 ? 'Due' : 'Advance',
+          type: parseFloat(c.current_balance) <= 0 ? "Due" : "Advance",
           date: new Date(c.created_at).toDateString(),
-          initial: c.name.charAt(0).toUpperCase(),
-          color: '#4CAF50',
-          created_by: c.created_by
+          initial: c.name?.charAt(0).toUpperCase(),
+          color: "#4CAF50",
+          created_by: c.created_by,
         }));
-
-        const fetchedSuppliers = response.data.Suppliers.map((s) => ({
+  
+        const fetchedSuppliers = (response.data.Suppliers || []).map((s) => ({
           id: s.id,
           name: s.name,
           amount: parseFloat(s.current_balance),
-          type: parseFloat(s.current_balance) >= 0 ? 'Due' : 'Advance',
+          type: parseFloat(s.current_balance) >= 0 ? "Due" : "Advance",
           date: new Date(s.created_at).toDateString(),
-          initial: s.name.charAt(0).toUpperCase(),
-          color: '#2196F3',
-          created_by: s.created_by
+          initial: s.name?.charAt(0).toUpperCase(),
+          color: "#2196F3",
+          created_by: s.created_by,
         }));
-
+  
         setCustomers(fetchedCustomers);
         setSuppliers(fetchedSuppliers);
-        setCustomersList(response?.data?.Customers);
-        setSuppliersList(response?.data?.Suppliers);
-
+        setCustomersList(response?.data?.Customers || []);
+        setSuppliersList(response?.data?.Suppliers || []);
+  
         calculateNetBalance(fetchedCustomers, fetchedSuppliers);
       } else {
-        Alert.alert('Error', response.data.message || 'Something went wrong');
+        Alert.alert("Error", response?.data?.message || "Something went wrong");
       }
     } catch (error) {
-      console.error('Dashboard API Error:', error.message);
-      Alert.alert('Network Error', 'Failed to load dashboard data.');
+      console.error("Dashboard API Error:", error);
+      Alert.alert("Network Error", "Failed to load dashboard data.");
     }
   };
-
   const calculateNetBalance = (customersList, suppliersList) => {
     const totalCustomer = customersList.reduce((sum, c) => sum + c.amount, 0);
     const totalSupplier = suppliersList.reduce((sum, s) => sum + s.amount, 0);
@@ -575,11 +583,13 @@ export default function DashboardScreen() {
               <Text style={styles.navText}>Employees</Text>
             </TouchableOpacity>
           )}
-
+          {!isSubscribed && (
           <TouchableOpacity style={styles.navItem} onPress={handleMyPlanPress}>
             <Settings size={24} color="#666" />
             <Text style={styles.navText}>My Plan</Text>
           </TouchableOpacity>
+                    )}
+
           <TouchableOpacity style={styles.navItem} onPress={handleMorePress}>
             <MoreHorizontal size={24} color="#666" />
             <Text style={styles.navText}>More</Text>

@@ -667,7 +667,7 @@ Your current balance is ₹${balance} ${balanceType}`;
             onPress={() => router.push({
               pathname: '/deleteCustomer',
               params: {
-                transaction_for: 'supplier',
+                transaction_for: 'supplier', 
                 id: personId,
               },
             })

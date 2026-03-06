@@ -1,9 +1,8 @@
 // KhataScreen.js
 
-import React, { useState, useEffect } from 'react';
-import {
-    View, Text, FlatList, SafeAreaView, TouchableOpacity, StyleSheet
-} from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from "@react-navigation/native";
+import { View, Text, FlatList, SafeAreaView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Appbar, FAB } from 'react-native-paper';
 import { BookOpenText, Truck, User2, Download, ArrowLeft } from 'lucide-react-native';
 import handleDownloadPDF from './components/ledgerPDF';
@@ -16,67 +15,88 @@ const Account = () => {
     const [businessName, setBusinessName] = useState("");
     const [customers, setCustomers] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
+    const [loading, setLoading] = useState(false);
 
     const router = useRouter();
 
-    useEffect(() => {
-        const fetchDashboard = async () => {
-            const userData = await AsyncStorage.getItem("userData");
-            console.log("rrr::", userData)
-            const userId = JSON.parse(userData).id;
-            const businessName = JSON.parse(userData).businessName;
-            setBusinessName(businessName)
-            try {
-                const response = await ApiService.post(`/dashboard/businessOwner`, { userId });
-                const json = await response.data;
+    const fetchDashboard = async () => {
+        try {
+            const userDetails = await AsyncStorage.getItem("userData");
 
-                if (json.success) {
-                    const custBalance = json.Customers.reduce(
-                        (sum, c) => sum + parseFloat(c.current_balance || '0'),
-                        0
-                    );
-                    const supBalance = json.Suppliers.reduce(
-                        (sum, s) => sum + parseFloat(s.current_balance || '0'),
-                        0
-                    );
+            if (!userDetails) return;
 
-                    setCustomers(json.Customers);
-                    setSuppliers(json.Suppliers);
+            const userData = JSON.parse(userDetails);
 
-                    setKhataData([
-                        {
-                            id: 'customer',
-                            title: 'Customer Khata',
-                            balance: `₹${custBalance.toFixed(2)}`,
-                            info: `${json.Customers.length} Customers`,
-                            subtitle: 'You Get',
-                            icon: BookOpenText,
-                            iconColor: '#007B83',
-                            balanceColor: '#E53935',
-                        },
-                        {
-                            id: 'supplier',
-                            title: 'Supplier Khata',
-                            balance: `₹${supBalance.toFixed(2)}`,
-                            info: `${json.Suppliers.length} Suppliers`,
-                            subtitle: 'You Give',
-                            icon: Truck,
-                            iconColor: '#4CAF50',
-                            balanceColor: '#E53935',
-                        },
-                    ]);
-                } else {
-                    console.error('API returned false success');
-                }
-            } catch (err) {
-                console.error('Error fetching dashboard data:', err);
-            } finally {
-                setLoading(false);
+            const userId = userData?.id;
+            const ownerId = userData?.owner_user_id;
+            const businessName = userData?.businessName;
+
+            setBusinessName(businessName);
+
+            const response = await ApiService.post("/dashboard/businessOwner", {
+                userId,
+                ownerId,
+            });
+
+            const json = response?.data;
+            console.log("Dashboard response:", json);
+
+            if (json?.success) {
+                const customers = json?.Customers || [];
+                const suppliers = json?.Suppliers || [];
+
+                const custBalance = customers.reduce(
+                    (sum, c) => sum + parseFloat(c?.current_balance || "0"),
+                    0
+                );
+
+                const supBalance = suppliers.reduce(
+                    (sum, s) => sum + parseFloat(s?.current_balance || "0"),
+                    0
+                );
+
+                setCustomers(customers);
+                setSuppliers(suppliers);
+
+                setKhataData([
+                    {
+                        id: "customer",
+                        title: "Customer Khata",
+                        balance: `₹${custBalance.toFixed(2)}`,
+                        info: `${customers.length} Customers`,
+                        subtitle: "You Get",
+                        icon: BookOpenText,
+                        iconColor: "#007B83",
+                        balanceColor: "#E53935",
+                    },
+                    {
+                        id: "supplier",
+                        title: "Supplier Khata",
+                        balance: `₹${supBalance.toFixed(2)}`,
+                        info: `${suppliers.length} Suppliers`,
+                        subtitle: "You Give",
+                        icon: Truck,
+                        iconColor: "#4CAF50",
+                        balanceColor: "#E53935",
+                    },
+                ]);
+            } else {
+                console.log("API returned success false");
             }
-        };
+        } catch (error) {
+            console.error("Error fetching dashboard:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        fetchDashboard();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            setLoading(true);
+            fetchDashboard();
+        }, [])
+    );
+
     const renderItem = ({ item }) => (
         <TouchableOpacity style={styles.card} onPress={() => router.push({
             pathname: '/customerOverview', params: { transaction_for: item.id }

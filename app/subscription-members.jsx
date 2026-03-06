@@ -42,6 +42,7 @@ export default function SubscriptionMembersScreen() {
         const response = await ApiService.get(`/subscriptions/${subscription.id}/members`);
         
         if (response.data) {
+          console.log("member::",response.data)
           setMembers(response.data.members || []);
           setSubscriptionDetails({
             totalMembers: response.data.total_members || 0,
@@ -167,11 +168,11 @@ export default function SubscriptionMembersScreen() {
   const handleMemberPress = async (member) => {
     try {
       setLoading(true);
-      
+      console.log("members::",member)
       // Fetch dashboard data for this member (employee)
       const response = await ApiService.post("/dashboard/businessOwner", { 
         userId: member.user.id,
-        created_user: member.user.id 
+        ownerId: member.user.owner_user_id 
       });
       
       if (response.data.success) {

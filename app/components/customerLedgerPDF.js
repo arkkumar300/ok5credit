@@ -14,8 +14,17 @@ const handleCustomerLedgerPDF = async (
     /* =========================
        FETCH USER ID
     ========================= */
-    const userData = await AsyncStorage.getItem('userData');
-    const userId = JSON.parse(userData)?.id;
+    const userDetails = await AsyncStorage.getItem("userData");
+  
+    if (!userDetails) {
+      Alert.alert("Error", "User data not found");
+      return;
+    }
+
+    const userData = JSON.parse(userDetails);
+
+    const userId = userData?.id;
+    const ownerId = userData?.owner_user_id;
 
     /* =========================
        FETCH PARTY DETAILS
@@ -25,7 +34,7 @@ const handleCustomerLedgerPDF = async (
         ? `/customers/${personId}`
         : `/supplier/${personId}`;
 
-    const response = await ApiService.post(url, { userId });
+    const response = await ApiService.post(url, { userId,ownerId });
 
     const party =
       response?.data?.customer || response?.data?.supplier;

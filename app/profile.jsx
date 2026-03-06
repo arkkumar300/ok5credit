@@ -13,36 +13,51 @@ import ViewShot from 'react-native-view-shot';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
+const COLORS = {
+  primary: '#2E7D32',
+  primaryLight: '#4CAF50',
+  primaryDark: '#1B5E20',
+  secondary: '#007B83',
+  background: '#F5F7FA',
+  white: '#FFFFFF',
+  black: '#333333',
+  gray: '#757575',
+  lightGray: '#E0E0E0',
+  error: '#D32F2F',
+  success: '#388E3C',
+  border: '#E8E8E8'
+};
+
 const updateUserData = async (payload) => {
   const userData = await AsyncStorage.getItem("userData");
-  if (!userData) return null; 
+  if (!userData) return null;
 
   const parsedUserData = JSON.parse(userData);
   const userId = parsedUserData.id;
   try {
-    
-  const response = await ApiService.put(`/user/${userId}`, payload);
 
-  if (response?.data) {
-    // merge old data + payload
-    const updatedUserData = {
-      ...parsedUserData,
-      ...payload,
-    };
+    const response = await ApiService.put(`/user/${userId}`, payload);
 
-    // save back to AsyncStorage
-    await AsyncStorage.setItem(
-      "userData",
-      JSON.stringify(updatedUserData)
-    );
-    console.log('Updated successfully & AsyncStorage synced');
-    return updatedUserData;
+    if (response?.data) {
+      // merge old data + payload
+      const updatedUserData = {
+        ...parsedUserData,
+        ...payload,
+      };
 
+      // save back to AsyncStorage
+      await AsyncStorage.setItem(
+        "userData",
+        JSON.stringify(updatedUserData)
+      );
+      console.log('Updated successfully & AsyncStorage synced');
+      return updatedUserData;
+
+    }
+  } catch (error) {
+    console.log('error::', error);
   }
-} catch (error) {
-  console.log('error::',error);
-}
-return null;
+  return null;
 }
 
 const ProfileScreen = () => {
@@ -205,8 +220,7 @@ const ProfileScreen = () => {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.8,
-        allowsMultipleSelection: true,
+        quality: 0.8
       });
 
       if (!result.canceled && result.assets) {
@@ -239,7 +253,7 @@ const ProfileScreen = () => {
       setUserData(updated); // ✅ LIVE UI UPDATE
     }
   };
-  
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -254,9 +268,12 @@ const ProfileScreen = () => {
           <Avatar.Image
             source={{ uri: imageUri ? imageUri : 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=400&h=300' }}
             size={80} color="#ccc" />
-          <TouchableOpacity style={styles.editIcon} onPress={showImagePickerOptions}>
-            <Text style={styles.editText}>✎</Text>
-          </TouchableOpacity>
+         <TouchableOpacity 
+              style={styles.cameraButton} 
+              onPress={showImagePickerOptions}
+            >
+              <Camera size={20} color={'#ffffff'} />
+            </TouchableOpacity>
         </View>
 
         {/* Business Info List */}
@@ -281,10 +298,10 @@ const ProfileScreen = () => {
         {/* <ProfileModal visible={activeModal === 'udyam'} onClose={closeModal} title="Udyam Number" /> */}
         <BusinessTypeModal visible={activeModal === 'businessType'} onClose={closeModal} businessType={userData?.businessType || ""} onUpdate={handleUserUpdate} />
         {/* <ProfileModal visible={activeModal === 'category'} onClose={closeModal} title="Category" /> */}
-        <UseNameModal visible={activeModal === 'UserName'} onClose={closeModal} name={userData?.name || "" } onUpdate={handleUserUpdate} />
+        <UseNameModal visible={activeModal === 'UserName'} onClose={closeModal} name={userData?.name || ""} onUpdate={handleUserUpdate} />
         <OTPModal visible={activeModal === 'OTP'} onClose={closeModal} />
-        <UserEmailModal visible={activeModal === 'Email'} onClose={closeModal} email={userData?.email || ""}  onUpdate={handleUserUpdate}/>
-        <AddressModal visible={activeModal === 'address'} onClose={closeModal} userAddress={userData?.address || ""} />
+        <UserEmailModal visible={activeModal === 'Email'} onClose={closeModal} email={userData?.email || ""} onUpdate={handleUserUpdate} />
+        <AddressModal visible={activeModal === 'address'} onClose={closeModal} userAddress={userData?.address || ""} onUpdate={handleUserUpdate} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -314,7 +331,7 @@ const BusinessCardModal = ({ visible, onClose, userDetails, onPress }) => {
       if (!isAvailable) {
         Alert.alert('Sharing not available');
         return;
-      } 
+      }
 
       await Sharing.shareAsync(uri, {
         mimeType: 'image/png',
@@ -373,7 +390,7 @@ const BusinessCardModal = ({ visible, onClose, userDetails, onPress }) => {
   )
 };
 
-const StoreNameModal = ({ visible, onClose, businessName,onUpdate }) => {
+const StoreNameModal = ({ visible, onClose, businessName, onUpdate }) => {
   const [storeName, setStoreName] = useState();
 
   useEffect(() => {
@@ -382,7 +399,7 @@ const StoreNameModal = ({ visible, onClose, businessName,onUpdate }) => {
 
   const payload = { businessName: storeName };
 
-const handleConfirm = async () => {
+  const handleConfirm = async () => {
     await onUpdate(payload);
     onClose();
   };
@@ -420,7 +437,7 @@ const handleConfirm = async () => {
   )
 };
 
-const UseNameModal = ({ visible, onClose, name,onUpdate }) => {
+const UseNameModal = ({ visible, onClose, name, onUpdate }) => {
   const [userName, setUserName] = useState('');
   useEffect(() => {
     setUserName(name)
@@ -558,7 +575,7 @@ const OTPModal = ({ visible, onClose, onOpen }) => {
   )
 };
 
-const UserEmailModal = ({ visible, onClose, email,onUpdate }) => {
+const UserEmailModal = ({ visible, onClose, email, onUpdate }) => {
   const [userEmail, setUserEmail] = useState('');
   const [emailError, setEmailError] = useState('');
 
@@ -640,7 +657,7 @@ const UserEmailModal = ({ visible, onClose, email,onUpdate }) => {
   );
 };
 
-const AddressModal = ({ visible, onClose, userAddress,onUpdate }) => {
+const AddressModal = ({ visible, onClose, userAddress, onUpdate }) => {
   const [address, setAddress] = useState('');
   useEffect(() => {
     setAddress(userAddress)
@@ -686,7 +703,7 @@ const AddressModal = ({ visible, onClose, userAddress,onUpdate }) => {
   )
 };
 
-const GSTModal = ({ visible, onClose, userGST,onUpdate }) => {
+const GSTModal = ({ visible, onClose, userGST, onUpdate }) => {
   const [GST, setGST] = useState('');
   const payload = { GST: GST }
   useEffect(() => {
@@ -731,7 +748,7 @@ const GSTModal = ({ visible, onClose, userGST,onUpdate }) => {
   )
 };
 
-const BusinessTypeModal = ({ visible, onClose, businessType,onUpdate }) => {
+const BusinessTypeModal = ({ visible, onClose, businessType, onUpdate }) => {
   const businessTypes = [
     'Retail Shop',
     'Wholesale/Distributor',
@@ -893,7 +910,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
-
+  cameraButton: {
+    position: 'relative',
+    bottom: 30,
+    right: -30,
+    backgroundColor: COLORS.primary,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.white,
+  },
   optionText: {
     fontSize: 16,
     color: '#333',
