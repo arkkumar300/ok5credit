@@ -135,19 +135,11 @@ export default function MyPlanScreen() {
       }
     } catch (error) {
       console.log("Payment verification error:", error);
-      // if (error.response?.data?.message === "Invalid signature"){
-      //   Alert.alert(
-      //     "Success",
-      //     "Payment completed!,please reLogin to apply plan features",
-      //     [{ text: "OK", onPress: () => router.push('/login') }]
-      //   );
-      // } else {
         Alert.alert(
           "Success",
           "Payment completed! Your subscription will be activated shortly.",
           [{ text: "OK", onPress: () => router.push('/dashboard') }]
         );
-      // }
     }
   };
 

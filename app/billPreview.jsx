@@ -181,8 +181,9 @@ export default function BillPreview() {
     const formattedDueDate = format === 'unpaid'
       ? moment(dueDate).format('YYYY-MM-DD')
       : undefined;
-
-    const payload = {
+      const userData = await AsyncStorage.getItem("userData");
+      const userId = JSON.parse(userData).id;
+      const payload = {
       payment_status: format,
       items: parsedItems.map(it => ({
         name: it.itemName ?? it.name,
@@ -198,6 +199,7 @@ export default function BillPreview() {
       bill_file: uploadedPath,
       amount: Number(totalAmount),
       bill_id: bill,
+      userId:userId,
       description: `i have given ${totalAmount} to ${supplierInfo?.name} on ${moment().format('YYYY-MM-DD')}`,
       bill_date: moment().format("YYYY-MM-DD"),
       paymentType: format === 'paid' ? "paid" : "credit",

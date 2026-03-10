@@ -64,7 +64,6 @@ export default function AddCustomerScreen() {
 
   const handleSearch = async () => {
     const userData = await AsyncStorage.getItem("userData");
-    console.log("userdata::", userData)
     const userId = JSON.parse(userData).id;
     const ownerId = JSON.parse(userData).owner_user_id;
     if (mobile.trim()) {

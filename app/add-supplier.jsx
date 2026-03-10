@@ -83,7 +83,6 @@ export default function AddSupplierScreen() {
 
   const openContacts = async () => {
     const { status } = await Contacts.requestPermissionsAsync();
-    console.log("rrr:::", status)
     if (status === 'granted') {
       const { data } = await Contacts.getContactsAsync({
         fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Image],

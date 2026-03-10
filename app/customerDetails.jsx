@@ -625,7 +625,6 @@ Your current balance is ₹${balance} ${balanceType}`;
         data={transactionsWithBalance}
         style={styles.list}
         renderItem={({ item }) => {
-          console.log(item.amount, ":::", item.is_Approved, ":::", item.is_Approved)
           return (
             <TransactionItem
               item={item}

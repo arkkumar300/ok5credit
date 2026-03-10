@@ -22,7 +22,6 @@ export default function Search() {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
     const {addTo} = useLocalSearchParams();
-    console.log("rrr:::",addTo)
     /* ---------------- LOAD CONTACTS ---------------- */
     useEffect(() => {
         (async () => {

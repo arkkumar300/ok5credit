@@ -89,15 +89,7 @@ export default function DeleteCustomer() {
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => {
-            console.log("rrr:::", {
-              transactionType: isAdvance ? 'you_gave' : 'you_got',
-              transaction_for,
-              id: id,
-              mobile: customer.name,
-              personName: customer.mobile,
-              userAmountStatus: `₹ ${Math.abs(customer?.current_balance || 0)} ${Number(customer?.current_balance) > 0 ? 'Advance' : 'Due'}`,
-              transactionAmount: Math.abs(Number(balance))
-            })
+            
             router.push({
               pathname: '/transaction',
               params: {

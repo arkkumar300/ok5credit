@@ -12,6 +12,7 @@ import LottieView from 'lottie-react-native';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n/i18n';
 import { AuthContext } from './components/AuthContext';
+import getStageColor from './components/defaulterColor';
 
 let transactionData = {
   customers: [
@@ -85,22 +86,22 @@ export default function DashboardScreen() {
   const fetchDashboardData = async () => {
     try {
       const userDetails = await AsyncStorage.getItem("userData");
-  
+
       if (!userDetails) {
         Alert.alert("Error", "User data not found");
         return;
       }
-  
+
       const userData = JSON.parse(userDetails);
-  
+
       const userId = userData?.id;
       const ownerId = userData?.owner_user_id;
-    
+
       const response = await ApiService.post("/dashboard/businessOwner", {
         userId: userId,
         ownerId: ownerId,
       });
-  
+
       if (response?.data?.success) {
         const fetchedCustomers = (response.data.Customers || []).map((c) => ({
           id: c.id,
@@ -110,9 +111,10 @@ export default function DashboardScreen() {
           date: new Date(c.created_at).toDateString(),
           initial: c.name?.charAt(0).toUpperCase(),
           color: "#4CAF50",
-          created_by: c.created_by,
+          created_by: c.created_user,
+          defaulter_stage:c.defaulter_stage
         }));
-  
+
         const fetchedSuppliers = (response.data.Suppliers || []).map((s) => ({
           id: s.id,
           name: s.name,
@@ -121,14 +123,15 @@ export default function DashboardScreen() {
           date: new Date(s.created_at).toDateString(),
           initial: s.name?.charAt(0).toUpperCase(),
           color: "#2196F3",
-          created_by: s.created_by,
+          created_by: s.created_user,
+          defaulter_stage:s.defaulter_stage
         }));
-  
+
         setCustomers(fetchedCustomers);
         setSuppliers(fetchedSuppliers);
         setCustomersList(response?.data?.Customers || []);
         setSuppliersList(response?.data?.Suppliers || []);
-  
+
         calculateNetBalance(fetchedCustomers, fetchedSuppliers);
       } else {
         Alert.alert("Error", response?.data?.message || "Something went wrong");
@@ -246,7 +249,8 @@ export default function DashboardScreen() {
           personName: person.name,
           personType: activeTab.toLowerCase(),
           personId: person.id,
-          createdBy: person.created_by
+          created_by: person.created_user,
+          defaulter_stage:person.defaulter_stage
         }
       });
     } else {
@@ -256,7 +260,8 @@ export default function DashboardScreen() {
           personName: person.name,
           personType: activeTab.toLowerCase(),
           personId: person.id,
-          createdBy: person.created_by
+          created_by: person.created_user,
+          defaulter_stage:person.defaulter_stage
         }
       });
     }
@@ -468,7 +473,7 @@ export default function DashboardScreen() {
                   style={styles.personCard}
                   onPress={() => handlePersonClick(person)}
                 >
-                  <View style={[styles.avatar, { backgroundColor: person.color }]}>
+                  <View style={[styles.avatar, { backgroundColor: getStageColor(person.defaulter_stage) }]}>
                     <Text style={styles.avatarText}>{person.initial}</Text>
                   </View>
                   <View style={styles.personInfo}>
@@ -563,38 +568,38 @@ export default function DashboardScreen() {
         </Modal>
       </ScrollView>
       <TouchableOpacity
-          style={styles.addButton}
-          onPress={activeTab === 'Customer' ? handleAddCustomer : handleAddSupplier}
-        >
-          <Users size={20} color="white" />
-          <Text style={styles.addButtonText}>Add {activeTab}</Text>
-        </TouchableOpacity>
+        style={styles.addButton}
+        onPress={activeTab === 'Customer' ? handleAddCustomer : handleAddSupplier}
+      >
+        <Users size={20} color="white" />
+        <Text style={styles.addButtonText}>Add {activeTab}</Text>
+      </TouchableOpacity>
 
       <View style={styles.bottomNav}>
-          <TouchableOpacity style={styles.navItem}>
-            <TrendingUp size={24} color="#4CAF50" />
-            <Text style={styles.navText}>Ledger</Text>
-          </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem}>
+          <TrendingUp size={24} color="#4CAF50" />
+          <Text style={styles.navText}>Ledger</Text>
+        </TouchableOpacity>
 
-          {/* Employee Button - Only show if subscribed */}
-          {isSubscribed && (
-            <TouchableOpacity style={styles.navItem} onPress={handleEmployeesPress}>
-              <UserPlus size={24} color="#4CAF50" />
-              <Text style={styles.navText}>Employees</Text>
-            </TouchableOpacity>
-          )}
-          {!isSubscribed && (
+        {/* Employee Button - Only show if subscribed */}
+        {isSubscribed && (
+          <TouchableOpacity style={styles.navItem} onPress={handleEmployeesPress}>
+            <UserPlus size={24} color="#4CAF50" />
+            <Text style={styles.navText}>Employees</Text>
+          </TouchableOpacity>
+        )}
+        {!isSubscribed && (
           <TouchableOpacity style={styles.navItem} onPress={handleMyPlanPress}>
             <Settings size={24} color="#666" />
             <Text style={styles.navText}>My Plan</Text>
           </TouchableOpacity>
-                    )}
+        )}
 
-          <TouchableOpacity style={styles.navItem} onPress={handleMorePress}>
-            <MoreHorizontal size={24} color="#666" />
-            <Text style={styles.navText}>More</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.navItem} onPress={handleMorePress}>
+          <MoreHorizontal size={24} color="#666" />
+          <Text style={styles.navText}>More</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }

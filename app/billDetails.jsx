@@ -251,10 +251,10 @@ export default function BillDetails() {
             } else {
 
               router.navigate({
-                pathname: '/supplierDetails',
+                pathname: '/customerDetails',
                 params: {
                   personName: personInfo.name,
-                  personType: "supplier",
+                  personType: "customer",
                   personId: personInfo.id,
                 },
               });
