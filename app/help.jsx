@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, LayoutAnimation, UIManager, StyleSheet, Platform,SafeAreaView } from 'react-native';
-import { Appbar } from 'react-native-paper';
-import { ArrowLeft, HelpCircle } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, LayoutAnimation, UIManager, StyleSheet, Platform, SafeAreaView, StatusBar } from 'react-native';
+import { Appbar, Searchbar, Card } from 'react-native-paper';
+import { ArrowLeft, HelpCircle, Search, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 if (Platform.OS === 'android') {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -51,91 +52,111 @@ const FAQScreen = () => {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
-                <Appbar.Header style={[styles.header, { borderColor: "#f3f3f3", borderBottomWidth: 3 }]}>
-                    <ArrowLeft size={24} onPress={() => navigation.goBack()} style={{ marginHorizontal: 10 }} />
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
 
-                    <View style={styles.userInfo}>
-                        <Text style={{fontSize:20,fontWeight:'bold', marginLeft: 10 }}>Frequently Asked Questions
-                        </Text>
+            {/* Premium Header with Gradient */}
+            <LinearGradient
+                colors={['#0A4D3C', '#1B6B50']}
+                style={styles.headerGradient}
+            >
+                <SafeAreaView>
+                    <View style={styles.header}>
+                        <TouchableOpacity
+                            onPress={() => navigation.goBack()}
+                            style={styles.backButton}
+                        >
+                            <ArrowLeft size={24} color="#FFFFFF" />
+                        </TouchableOpacity>
+
+                        <View style={styles.headerTitleContainer}>
+                            <Text style={styles.headerTitle}>FAQ</Text>
+                            <Text style={styles.headerSubtitle}>
+                                Frequently Asked Questions
+                            </Text>
+                        </View>
+
+                        <View style={styles.headerRightPlaceholder}>
+                            <HelpCircle size={20} color="rgba(255,255,255,0.8)" />
+                        </View>
                     </View>
-                </Appbar.Header>
+                </SafeAreaView>
+            </LinearGradient>
+
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+                <View style={styles.searchWrapper}>
+                    <Search size={18} color="#64748B" style={styles.searchIcon} />
+                    <TextInput
+                        placeholder="Search FAQs..."
+                        placeholderTextColor="#94A3B8"
+                        value={searchText}
+                        onChangeText={setSearchText}
+                        style={styles.searchInput}
+                    />
+                </View>
+            </View>
 
             <ScrollView
-                style={{ flex: 1, backgroundColor: '#f5f5f5', paddingHorizontal:16 }}
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
             >
-                <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 12 }}>
-                </Text>
+                {filteredFaqs.length > 0 ? (
+                    filteredFaqs.map((item, index) => {
+                        const isOpen = activeIndex === index;
 
-                {/* Search */}
-                <TextInput
-                    placeholder="Search FAQs..."
-                    value={searchText}
-                    onChangeText={setSearchText}
-                    style={{
-                        backgroundColor: '#ffffff',
-                        padding: 12,
-                        borderRadius: 10,
-                        fontSize: 14,
-                        marginBottom: 16,
-                    }}
-                />
-
-                {filteredFaqs.map((item, index) => {
-                    const isOpen = activeIndex === index;
-
-                    return (
-                        <View
-                            key={index}
-                            style={{
-                                backgroundColor: '#ffffff',
-                                borderRadius: 10,
-                                marginBottom: 12,
-                                padding: 14,
-                            }}
-                        >
-                            <TouchableOpacity
-                                onPress={() => toggleFAQ(index)}
-                                style={{
-                                    flexDirection: 'row',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                }}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={{ fontSize: 16, fontWeight: '600', flex: 1 }}>
-                                    {item.question}
-                                </Text>
-
-                                <Text
-                                    style={{
-                                        fontSize: 22,
-                                        fontWeight: 'bold',
-                                        marginLeft: 10,
-                                    }}
+                        return (
+                            <Card key={index} style={styles.faqCard}>
+                                <TouchableOpacity
+                                    onPress={() => toggleFAQ(index)}
+                                    style={styles.questionContainer}
+                                    activeOpacity={0.7}
                                 >
-                                    {isOpen ? '−' : '+'}
-                                </Text>
-                            </TouchableOpacity>
+                                    <View style={styles.questionWrapper}>
+                                        <View style={styles.questionNumber}>
+                                            <Text style={styles.numberText}>{index + 1}</Text>
+                                        </View>
+                                        <Text style={styles.questionText}>
+                                            {item.question}
+                                        </Text>
+                                    </View>
 
-                            {isOpen && (
-                                <Text
-                                    style={{
-                                        marginTop: 10,
-                                        fontSize: 14,
-                                        color: '#555',
-                                        lineHeight: 20,
-                                    }}
-                                >
-                                    {item.answer}
-                                </Text>
-                            )}
-                        </View>
-                    );
-                })}
+                                    <View style={styles.iconContainer}>
+                                        {isOpen ? (
+                                            <ChevronUp size={20} color="#0A4D3C" />
+                                        ) : (
+                                            <ChevronDown size={20} color="#64748B" />
+                                        )}
+                                    </View>
+                                </TouchableOpacity>
+
+                                {isOpen && (
+                                    <View style={styles.answerContainer}>
+                                        <View style={styles.answerDivider} />
+                                        <Text style={styles.answerText}>
+                                            {item.answer}
+                                        </Text>
+                                    </View>
+                                )}
+                            </Card>
+                        );
+                    })
+                ) : (
+                    <View style={styles.emptyContainer}>
+                        <HelpCircle size={60} color="#E2E8F0" />
+                        <Text style={styles.emptyTitle}>No FAQs Found</Text>
+                        <Text style={styles.emptySubtext}>
+                            Try searching with different keywords
+                        </Text>
+                    </View>
+                )}
+
+                {/* Bottom Padding */}
+                <View style={styles.bottomPadding} />
             </ScrollView>
-        </SafeAreaView>
+        </View>
 
     );
 };
@@ -144,35 +165,170 @@ export default FAQScreen;
 
 const styles = StyleSheet.create({
     container: {
-        flex:1,
-        backgroundColor: '#fff',
+        flex: 1,
+        backgroundColor: '#F8FAFC',
     },
-    input: {
-        marginBottom: 16,
-        backgroundColor: '#fff',
-        height: 52,
+    headerGradient: {
+        paddingTop: 20,
+        paddingBottom: 20,
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0,
     },
-    row: {
+    header: {
         flexDirection: 'row',
-        gap: 10,
-        marginBottom: 16,
-        zIndex: 1,
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
     },
-    dropdown: {
-        borderColor: '#ccc',
-        minHeight: 52,
-        borderRadius: 6, zIndex: 9999
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
     },
-    totalBox: {
-        padding: 16,
-        backgroundColor: '#f1f8f5',
-        borderRadius: 8,
-        marginBottom: 20
+    headerTitleContainer: {
+        alignItems: 'center',
     },
-    buttonRow: {
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#FFFFFF',
+        letterSpacing: 0.5,
+    },
+    headerSubtitle: {
+        fontSize: 11,
+        color: 'rgba(255,255,255,0.8)',
+        marginTop: 2,
+    },
+    headerRightPlaceholder: {
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    searchContainer: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#F8FAFC',
+    },
+    searchWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        paddingHorizontal: 12,
+        height: 48,
+    },
+    searchIcon: {
+        marginRight: 8,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 14,
+        color: '#1E293B',
+        padding: 0,
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        paddingHorizontal: 16,
+        paddingTop: 8,
+    },
+    faqCard: {
+        marginBottom: 12,
+        borderRadius: 12,
+        elevation: 2,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        overflow: 'hidden',
+    },
+    questionContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+    },
+    questionWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
         gap: 12,
-        marginBottom: 32
-    }
+    },
+    questionNumber: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: '#E8F5E9',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    numberText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#0A4D3C',
+    },
+    questionText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#1E293B',
+        flex: 1,
+        lineHeight: 20,
+    },
+    iconContainer: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#F8FAFC',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 8,
+    },
+    answerContainer: {
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+    },
+    answerDivider: {
+        height: 1,
+        backgroundColor: '#E2E8F0',
+        marginBottom: 12,
+    },
+    answerText: {
+        fontSize: 14,
+        color: '#64748B',
+        lineHeight: 22,
+    },
+    emptyContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    emptyTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#0A4D3C',
+        marginTop: 16,
+        textAlign: 'center',
+    },
+    emptySubtext: {
+        fontSize: 14,
+        color: '#64748B',
+        textAlign: 'center',
+        marginTop: 8,
+    },
+    bottomPadding: {
+        height: 20,
+    },
 });

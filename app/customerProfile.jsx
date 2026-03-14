@@ -1,15 +1,15 @@
 // ProfileScreen.js
 
 import React, { useState, useEffect } from 'react';
-import {View,Text,TextInput,SafeAreaView,StyleSheet,ScrollView,TouchableOpacity,Modal,Alert,ActivityIndicator,KeyboardAvoidingView,Platform} from 'react-native';
-import {X,Pencil,UserRound,Share2,Store,Phone,FileText,Hash,Building2,MapPin,Mail,User,Delete,ChevronRight,ArrowLeft,Camera,Image as ImageIcon,Check,X as XIcon} from 'lucide-react-native';
+import { View, Text, TextInput, SafeAreaView, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar} from 'react-native';
+import { X, Pencil, UserRound, Share2, Store, Phone, FileText, Hash, Building2, MapPin, Mail, User, Delete, ChevronRight, ArrowLeft, Camera, Image as ImageIcon, Check, X as XIcon, Award, TrendingUp, Wallet} from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Avatar } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
 
-const COLORS = {
+const COLORS = { 
   primary: '#2E7D32',
   primaryLight: '#4CAF50',
   primaryDark: '#1B5E20',
@@ -215,18 +215,31 @@ const ProfileScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Appbar.Header style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color={COLORS.primary} />
-        </TouchableOpacity>
-        <Appbar.Content 
-          title={profile?.name || 'Profile'} 
-          titleStyle={styles.headerTitle}
-        />
-        <View style={{ width: 40 }} />
-      </Appbar.Header>
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
 
-      <ScrollView 
+      {/* Premium Header */}
+      <View style={styles.headerSolid}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <ArrowLeft size={20} color={COLORS.white} />
+          </TouchableOpacity>
+
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>{profile?.name || 'Profile'}</Text>
+            <Text style={styles.headerSubtitle}>
+              {profileType === 'customer' ? 'Customer Details' : 'Supplier Details'}
+            </Text>
+          </View>
+
+          <View style={styles.headerRight} />
+        </View>
+      </View>
+
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -234,34 +247,43 @@ const ProfileScreen = () => {
         <View style={styles.photoSection}>
           <View style={styles.avatarContainer}>
             <Avatar.Image
-              source={{ 
-                uri: imageUri || 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=400&h=300' 
+              source={{
+                uri: imageUri || 'https://images.pexels.com/photos/3785079/pexels-photo-3785079.jpeg?auto=compress&cs=tinysrgb&w=400&h=400'
               }}
               size={100}
               style={styles.avatar}
             />
-            <TouchableOpacity 
-              style={styles.cameraButton} 
+            <TouchableOpacity
+              style={styles.cameraButton}
               onPress={showImageOptions}
             >
-              <Camera size={20} color={COLORS.white} />
+              <Camera size={18} color={COLORS.white} />
             </TouchableOpacity>
           </View>
           <Text style={styles.profileName}>{profile?.name || 'No Name'}</Text>
-          <Text style={styles.profileType}>
-            {profileType === 'customer' ? 'Customer' : 'Supplier'}
-          </Text>
+          <View style={styles.profileTypeBadge}>
+            <Text style={styles.profileTypeText}>
+              {profileType === 'customer' ? 'Customer' : 'Supplier'}
+            </Text>
+          </View>
         </View>
 
-        {/* Info Cards */}
+        {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
+            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(10,77,60,0.1)' }]}>
+              <Wallet size={20} color={COLORS.primary} />
+            </View>
             <Text style={styles.statNumber}>{transactions?.length || 0}</Text>
             <Text style={styles.statLabel}>Transactions</Text>
           </View>
+
           <View style={styles.statCard}>
+            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(16,185,129,0.1)' }]}>
+              <TrendingUp size={20} color={COLORS.secondary} />
+            </View>
             <Text style={styles.statNumber}>
-              {profile?.total_amount || '0'}
+              ₹{Math.abs(profile?.total_amount || 0)}
             </Text>
             <Text style={styles.statLabel}>Total Amount</Text>
           </View>
@@ -269,46 +291,46 @@ const ProfileScreen = () => {
 
         {/* Profile Information */}
         <View style={styles.infoCard}>
-          <ProfileItem 
-            icon={User} 
-            label="Name" 
+          <ProfileItem
+            icon={User}
+            label="Full Name"
             value={profile?.name || 'Not provided'}
             onPress={() => setActiveModal('name')}
           />
-          
-          <ProfileItem 
-            icon={Phone} 
-            label="Phone Number" 
+
+          <ProfileItem
+            icon={Phone}
+            label="Phone Number"
             value={profile?.mobile || 'Not provided'}
-            // onPress={() => setActiveModal('phone')}
           />
-          
-          <ProfileItem 
-            icon={MapPin} 
-            label="Address" 
+
+          <ProfileItem
+            icon={MapPin}
+            label="Address"
             value={profile?.address || 'Not provided'}
             onPress={() => setActiveModal('address')}
             multiline
           />
-          
-          <ProfileItem 
-            icon={Mail} 
-            label="Email" 
+
+          <ProfileItem
+            icon={Mail}
+            label="Email Address"
             value={profile?.email || 'Not provided'}
             onPress={() => setActiveModal('email')}
           />
 
-          <TouchableOpacity 
-            style={[styles.item, styles.deleteItem]} 
+          <TouchableOpacity
+            style={[styles.item, styles.deleteItem]}
             onPress={handleDelete}
           >
-            <View style={[styles.iconContainer, { backgroundColor: '#FFEBEE' }]}>
-              <Delete size={22} color={COLORS.error} />
+            <View style={[styles.iconContainer, { backgroundColor: 'rgba(220,38,38,0.1)' }]}>
+              <Delete size={20} color={COLORS.error} />
             </View>
             <View style={styles.textContainer}>
               <Text style={[styles.label, { color: COLORS.error }]}>Delete Profile</Text>
-              <Text style={styles.subtitle}>Remove this {profileType}</Text>
+              <Text style={styles.subtitle}>Remove this {profileType} permanently</Text>
             </View>
+            <ChevronRight size={18} color={COLORS.gray} />
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -317,23 +339,12 @@ const ProfileScreen = () => {
       <EditModal
         visible={activeModal === 'name'}
         onClose={() => setActiveModal(null)}
-        title="Edit Name"
+        title="Edit Full Name"
         value={profile?.name}
         field="name"
         onSave={updateProfile}
-        placeholder="Enter name"
+        placeholder="Enter full name"
       />
-
-      {/* <EditModal
-        visible={activeModal === 'phone'}
-        onClose={() => setActiveModal(null)}
-        title="Edit Phone Number"
-        value={profile?.mobile}
-        field="mobile"
-        onSave={updateProfile}
-        placeholder="Enter phone number"
-        keyboardType="phone-pad"
-      /> */}
 
       <EditModal
         visible={activeModal === 'address'}
@@ -342,7 +353,7 @@ const ProfileScreen = () => {
         value={profile?.address}
         field="address"
         onSave={updateProfile}
-        placeholder="Enter address"
+        placeholder="Enter complete address"
         multiline
         numberOfLines={3}
       />
@@ -350,11 +361,11 @@ const ProfileScreen = () => {
       <EditModal
         visible={activeModal === 'email'}
         onClose={() => setActiveModal(null)}
-        title="Edit Email"
+        title="Edit Email Address"
         value={profile?.email}
         field="email"
         onSave={updateProfile}
-        placeholder="Enter email"
+        placeholder="Enter email address"
         keyboardType="email-address"
       />
     </SafeAreaView>
@@ -363,31 +374,36 @@ const ProfileScreen = () => {
 
 // Profile Item Component
 const ProfileItem = ({ icon: Icon, label, value, onPress, multiline }) => (
-  <TouchableOpacity style={styles.item} onPress={onPress} activeOpacity={0.7}>
+  <TouchableOpacity
+    style={styles.item}
+    onPress={onPress}
+    activeOpacity={0.7}
+    disabled={!onPress}
+  >
     <View style={styles.iconContainer}>
-      <Icon size={22} color={COLORS.primary} />
+      <Icon size={20} color={COLORS.primary} />
     </View>
     <View style={styles.textContainer}>
       <Text style={styles.label}>{label}</Text>
-      <Text 
-        style={[styles.value, multiline && styles.multilineValue]} 
+      <Text
+        style={[styles.value, multiline && styles.multilineValue]}
         numberOfLines={multiline ? 3 : 1}
       >
         {value}
       </Text>
     </View>
-   {label!=='Phone Number' && <ChevronRight size={20} color={COLORS.gray} />}
+    {onPress && <ChevronRight size={18} color={COLORS.gray} />}
   </TouchableOpacity>
 );
 
 // Edit Modal Component
-const EditModal = ({ 
-  visible, 
-  onClose, 
-  title, 
-  value, 
-  field, 
-  onSave, 
+const EditModal = ({
+  visible,
+  onClose,
+  title,
+  value,
+  field,
+  onSave,
   placeholder,
   keyboardType = 'default',
   multiline = false,
@@ -419,20 +435,20 @@ const EditModal = ({
       transparent
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.modalContainer}
       >
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
           onPress={onClose}
         />
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title}</Text>
             <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
-              <XIcon size={24} color={COLORS.gray} />
+              <XIcon size={22} color={COLORS.gray} />
             </TouchableOpacity>
           </View>
 
@@ -452,15 +468,15 @@ const EditModal = ({
           />
 
           <View style={styles.modalActions}>
-            <TouchableOpacity 
-              style={[styles.modalButton, styles.cancelButton]} 
+            <TouchableOpacity
+              style={[styles.modalButton, styles.cancelButton]}
               onPress={onClose}
             >
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.modalButton, styles.saveButton]} 
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.saveButton]}
               onPress={handleSave}
               disabled={loading}
             >
@@ -468,7 +484,7 @@ const EditModal = ({
                 <ActivityIndicator size="small" color={COLORS.white} />
               ) : (
                 <>
-                  <Check size={20} color={COLORS.white} />
+                  <Check size={18} color={COLORS.white} />
                   <Text style={styles.saveButtonText}>Save</Text>
                 </>
               )}
@@ -485,20 +501,52 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  headerSolid: {
+    backgroundColor: COLORS.primary,
+    paddingTop: Platform.OS === 'android' ? 20 : 0,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
   header: {
-    backgroundColor: COLORS.white,
-    elevation: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   backButton: {
-    marginLeft: 16,
-    padding: 4,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  headerTitleContainer: {
+    alignItems: 'center',
+    flex: 1,
   },
   headerTitle: {
-    color: COLORS.black,
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: COLORS.white,
+    letterSpacing: 0.5,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  headerRight: {
+    width: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -508,7 +556,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 16,
+    fontSize: 14,
     color: COLORS.gray,
   },
   errorContainer: {
@@ -518,7 +566,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorText: {
-    fontSize: 16,
+    fontSize: 15,
     color: COLORS.error,
     textAlign: 'center',
     marginBottom: 16,
@@ -527,11 +575,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   retryButtonText: {
     color: COLORS.white,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   scrollContent: {
@@ -547,72 +595,99 @@ const styles = StyleSheet.create({
   },
   avatar: {
     backgroundColor: COLORS.lightGray,
+    borderWidth: 3,
+    borderColor: COLORS.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   cameraButton: {
     position: 'absolute',
     bottom: 0,
     right: 0,
     backgroundColor: COLORS.primary,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: COLORS.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   profileName: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '700',
     color: COLORS.black,
-    marginBottom: 4,
+    marginBottom: 6,
   },
-  profileType: {
-    fontSize: 14,
+  profileTypeBadge: {
+    backgroundColor: 'rgba(10,77,60,0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  profileTypeText: {
+    fontSize: 13,
     color: COLORS.primary,
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 16,
-    overflow: 'hidden',
+    fontWeight: '600',
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 12,
     marginBottom: 20,
   },
   statCard: {
     flex: 1,
     backgroundColor: COLORS.white,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    marginHorizontal: 4,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.primary,
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.black,
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.gray,
+    fontWeight: '500',
   },
   infoCard: {
     backgroundColor: COLORS.white,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   item: {
     flexDirection: 'row',
@@ -627,8 +702,8 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 8,
-    backgroundColor: '#E8F5E9',
+    borderRadius: 12,
+    backgroundColor: 'rgba(10,77,60,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -637,21 +712,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   label: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.gray,
-    marginBottom: 2,
+    marginBottom: 4,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   value: {
-    fontSize: 16,
+    fontSize: 15,
     color: COLORS.black,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   multilineValue: {
-    lineHeight: 22,
+    lineHeight: 20,
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.gray,
+    marginTop: 2,
   },
 
   // Modal Styles
@@ -669,34 +748,40 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    minHeight: 250,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    padding: 24,
+    minHeight: 280,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.black,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
   modalCloseButton: {
-    padding: 4,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.background,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalInput: {
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
+    borderRadius: 16,
+    padding: 16,
+    fontSize: 15,
     color: COLORS.black,
-    marginBottom: 20,
-    minHeight: 50,
+    marginBottom: 24,
+    minHeight: 56,
+    backgroundColor: COLORS.background,
   },
   modalTextArea: {
     minHeight: 100,
@@ -705,31 +790,31 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 12,
   },
   modalButton: {
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 14,
-    borderRadius: 8,
-    marginHorizontal: 6,
+    paddingVertical: 16,
+    borderRadius: 16,
+    gap: 8,
   },
   cancelButton: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLORS.background,
   },
   saveButton: {
     backgroundColor: COLORS.primary,
-    gap: 8,
   },
   cancelButtonText: {
     color: COLORS.gray,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   saveButtonText: {
     color: COLORS.white,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
 });

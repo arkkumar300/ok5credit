@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, Modal, FlatList, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, Modal, FlatList, Image, Platform,StatusBar} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, User, Phone, Contact } from 'lucide-react-native';
+import { ArrowLeft, User, Phone, Contact, CheckCircle, X } from 'lucide-react-native';
 import { Appbar } from 'react-native-paper';
 import * as Contacts from 'expo-contacts';
 import ApiService from './components/ApiServices';
@@ -16,6 +16,8 @@ export default function AddSupplierScreen() {
   const [mobile, setMobile] = useState('');
   const [contacts, setContacts] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const [focusedInput, setFocusedInput] = useState(null);
+
   const router = useRouter();
 
   const handleConfirm = async () => {
@@ -109,50 +111,99 @@ export default function AddSupplierScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Appbar.Header style={{ elevation: 5 }}>
-        <ArrowLeft size={24} color={'#2E7D32'} style={{ marginStart: 10 }} onPress={() => router.back()} />
-        <Appbar.Content title="Add Supplier" titleStyle={{ textAlign: 'center', color: '#333333', fontWeight: 'bold' }} />
-      </Appbar.Header>
+      <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
 
-      <View style={styles.content}>
-        {!isExist && <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Name</Text>
-          <View style={styles.inputWrapper}>
-            <User size={20} color="#666" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="Enter supplier name"
-              placeholderTextColor={"#aaaaaa"}
-              autoFocus={true}
-            />
+      {/* Premium Header */}
+      <View style={styles.headerSolid}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <ArrowLeft size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>Add Supplier</Text>
+            <Text style={styles.headerSubtitle}>New supplier information</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <View style={styles.headerBadge} />
           </View>
         </View>
-        }
+      </View>
+
+      <View style={styles.content}>
+        {!isExist && (
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Full Name</Text>
+            <View style={[
+              styles.inputWrapper,
+              focusedInput === 'name' && styles.inputWrapperFocused
+            ]}>
+              <User size={20} color="#0A4D3C" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="Enter supplier full name"
+                placeholderTextColor="#94A3B8"
+                autoFocus={true}
+                onFocus={() => setFocusedInput('name')}
+                onBlur={() => setFocusedInput(null)}
+              />
+              {name.length > 0 && (
+                <CheckCircle size={16} color="#0A4D3C" style={styles.inputCheck} />
+              )}
+            </View>
+          </View>
+        )}
+
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Mobile Number</Text>
-          <View style={styles.inputWrapper}>
-            <Phone size={20} color="#666" style={styles.inputIcon} />
+          <View style={[
+            styles.inputWrapper,
+            focusedInput === 'mobile' && styles.inputWrapperFocused,
+            mobile.length === 10 && styles.inputWrapperValid
+          ]}>
+            <View style={styles.countryCode}>
+              <Text style={styles.countryCodeText}>+91</Text>
+            </View>
+            <View style={styles.inputDivider} />
+            <Phone size={20} color="#0A4D3C" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               value={mobile}
               maxLength={10}
               onChangeText={(text) => setMobile(cleanMobileNumber(text))}
-              placeholder="Enter mobile number"
-              placeholderTextColor={"#aaaaaa"}
+              placeholder="98765 43210"
+              placeholderTextColor="#94A3B8"
               keyboardType="numeric"
+              onFocus={() => setFocusedInput('mobile')}
+              onBlur={() => setFocusedInput(null)}
             />
+            {mobile.length === 10 && (
+              <CheckCircle size={16} color="#0A4D3C" style={styles.inputCheck} />
+            )}
           </View>
+          {mobile.length > 0 && mobile.length < 10 && (
+            <Text style={styles.hintText}>Enter 10-digit mobile number</Text>
+          )}
         </View>
 
-        <TouchableOpacity style={styles.contactsButton} onPress={openContacts}>
-          <Contact size={20} color="#2E7D32" />
+        <TouchableOpacity
+          style={styles.contactsButton}
+          onPress={openContacts}
+          activeOpacity={0.7}
+        >
+          <View style={styles.contactsIcon}>
+            <Contact size={20} color="#0A4D3C" />
+          </View>
           <Text style={styles.contactsButtonText}>Choose from Contacts</Text>
         </TouchableOpacity>
       </View>
 
-      {isExist &&
+      {isExist ? (
         <TouchableOpacity
           style={[
             styles.confirmButton,
@@ -160,12 +211,11 @@ export default function AddSupplierScreen() {
           ]}
           onPress={handleSearch}
           disabled={!mobile.trim()}
+          activeOpacity={0.8}
         >
-          <Text style={styles.confirmButtonText}>search</Text>
+          <Text style={styles.confirmButtonText}>Search Supplier</Text>
         </TouchableOpacity>
-      }
-
-      {!isExist &&
+      ) : (
         <TouchableOpacity
           style={[
             styles.confirmButton,
@@ -173,16 +223,17 @@ export default function AddSupplierScreen() {
           ]}
           onPress={handleConfirm}
           disabled={isDisabled}
+          activeOpacity={0.8}
         >
           {loading ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={styles.confirmButtonText}>Confirm</Text>
+            <Text style={styles.confirmButtonText}>Add Supplier</Text>
           )}
         </TouchableOpacity>
-      }
+      )}
 
-      {/* Modal for Contacts List */}
+      {/* Premium Modal for Contacts List */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -191,13 +242,28 @@ export default function AddSupplierScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Select a Contact</Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Contact</Text>
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                style={styles.modalCloseButton}
+              >
+                <X size={22} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
             <FlatList
               data={contacts}
               keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalList}
               renderItem={({ item }) => (
-                <TouchableOpacity style={styles.contactItem} onPress={() => handleContactSelect(item)}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TouchableOpacity
+                  style={styles.contactItem}
+                  onPress={() => handleContactSelect(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.contactRow}>
                     {item.imageAvailable && item.image?.uri ? (
                       <Image source={{ uri: item.image.uri }} style={styles.contactImage} />
                     ) : (
@@ -207,8 +273,10 @@ export default function AddSupplierScreen() {
                         </Text>
                       </View>
                     )}
-                    <View style={{ marginLeft: 10 }}>
-                      <Text style={styles.contactName}>{item.name}</Text>
+                    <View style={styles.contactInfo}>
+                      <Text style={styles.contactName} numberOfLines={1}>
+                        {item.name}
+                      </Text>
                       <Text style={styles.contactNumber}>
                         {item.phoneNumbers[0]?.number || 'No number'}
                       </Text>
@@ -217,8 +285,12 @@ export default function AddSupplierScreen() {
                 </TouchableOpacity>
               )}
             />
-            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setModalVisible(false)}>
-              <Text style={styles.modalCloseButtonText}>Cancel</Text>
+
+            <TouchableOpacity
+              style={styles.modalCancelButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.modalCancelButtonText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -230,115 +302,277 @@ export default function AddSupplierScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F8FAFC',
+  },
+  headerSolid: {
+    backgroundColor: '#0A4D3C',
+    paddingTop: Platform.OS === 'android' ? 20 : 0,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#0A4D3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  headerTitleContainer: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  headerRight: {
+    width: 44,
+  },
+  headerBadge: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.5,
   },
   content: {
-    padding: 20,
-  },
-  contactImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#ccc',
-  },
-  initialText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 18,
-    textAlign: 'center',
-    lineHeight: 40, // should match the height of the image
-  },
-  placeholderImage: {
-    backgroundColor: '#999',
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 24,
+    paddingTop: 30,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   inputLabel: {
-    marginBottom: 5,
-    fontWeight: 'bold',
-    color: '#333',
+    marginBottom: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0A4D3C',
+    marginLeft: 4,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    minHeight: 56,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  inputWrapperFocused: {
+    borderColor: '#0A4D3C',
+    shadowColor: '#0A4D3C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  inputWrapperValid: {
+    borderColor: '#0A4D3C',
   },
   inputIcon: {
-    marginRight: 10,
+    marginRight: 12,
+  },
+  inputCheck: {
+    marginLeft: 8,
   },
   input: {
     flex: 1,
-    height: 40,
-    color: '#333333'
+    height: 56,
+    fontSize: 16,
+    color: '#1E293B',
+    fontWeight: '500',
   },
-  confirmButton: {
-    marginHorizontal: 20,
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 30,
+  countryCode: {
+    paddingRight: 12,
+    justifyContent: 'center',
   },
-  confirmButtonActive: {
-    backgroundColor: '#2E7D32',
+  countryCodeText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0A4D3C',
   },
-  confirmButtonDisabled: {
-    backgroundColor: '#ccc',
+  inputDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#E2E8F0',
+    marginRight: 12,
   },
-  confirmButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+  hintText: {
+    fontSize: 12,
+    color: '#EF4444',
+    marginTop: 6,
+    marginLeft: 4,
   },
   contactsButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(10,77,60,0.05)',
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  contactsIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(10,77,60,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   contactsButtonText: {
-    marginLeft: 8,
-    color: '#2E7D32',
-    fontWeight: 'bold',
+    fontSize: 15,
+    color: '#0A4D3C',
+    fontWeight: '600',
+  },
+  confirmButton: {
+    marginHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'absolute',
+    bottom: 30,
+    left: 0,
+    right: 0,
+    shadowColor: '#0A4D3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  confirmButtonActive: {
+    backgroundColor: '#0A4D3C',
+  },
+  confirmButtonDisabled: {
+    backgroundColor: '#CBD5E1',
+  },
+  confirmButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.5,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingTop: 20,
+    paddingBottom: 30,
     maxHeight: '80%',
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  contactItem: {
-    paddingVertical: 10,
-    borderBottomColor: '#eee',
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
     borderBottomWidth: 1,
+    borderBottomColor: 'rgba(10,77,60,0.1)',
   },
-  contactName: {
-    fontWeight: '600',
-  },
-  contactNumber: {
-    color: '#666',
-    fontSize: 12,
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0A4D3C',
   },
   modalCloseButton: {
-    marginTop: 15,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalList: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  contactItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(10,77,60,0.1)',
+  },
+  contactRow: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  modalCloseButtonText: {
-    color: '#2E7D32',
-    fontWeight: 'bold',
+  contactImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#E2E8F0',
+  },
+  placeholderImage: {
+    backgroundColor: '#0A4D3C',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  initialText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 20,
+  },
+  contactInfo: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  contactName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0A4D3C',
+    marginBottom: 4,
+  },
+  contactNumber: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  modalCancelButton: {
+    marginTop: 20,
+    marginHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalCancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#64748B',
   },
 });

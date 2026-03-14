@@ -1,13 +1,14 @@
 // App.js
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, SafeAreaView } from 'react-native';
-import { Provider as PaperProvider, Appbar, FAB, } from 'react-native-paper';
-import { ChevronDown, Search,Edit3, FileText, Plus, Check, Clock, ArrowLeft, SearchCheck, } from 'lucide-react-native';
+import {View,Text,FlatList,TouchableOpacity,TextInput,StyleSheet,SafeAreaView,StatusBar,Platform} from 'react-native';
+import { Provider as PaperProvider, Appbar, FAB } from 'react-native-paper';
+import {ChevronDown,Search,Edit3,FileText,Plus,Check,Clock,ArrowLeft,SearchCheck,X,Filter,TrendingUp,Users} from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import ApiService from './components/ApiServices';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import moment from 'moment';
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const bills = [
     { id: '1', title: 'BILL-1', amount: 1005, date: '25 Aug 2025', customer: 'Amma' },
@@ -97,278 +98,574 @@ export default function Bills() {
     }
 
     const renderItem = ({ item }) => (
-        
-        <TouchableOpacity style={styles.card} onPress={() => handleBillDetails(item.id)}>
-            <View style={styles.leftRow}>
-                <FileText size={24} color="#007B83" />
-                <View style={{ marginLeft: 8 }}>
-                    <Text style={styles.title}>{item.bill_id}</Text>
-                    {item.customer && <Text style={styles.customer}>{item?.customer?.name || 'N/A'}</Text>}
-                    {item.supplier && <Text style={styles.customer}>{item?.supplier?.name || 'N/A'}</Text>}
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => handleBillDetails(item.id)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.cardLeft}>
+            <LinearGradient
+              colors={['rgba(10,77,60,0.1)', 'rgba(10,77,60,0.05)']}
+              style={styles.iconContainer}
+            >
+              <FileText size={22} color="#0A4D3C" />
+            </LinearGradient>
+            <View style={styles.cardInfo}>
+              <Text style={styles.billTitle}>{item.bill_id}</Text>
+              {item.customer && (
+                <View style={styles.customerContainer}>
+                  <Users size={12} color="#64748B" />
+                  <Text style={styles.customerName}>{item?.customer?.name || 'N/A'}</Text>
                 </View>
-            </View>
-        
-            <View style={styles.rightRow}>
-                {/* Amount */}
-                <Text style={styles.amount}>₹{parseFloat(item.amount).toLocaleString()}</Text>
-        
-                {/* Date and Status */}
-                <View style={styles.rowAlign}>
-                    {activeTab === 'bill' ? (
-                        <Check size={16} color="green" />
-                    ) : (
-                        <Clock size={16} color="orange" />
-                    )}
-                    <Text style={styles.date}>
-                        {new Date(item.bill_date).toLocaleDateString('en-IN', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                        })}
-                    </Text>
+              )}
+              {item.supplier && (
+                <View style={styles.customerContainer}>
+                  <Users size={12} color="#64748B" />
+                  <Text style={styles.customerName}>{item?.supplier?.name || 'N/A'}</Text>
                 </View>
-        
-                {/* EDIT ICON */}
-                <TouchableOpacity
-                    style={{ padding: 5, marginLeft: 10 }}
-                    onPress={() =>
-                        router.replace({
-                            pathname: './billGenaration',
-                            params: {
-                                mode: "edit",
-                                billId: item?.id,   // <-- IMPORTANT
-                                bill_type: item?.bill_type,
-                                bill_date: moment(item?.bill_date).format('DD MMM YYYY'),
-                                bill_prm_id:item.id
-                            },
-                        })
-                    }
-                >
-                    <Edit3 size={20} color="#007B83" />
-                </TouchableOpacity>
+              )}
             </View>
-        </TouchableOpacity>
-            );
-    return (
-        <PaperProvider>
-            <SafeAreaView style={{ flex: 1 }}>
-                <Appbar.Header>
-                    <Appbar.BackAction onPress={() =>router.push({ pathname: './more'}) }/>
-                    <Appbar.Content title={showSearch ? '' : activeTab === 'bill' ? 'Bill' : 'Quote'} />
-                    {showSearch ? (
-                        <>
-                            <FAB
-                                size={20}
-                                icon={({ size, color }) => (
-                                    <ArrowLeft size={20} color={color} />
-                                )}
-                                onPress={() => { setShowSearch(false) }}
-                                style={{
-                                    width: 40, height: 40, justifyContent: 'center', alignItems: 'center', margin: 5,
-                                    backgroundColor: '#007B83',
-                                }}
-                                color="white"
-                            />
-                            <TextInput
-                                placeholder="Search..."
-                                value={searchText}
-                                placeholderTextColor={"#aaaaaa"}
-                                onChangeText={setSearchText}
-                                style={styles.searchInput}
-                                autoFocus
-                            />
-                        </>
-                    ) : (
-                        <>
-                            <Appbar.Action icon={Search} onPress={() => setShowSearch(true)} />
-                            <FAB
-                                size={14}
-                                icon={({ size, color }) => (
-                                    <SearchCheck size={20} color={color} />
-                                )}
-                                onPress={() => { setShowSearch(true) }}
-                                style={{
-                                    width: 40, height: 40, justifyContent: 'center', alignItems: 'center', margin: 5,
-                                    backgroundColor: '#007B83',
-                                }}
-                                color="white"
-                            />
-                        </>
-                    )}
-                </Appbar.Header>
-
-                {!showSearch && (
-                    <View style={styles.tabContainer}>
-                        <TouchableOpacity
-                            style={[styles.tab, activeTab === 'bill' && styles.activeTab]}
-                            onPress={() => setActiveTab('bill')}
-                        >
-                            <Text style={activeTab === 'bill' ? styles.activeTabText : styles.tabText}>Bill</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.tab, activeTab === 'quote' && styles.activeTab]}
-                            onPress={() => setActiveTab('quote')}
-                        >
-                            <Text style={activeTab === 'quote' ? styles.activeTabText : styles.tabText}>Quote</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                {/* Total Sales and GST */}
-                <TouchableOpacity
-                    onPress={() => setShowGstDetails(!showGstDetails)}
-                    style={styles.summaryContainer}
-                >
-                    <Text style={styles.salesText}>₹{totalSales.toLocaleString()} total Sales</Text>
-                    <View style={styles.gstContainer}>
-                        <Text style={styles.gstText}>₹{totalGST.toFixed(2)} Total GST</Text>
-                        <ChevronDown size={16} color="#007B83" />
-                    </View>
-                </TouchableOpacity>
-
-                {/* GST Details */}
-                {showGstDetails && (
-                    <View style={styles.gstDetails}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                            <Text style={{ fontWeight: '600' }}>CGST</Text>
-                            <Text style={{ fontWeight: '600' }}>:</Text>
-                            <Text style={{ fontWeight: '600' }}> ₹  {CGST.toFixed(2)}</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                            <Text style={{ fontWeight: '600' }}>SGST</Text>
-                            <Text style={{ fontWeight: '600' }}>:</Text>
-                            <Text style={{ fontWeight: '600' }}>₹  {SGST.toFixed(2)}</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                            <Text style={{ fontWeight: '600' }}>IGST</Text>
-                            <Text style={{ fontWeight: '600' }}> :</Text>
-                            <Text style={{ fontWeight: '600' }}>₹  {IGST.toFixed(2)}</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                            <Text style={{ fontWeight: '600' }}>CESS</Text>
-                            <Text style={{ fontWeight: '600' }}>:</Text>
-                            <Text style={{ fontWeight: '600' }}>₹  {CESS.toFixed(2)}</Text>
-                        </View>
-                    </View>
-                )}
-                {loading ? (
-                    <Text style={{ textAlign: 'center', marginTop: 20 }}>Loading...</Text>
+          </View>
+    
+          <View style={styles.cardRight}>
+            <Text style={styles.amount}>₹{parseFloat(item.amount).toLocaleString()}</Text>
+    
+            <View style={styles.statusRow}>
+              <View style={[styles.statusBadge, { backgroundColor: activeTab === 'bill' ? 'rgba(10,77,60,0.1)' : 'rgba(245,158,11,0.1)' }]}>
+                {activeTab === 'bill' ? (
+                  <Check size={12} color="#0A4D3C" />
                 ) : (
-                    <FlatList
-                        data={filteredData}
-                        keyExtractor={(item) => item.id.toString()}
-                        renderItem={renderItem}
-                        contentContainerStyle={{ paddingBottom: 80 }}
-                    />
+                  <Clock size={12} color="#F59E0B" />
                 )}
+                <Text style={[styles.dateText, { color: activeTab === 'bill' ? '#0A4D3C' : '#F59E0B' }]}>
+                  {new Date(item.bill_date).toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                </Text>
+              </View>
+    
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() =>
+                  router.replace({
+                    pathname: './billGenaration',
+                    params: {
+                      mode: "edit",
+                      billId: item?.id,
+                      bill_type: item?.bill_type,
+                      bill_date: moment(item?.bill_date).format('DD MMM YYYY'),
+                      bill_prm_id: item.id
+                    },
+                  })
+                }
+              >
+                <Edit3 size={16} color="#0A4D3C" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
 
-                {/* FAB */}
-                <FAB
-                    icon={({ size, color }) => (
-                        <Plus size={size} color={color} />
-                    )}
-                    label={`Create ${activeTab === 'bill' ? 'Bill' : 'Quote'}`}
-                    onPress={addBill}
-                    style={styles.fab}
-                    color="white"
-                />
+      return (
+        <PaperProvider>
+        <View style={styles.container}>
+          <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
+  
+          {/* Premium Header with Gradient */}
+          <LinearGradient
+            colors={['#0A4D3C', '#1B6B50']}
+            style={styles.headerGradient}
+          >
+            <SafeAreaView>
+              <View style={styles.header}>
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={() => router.push({ pathname: './more' })}
+                  activeOpacity={0.7}
+                >
+                  <ArrowLeft size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+  
+                <View style={styles.headerTitleContainer}>
+                  <Text style={styles.headerTitle}>
+                    {showSearch ? 'Search' : (activeTab === 'bill' ? 'Bills' : 'Quotations')}
+                  </Text>
+                  <Text style={styles.headerSubtitle}>
+                    {activeTab === 'bill' ? 'Manage your invoices' : 'Track your quotes'}
+                  </Text>
+                </View>
+  
+                {!showSearch && (
+                  <TouchableOpacity
+                    style={styles.searchButton}
+                    onPress={() => setShowSearch(true)}
+                  >
+                    <Search size={18} color="#FFFFFF" />
+                  </TouchableOpacity>
+                )}
+              </View>
             </SafeAreaView>
-        </PaperProvider>
-    );
+          </LinearGradient>
+  
+          {/* Search Bar */}
+          {showSearch && (
+            <View style={styles.searchContainer}>
+              <View style={styles.searchInputContainer}>
+                <Search size={18} color="#64748B" />
+                <TextInput
+                  placeholder="Search by bill no. or customer..."
+                  value={searchText}
+                  placeholderTextColor="#94A3B8"
+                  onChangeText={setSearchText}
+                  style={styles.searchInput}
+                  autoFocus
+                />
+                {searchText.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchText('')}>
+                    <X size={16} color="#64748B" />
+                  </TouchableOpacity>
+                )}
+              </View>
+              <TouchableOpacity
+                style={styles.searchCloseButton}
+                onPress={() => {
+                  setShowSearch(false);
+                  setSearchText('');
+                }}
+              >
+                <Text style={styles.searchCloseText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+  
+          {/* Tabs */}
+          {!showSearch && (
+            <View style={styles.tabContainer}>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'bill' && styles.activeTab]}
+                onPress={() => setActiveTab('bill')}
+              >
+                <Text style={[styles.tabText, activeTab === 'bill' && styles.activeTabText]}>
+                  Bills
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'quote' && styles.activeTab]}
+                onPress={() => setActiveTab('quote')}
+              >
+                <Text style={[styles.tabText, activeTab === 'quote' && styles.activeTabText]}>
+                  Quotations
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+  
+          {/* Summary Card */}
+          <TouchableOpacity
+            onPress={() => setShowGstDetails(!showGstDetails)}
+            style={styles.summaryCard}
+            activeOpacity={0.7}
+          >
+            <View style={styles.summaryLeft}>
+              <TrendingUp size={18} color="#0A4D3C" />
+              <Text style={styles.salesText}>Total Sales: ₹{totalSales.toLocaleString()}</Text>
+            </View>
+            <View style={styles.gstToggle}>
+              <Text style={styles.gstText}>GST: ₹{totalGST.toFixed(2)}</Text>
+              <ChevronDown size={16} color="#0A4D3C" />
+            </View>
+          </TouchableOpacity>
+  
+          {/* GST Details */}
+          {showGstDetails && (
+            <LinearGradient
+              colors={['rgba(10,77,60,0.05)', 'rgba(10,77,60,0.02)']}
+              style={styles.gstDetails}
+            >
+              <View style={styles.gstRow}>
+                <Text style={styles.gstLabel}>CGST (41.57%)</Text>
+                <Text style={styles.gstValue}>₹{CGST.toFixed(2)}</Text>
+              </View>
+              <View style={styles.gstRow}>
+                <Text style={styles.gstLabel}>SGST (41.57%)</Text>
+                <Text style={styles.gstValue}>₹{SGST.toFixed(2)}</Text>
+              </View>
+              <View style={styles.gstRow}>
+                <Text style={styles.gstLabel}>IGST (0%)</Text>
+                <Text style={styles.gstValue}>₹{IGST.toFixed(2)}</Text>
+              </View>
+              <View style={styles.gstRow}>
+                <Text style={styles.gstLabel}>CESS (16.86%)</Text>
+                <Text style={styles.gstValue}>₹{CESS.toFixed(2)}</Text>
+              </View>
+            </LinearGradient>
+          )}
+  
+          {/* List */}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading {activeTab === 'bill' ? 'bills' : 'quotations'}...</Text>
+            </View>
+          ) : filteredData.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <FileText size={60} color="#E2E8F0" />
+              <Text style={styles.emptyText}>No {activeTab === 'bill' ? 'bills' : 'quotations'} found</Text>
+              <Text style={styles.emptySubtext}>
+                Tap the + button to create a new {activeTab === 'bill' ? 'bill' : 'quote'}
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filteredData}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={renderItem}
+              contentContainerStyle={styles.listContainer}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
+  
+          {/* FAB */}
+          <TouchableOpacity
+            style={styles.fab}
+            onPress={addBill}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#0A4D3C', '#1B6B50']}
+              style={styles.fabGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Plus size={24} color="#FFFFFF" />
+              <Text style={styles.fabText}>
+                Create {activeTab === 'bill' ? 'Bill' : 'Quote'}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </PaperProvider>
+      );
 }
 
 const styles = StyleSheet.create({
-    tabContainer: {
-        flexDirection: 'row',
-        backgroundColor: '#f1f1f1',
+    container: {
+      flex: 1,
+      backgroundColor: '#F8FAFC',
     },
-    tab: {
-        flex: 1,
-        padding: 10,
-        alignItems: 'center',
+    headerGradient: {
+      paddingTop: Platform.OS === 'android' ? 20 : 0,
+      paddingBottom: 16,
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+      shadowColor: '#0A4D3C',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 12,
+      elevation: 8,
     },
-    tabText: {
-        color: '#666',
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
     },
-    activeTab: {
-        borderBottomWidth: 2,
-        borderBottomColor: '#007B83',
+    backButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.2)',
     },
-    activeTabText: {
-        color: '#007B83',
-        fontWeight: 'bold',
+    headerTitleContainer: {
+      alignItems: 'center',
+      flex: 1,
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      letterSpacing: 0.5,
+      marginBottom: 2,
+    },
+    headerSubtitle: {
+      fontSize: 11,
+      color: 'rgba(255,255,255,0.8)',
+    },
+    searchButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.2)',
+    },
+    searchContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: '#FFFFFF',
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(10,77,60,0.1)',
+    },
+    searchInputContainer: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#F8FAFC',
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderWidth: 1,
+      borderColor: 'rgba(10,77,60,0.1)',
+      gap: 8,
     },
     searchInput: {
-        backgroundColor: 'white',
-        flex: 1,
-        color:"#333333",
-        paddingHorizontal: 10,
-        marginRight: 10,
-        borderRadius: 5,
+      flex: 1,
+      fontSize: 14,
+      color: '#1E293B',
+      paddingVertical: 8,
     },
-    summaryContainer: {
-        padding: 16,
-        backgroundColor: '#e9fdfd',
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+    searchCloseButton: {
+      marginLeft: 12,
     },
-    gstContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    searchCloseText: {
+      fontSize: 14,
+      color: '#0A4D3C',
+      fontWeight: '600',
+    },
+    tabContainer: {
+      flexDirection: 'row',
+      backgroundColor: '#FFFFFF',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(10,77,60,0.1)',
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: 8,
+      alignItems: 'center',
+      borderRadius: 8,
+      marginHorizontal: 4,
+    },
+    activeTab: {
+      backgroundColor: 'rgba(10,77,60,0.1)',
+    },
+    tabText: {
+      fontSize: 14,
+      color: '#64748B',
+      fontWeight: '500',
+    },
+    activeTabText: {
+      color: '#0A4D3C',
+      fontWeight: '600',
+    },
+    summaryCard: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: '#FFFFFF',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      marginHorizontal: 16,
+      marginTop: 16,
+      marginBottom: 8,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(10,77,60,0.1)',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    summaryLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
     },
     salesText: {
-        fontWeight: 'bold',
-        fontSize: 16,
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#1E293B',
+    },
+    gstToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: 'rgba(10,77,60,0.08)',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 16,
     },
     gstText: {
-        marginRight: 6,
-        fontSize: 14,
+      fontSize: 12,
+      color: '#0A4D3C',
+      fontWeight: '600',
     },
     gstDetails: {
-        backgroundColor: '#f5f5f5',
-        padding: 16,
-        paddingTop: 8,
+      marginHorizontal: 16,
+      marginBottom: 16,
+      padding: 16,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(10,77,60,0.1)',
+    },
+    gstRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+    },
+    gstLabel: {
+      fontSize: 13,
+      color: '#475569',
+    },
+    gstValue: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#0A4D3C',
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingText: {
+      fontSize: 14,
+      color: '#64748B',
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 40,
+    },
+    emptyText: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: '#1E293B',
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    emptySubtext: {
+      fontSize: 14,
+      color: '#64748B',
+      textAlign: 'center',
+    },
+    listContainer: {
+      padding: 16,
+      paddingBottom: 100,
     },
     card: {
-        flexDirection: 'row',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderColor: '#eee',
-        justifyContent: 'space-between',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      backgroundColor: '#FFFFFF',
+      padding: 16,
+      borderRadius: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: 'rgba(10,77,60,0.1)',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 1,
     },
-    leftRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    cardLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
     },
-    rightRow: {
-        alignItems: 'flex-end',
+    iconContainer: {
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
-    title: {
-        fontWeight: 'bold',
-        fontSize: 16,
+    cardInfo: {
+      gap: 4,
     },
-    customer: {
-        fontSize: 12,
-        color: '#666',
+    billTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#1E293B',
+    },
+    customerContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    customerName: {
+      fontSize: 13,
+      color: '#64748B',
+    },
+    cardRight: {
+      alignItems: 'flex-end',
+      gap: 8,
     },
     amount: {
-        fontSize: 16,
-        fontWeight: 'bold',
+      fontSize: 18,
+      fontWeight: '700',
+      color: '#0A4D3C',
     },
-    date: {
-        marginLeft: 4,
-        fontSize: 12,
-        color: '#666',
+    statusRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
     },
-    rowAlign: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      gap: 4,
+    },
+    dateText: {
+      fontSize: 11,
+      fontWeight: '500',
+    },
+    editButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: 'rgba(10,77,60,0.1)',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     fab: {
-        position: 'absolute',
-        bottom: 20,
-        right: 20,
-        backgroundColor: '#007B83',
+      position: 'absolute',
+      bottom: 20,
+      right: 20,
+      borderRadius: 30,
+      overflow: 'hidden',
+      shadowColor: '#0A4D3C',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 6,
     },
-});
+    fabGradient: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 20,
+      gap: 8,
+    },
+    fabText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#FFFFFF',
+    },
+  });

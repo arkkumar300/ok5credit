@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput, Alert, ScrollView, Image, Dimensions } from 'react-native';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { ArrowLeft, Camera, Paperclip as PaperclipIcon, Mic, X, ArrowRight, ArrowRightIcon } from 'lucide-react-native';
+import {View,Text,StyleSheet,TouchableOpacity,SafeAreaView,TextInput,Alert,ScrollView,Image,Dimensions,StatusBar,Platform,KeyboardAvoidingView} from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import {ArrowLeft,Camera,Paperclip as PaperclipIcon,X,ArrowRight,Calendar,Clock,CheckCircle,FileText,CreditCard,IndianRupee} from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,14 +12,13 @@ import ProgressButton from './components/ProgressButton';
 import DateModal from './components/DateModal';
 import { sendTransaction } from '../hooks/sendSMS';
 
+const { width } = Dimensions.get('window');
+
 export default function TransactionScreen() {
   const router = useRouter();
   const { mobile, transactionType, transaction_for, id, personName, isSubscribe_user, transaction_limit, userAmountStatus,transactionAmount } = useLocalSearchParams();
-
   const [amount, setAmount] = useState(Number(transactionAmount) || "")
-    const [note, setNote] = useState('');
-  // const [selectedDate, setSelectedDate] = useState(moment().format('DD MMM YYYY'));
-  const [activeType, setActiveType] = useState(null);
+  const [note, setNote] = useState('');
   const [images, setImages] = useState([]);
   const [previewVisible, setPreviewVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -401,395 +400,440 @@ export default function TransactionScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-      <Appbar.Header style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ArrowLeft size={24} color="#333" />
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+
+      {/* Elegant Header */}
+      <SafeAreaView style={styles.headerSafeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <ArrowLeft size={20} color="#1E293B" />
           </TouchableOpacity>
+
           <View style={styles.personInfo}>
-            <View style={styles.avatar}>
+            <View style={styles.avatarContainer}>
               <Text style={styles.avatarText}>{getInitial(personName)}</Text>
             </View>
-            <View>
+            <View style={styles.personDetails}>
               <Text style={styles.personName}>{personName}</Text>
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: userAmountStatus?.includes('Due') ? 'red' : 'green',
-                }}
-              >
-                {userAmountStatus}
-              </Text>
+              <View style={styles.balanceContainer}>
+                <Text style={[
+                  styles.balanceText,
+                  { color: userAmountStatus?.includes('Due') ? '#DC2626' : '#059669' }
+                ]}>
+                  {userAmountStatus}
+                </Text>
+              </View>
             </View>
           </View>
+
           <View style={styles.securedBadge}>
+            <CheckCircle size={10} color="#059669" />
             <Text style={styles.securedText}>SECURED</Text>
-            <Text style={styles.lockIcon}>🔒</Text>
           </View>
-        </Appbar.Header>
-        {isSubscribe_user === false &&
-          <>
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              margin: 10, paddingHorizontal: 20,
-              paddingVertical: 10,
-              backgroundColor: "#f3f3f3",
-              borderRadius: 20
-            }}>
-              {
-                transactionType === "you_gave" ? (
-                  <Text style={{ fontSize: 14, borderRadius: 5, fontWeight: 'bold', color: '#388E3C90' }}>Give   :    {transaction_limit} / 20</Text>
-
-                ) : (
-                  <Text style={{ fontSize: 14, borderRadius: 5, fontWeight: 'bold', color: '#33333390' }}>Receive :   {transaction_limit}  / 8 </Text>
-                )
-              }
-              <Text style={{ fontSize: 14, borderRadius: 5, fontWeight: 'bold', color: '#333333' }}>Daily Transaction Limit Left Basic Plan </Text>
-
-              <ArrowRight size={15} color="#666" />
-
-            </View>
-
-          </>}
-
-        <View style={styles.amountContainer}>
-          <Text style={styles.currencySymbol}>₹</Text>
-          <Text style={styles.amountDisplay}>{amount}</Text>
         </View>
-        {amount && (
-          <>
-            <View style={styles.dateContainer}>
-              <Text style={styles.dateLabel}>New Bill Date</Text>
+      </SafeAreaView>
 
-              <TouchableOpacity
-                style={styles.dateSelector}
-                onPress={() => setShowCalendar(true)}
-              >
-                <Text style={styles.dateText}>
-                  {moment(selectedDate).format("DD MMM YYYY")}
-                </Text>
-                <Text style={styles.dropdownArrow}>⌄</Text>
-              </TouchableOpacity>
-
-              {showCalendar && (
-                <DateTimePicker
-                  value={selectedDate instanceof Date ? selectedDate : new Date()}
-                  mode="date"
-                  display="spinner"
-                  onChange={(event, date) => {
-                    if (date) {
-                      setSelectedDate(date);   // ✔ correct: date is a Date object
-                    }
-                    setShowCalendar(false);
-                  }}
-                  style={{ width: '100%' }}
-                />
-              )}
-
-            </View>
-
-            <View style={styles.buttonRow}>
-
-              {transactionType === "you_gave" && transaction_for === "customer" && (
-                <TouchableOpacity
-                  style={[
-                    styles.addImagesButton,
-                    styles.addBillButton,
-                    { marginHorizontal: 10 }
-                  ]}
-                  onPress={async () => {      
-                    const userData = await AsyncStorage.getItem("userData");
-                    const ownerId = JSON.parse(userData).owner_user_id;
-                     await AsyncStorage.removeItem("billNo");
-                    router.push({
-                      pathname: "/billGenaration",
-                      params: {
-                        Id: id,
-                        ownerId,
-                        bill_type: "BILL",
-                        mode: "add",
-                        bill_date: moment(selectedDate).format("DD MMM YYYY"),
-                        transaction_for: transaction_for
-                      }
-                    });
-                  }}
-                >
-                  <PaperclipIcon size={20} color="#ffffff" />
-                  <Text style={[styles.addImagesText, styles.addBillText]}>
-                    Create Bill
-                  </Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity style={styles.addImagesButton} onPress={showImagePickerOptions}>
-                <Camera size={20} color="#4CAF50" />
-                <Text style={styles.addImagesText}>Add Bill</Text>
-              </TouchableOpacity>
-            </View>
-            {images.length > 0 && (
-              <View style={styles.imagesContainer}>
-                <Text style={styles.imagesTitle}>Selected Images</Text>
-
-                <View style={styles.imagesList}>
-                  {images.map((img, index) => (
-                    <View key={index} style={styles.imageWrapper}>
-                      <Image
-                        source={{ uri: img.uri }}
-                        style={styles.selectedImage}
-                      />
-                      {/* Delete Button */}
-                      <TouchableOpacity
-                        onPress={() => deleteImage(index)}
-                        style={{
-                          position: 'absolute',
-                          top: -8,
-                          right: -8,
-                          backgroundColor: 'red',
-                          width: 24,
-                          height: 24,
-                          borderRadius: 12,
-                          justifyContent: 'center',
-                          alignItems: 'center'
-                        }}
-                      >
-                        <Text style={{ color: 'white', fontSize: 16 }}>×</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Plan Limit Banner - Refined */}
+          {isSubscribe_user === false && (
+            <View style={styles.limitCard}>
+              <View style={styles.limitContent}>
+                <View style={styles.limitIconContainer}>
+                  <CreditCard size={14} color="#64748B" />
                 </View>
+                <Text style={styles.limitText}>
+                  {transactionType === "you_gave" ? (
+                    <>Daily Give Limit: <Text style={styles.limitValue}>{transaction_limit}/20</Text></>
+                  ) : (
+                    <>Daily Receive Limit: <Text style={styles.limitValue}>{transaction_limit}/8</Text></>
+                  )}
+                </Text>
               </View>
-            )}
-
-
-            <View style={styles.noteContainer}>
-              <TextInput
-                style={styles.noteInput}
-                placeholder="Add Note (Optional)"
-                value={note}
-                placeholderTextColor={"#aaaaaa"}
-                onChangeText={setNote}
-                multiline
-              />
-              <TouchableOpacity style={styles.micButton}>
-                <ArrowRight size={20} color="#666" />
-              </TouchableOpacity>
+              <Text style={styles.planText}>Basic Plan</Text>
             </View>
-            {
-              transactionType === "you_gave" && <View style={styles.toggleContainer}>
+          )}
+
+          {/* Amount Card - Refined & Smaller */}
+          <View style={styles.amountCard}>
+            <View style={styles.amountHeader}>
+              <IndianRupee size={18} color="#0A4D3C" />
+              <Text style={styles.amountLabel}>Transaction Amount</Text>
+            </View>
+            <View style={styles.amountRow}>
+              <Text style={styles.currencySymbol}>₹</Text>
+              <Text style={styles.amountDisplay}>{amount || '0'}</Text>
+            </View>
+            <View style={styles.amountDivider} />
+          </View>
+
+          {amount ? (
+            <>
+              {/* Date Selection - Compact */}
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>Transaction Date</Text>
                 <TouchableOpacity
-                  style={[
-                    styles.toggleButton,
-                    paymentType === 'paid' && styles.activeToggle
-                  ]}
-                  onPress={() => setPaymentType('paid')}
+                  style={styles.selectorButton}
+                  onPress={() => setShowCalendar(true)}
+                  activeOpacity={0.7}
                 >
-                  <Text
-                    style={[
-                      styles.toggleText,
-                      paymentType === 'paid' && styles.activeToggleText
-                    ]}
-                  >
-                    Paid
+                  <Calendar size={16} color="#64748B" />
+                  <Text style={styles.selectorText}>
+                    {moment(selectedDate).format("DD MMM YYYY")}
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[
-                    styles.toggleButton,
-                    paymentType === 'credit' && styles.activeToggle
-                  ]}
-                  onPress={() => setPaymentType('credit')}
-                >
-                  <Text
-                    style={[
-                      styles.toggleText,
-                      paymentType === 'credit' && styles.activeToggleText
-                    ]}
-                  >
-                    Credit
-                  </Text>
-                </TouchableOpacity>
-              </View>}
-
-            {paymentType === 'credit' && (
-              <View style={styles.dueDateContainer}>
-                <Text style={styles.dateLabel}>Due Date</Text>
-
-                <TouchableOpacity
-                  style={styles.dateSelector}
-                  onPress={() => setShowDueDatePicker(true)}
-                >
-                  <Text style={styles.dateText}>
-                    {moment(dueDate).format('DD MMM YYYY')}
-                  </Text>
-                  <Text style={styles.dropdownArrow}>📅</Text>
-                </TouchableOpacity>
-                <Text style={[styles.dateText, { marginVertical: 10 }]}>
-                  Upcomming DueData: {moment(upcommigDueDate).format('DD MMM YYYY')}
-                </Text>
-                {showDueDatePicker && (
+                {showCalendar && (
                   <DateTimePicker
-                    value={dueDate}
+                    value={selectedDate instanceof Date ? selectedDate : new Date()}
                     mode="date"
                     display="spinner"
                     onChange={(event, date) => {
                       if (date) {
-                        setDueDate(date);
+                        setSelectedDate(date);
                       }
-                      setShowDueDatePicker(false);
+                      setShowCalendar(false);
                     }}
                   />
                 )}
               </View>
-            )}
-            {transactionType === 'you_got' && (
-              <View style={styles.dueDateContainer}>
+
+              {/* Action Buttons - Rounded */}
+              <View style={styles.actionRow}>
+                {transactionType === "you_gave" && transaction_for === "customer" && (
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.createBillButton]}
+                    onPress={async () => {
+                      const userData = await AsyncStorage.getItem("userData");
+                      const ownerId = JSON.parse(userData).owner_user_id;
+                      await AsyncStorage.removeItem("billNo");
+                      router.push({
+                        pathname: "/billGenaration",
+                        params: {
+                          Id: id,
+                          ownerId,
+                          bill_type: "BILL",
+                          mode: "add",
+                          bill_date: moment(selectedDate).format("DD MMM YYYY"),
+                          transaction_for: transaction_for
+                        }
+                      });
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <FileText size={16} color="#FFFFFF" />
+                    <Text style={styles.actionButtonText}>Create Bill</Text>
+                  </TouchableOpacity>
+                )}
 
                 <TouchableOpacity
-                  style={styles.dateSelector}
-                  onPress={() => setShowChangeDueDatePicker(true)}
+                  style={[
+                    styles.actionButton,
+                    styles.attachBillButton,
+                    transactionType === "you_gave" && transaction_for === "customer" && styles.halfWidthButton
+                  ]}
+                  onPress={showImagePickerOptions}
+                  activeOpacity={0.7}
                 >
-                  <Text style={styles.dateText}>
-                    {moment(changeUpcommigDueDate).format('DD MMM YYYY')}
-                  </Text>
-                  <Text style={styles.dropdownArrow}>📅</Text>
+                  <Camera size={16} color="#FFFFFF" />
+                  <Text style={styles.actionButtonText}>Attach Bill</Text>
                 </TouchableOpacity>
-                <Text style={[styles.dateText, { marginVertical: 10 }]}>
-                  Upcomming DueData: {moment(upcommigDueDate).format('DD MMM YYYY')}
-                </Text>
-                {showChangeDueDatePicker && (
-                  <DateTimePicker
-                    value={changeUpcommigDueDate}
-                    mode="date"
-                    display="spinner"
-                    onChange={(event, date) => {
-                      if (date) {
-                        setChangeUpcommigDueDate(date);
-                      }
-                      setShowChangeDueDatePicker(false);
-                    }}
-                  />
-                )}
               </View>
-            )}
 
-          </>
-        )
-        }
-        <View style={styles.actionButtons}>
-        </View>
-      </ScrollView>
-      {amount && (
+              {/* Images Preview - Compact */}
+              {images.length > 0 && (
+                <View style={styles.imagesSection}>
+                  <Text style={styles.sectionLabel}>Attachments ({images.length})</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {images.map((img, index) => (
+                      <View key={index} style={styles.imageItem}>
+                        <Image source={{ uri: img.uri }} style={styles.thumbnailImage} />
+                        <TouchableOpacity
+                          onPress={() => deleteImage(index)}
+                          style={styles.removeImageButton}
+                        >
+                          <X size={10} color="#FFFFFF" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
 
-        <ProgressButton
-          title="Submit"
-          loading={loading}
-          progress={uploadProgress}   // 0 → 1
-          success={success}
-          onPress={addTransaction}
-        />
-      )}
-      <View style={styles.calculator}>
+              {/* Note Input - Minimal */}
+              <View style={styles.noteSection}>
+                <TextInput
+                  style={styles.noteInput}
+                  placeholder="Add a note (optional)"
+                  placeholderTextColor="#94A3B8"
+                  value={note}
+                  onChangeText={setNote}
+                  multiline
+                />
+              </View>
+
+              {/* Payment Type Toggle - Clean */}
+              {transactionType === "you_gave" && (
+                <View style={styles.toggleSection}>
+                  <TouchableOpacity
+                    style={[
+                      styles.toggleOption,
+                      paymentType === 'paid' && styles.activeToggleOption
+                    ]}
+                    onPress={() => setPaymentType('paid')}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.toggleOptionText,
+                      paymentType === 'paid' && styles.activeToggleOptionText
+                    ]}>
+                      Paid Now
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.toggleOption,
+                      paymentType === 'credit' && styles.activeToggleOption
+                    ]}
+                    onPress={() => setPaymentType('credit')}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.toggleOptionText,
+                      paymentType === 'credit' && styles.activeToggleOptionText
+                    ]}>
+                      Credit
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Due Date Section - Clean */}
+              {paymentType === 'credit' && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionLabel}>Due Date</Text>
+                  <TouchableOpacity
+                    style={styles.selectorButton}
+                    onPress={() => setShowDueDatePicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Clock size={16} color="#64748B" />
+                    <Text style={styles.selectorText}>
+                      {moment(dueDate).format('DD MMM YYYY')}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.upcomingDueRow}>
+                    <Text style={styles.upcomingDueLabel}>Upcoming Due:</Text>
+                    <Text style={styles.upcomingDueValue}>
+                      {moment(upcommigDueDate).format('DD MMM YYYY')}
+                    </Text>
+                  </View>
+
+                  {showDueDatePicker && (
+                    <DateTimePicker
+                      value={dueDate}
+                      mode="date"
+                      display="spinner"
+                      onChange={(event, date) => {
+                        if (date) {
+                          setDueDate(date);
+                        }
+                        setShowDueDatePicker(false);
+                      }}
+                    />
+                  )}
+                </View>
+              )}
+
+              {/* Update Due Date Section */}
+              {transactionType === 'you_got' && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionLabel}>Update Due Date</Text>
+                  <TouchableOpacity
+                    style={styles.selectorButton}
+                    onPress={() => setShowChangeDueDatePicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Clock size={16} color="#64748B" />
+                    <Text style={styles.selectorText}>
+                      {moment(changeUpcommigDueDate).format('DD MMM YYYY')}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.upcomingDueRow}>
+                    <Text style={styles.upcomingDueLabel}>Current Due:</Text>
+                    <Text style={styles.upcomingDueValue}>
+                      {moment(upcommigDueDate).format('DD MMM YYYY')}
+                    </Text>
+                  </View>
+
+                  {showChangeDueDatePicker && (
+                    <DateTimePicker
+                      value={changeUpcommigDueDate}
+                      mode="date"
+                      display="spinner"
+                      onChange={(event, date) => {
+                        if (date) {
+                          setChangeUpcommigDueDate(date);
+                        }
+                        setShowChangeDueDatePicker(false);
+                      }}
+                    />
+                  )}
+                </View>
+              )}
+
+              {/* Submit Button - Rounded */}
+              <View style={styles.submitContainer}>
+                <TouchableOpacity
+                  style={styles.submitButton}
+                  onPress={addTransaction}
+                  disabled={loading}
+                  activeOpacity={0.8}
+                >
+                  {loading ? (
+                    <Text style={styles.submitButtonText}>Processing...</Text>
+                  ) : (
+                    <Text style={styles.submitButtonText}>Submit Transaction</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : null}
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Calculator - Refined */}
+      <View style={styles.calculatorContainer}>
         <View style={styles.calculatorRow}>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('1')}>
-            <Text style={styles.calcButtonText}>1</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('2')}>
-            <Text style={styles.calcButtonText}>2</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('3')}>
-            <Text style={styles.calcButtonText}>3</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.calcButton, styles.operatorButton]} onPress={() => handleOperationPress('delete')}>
-            <Text style={styles.calcButtonText}>⌫</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.calculatorRow}>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('4')}>
-            <Text style={styles.calcButtonText}>4</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('5')}>
-            <Text style={styles.calcButtonText}>5</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('6')}>
-            <Text style={styles.calcButtonText}>6</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.calcButton, styles.operatorButton]} onPress={() => handleOperationPress('clear')}>
-            <Text style={styles.calcButtonText}>clear</Text>
+          {['1', '2', '3'].map((num) => (
+            <TouchableOpacity
+              key={num}
+              style={styles.calcButton}
+              onPress={() => handleNumberPress(num)}
+            >
+              <Text style={styles.calcButtonText}>{num}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity
+            style={[styles.calcButton, styles.operatorButton]}
+            onPress={() => handleOperationPress('delete')}
+          >
+            <Text style={styles.operatorButtonText}>⌫</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.calculatorRow}>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('7')}>
-            <Text style={styles.calcButtonText}>7</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('8')}>
-            <Text style={styles.calcButtonText}>8</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('9')}>
-            <Text style={styles.calcButtonText}>9</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.calcButton, styles.operatorButton]} onPress={() => handleNumberPress('-')}>
-            <Text style={styles.calcButtonText}>—</Text>
+          {['4', '5', '6'].map((num) => (
+            <TouchableOpacity
+              key={num}
+              style={styles.calcButton}
+              onPress={() => handleNumberPress(num)}
+            >
+              <Text style={styles.calcButtonText}>{num}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity
+            style={[styles.calcButton, styles.operatorButton]}
+            onPress={() => handleOperationPress('clear')}
+          >
+            <Text style={styles.operatorButtonText}>C</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.calculatorRow}>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleOperationPress('decimal')}>
+          {['7', '8', '9'].map((num) => (
+            <TouchableOpacity
+              key={num}
+              style={styles.calcButton}
+              onPress={() => handleNumberPress(num)}
+            >
+              <Text style={styles.calcButtonText}>{num}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity
+            style={[styles.calcButton, styles.operatorButton]}
+            onPress={() => handleNumberPress('-')}
+          >
+            <Text style={styles.operatorButtonText}>−</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.calculatorRow}>
+          <TouchableOpacity
+            style={styles.calcButton}
+            onPress={() => handleOperationPress('decimal')}
+          >
             <Text style={styles.calcButtonText}>.</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.calcButton} onPress={() => handleNumberPress('0')}>
+          <TouchableOpacity
+            style={styles.calcButton}
+            onPress={() => handleNumberPress('0')}
+          >
             <Text style={styles.calcButtonText}>0</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.calcButton, styles.equalsButton]} onPress={() => {
-            const rrr = eval(amount);
-            setAmount(rrr)
-          }}>
-            <Text style={styles.calcButtonText}>=</Text>
+          <TouchableOpacity
+            style={[styles.calcButton, styles.equalsButton]}
+            onPress={() => {
+              try {
+                if (amount && !amount.includes('+') && !amount.includes('-')) {
+                  setAmount(amount);
+                } else if (amount) {
+                  const result = eval(amount);
+                  setAmount(String(result));
+                }
+              } catch (e) {
+                // Ignore eval errors
+              }
+            }}
+          >
+            <Text style={styles.equalsButtonText}>=</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.calcButton, styles.operatorButton]} onPress={() => handleNumberPress('+')}>
-            <Text style={styles.calcButtonText}>+</Text>
+          <TouchableOpacity
+            style={[styles.calcButton, styles.operatorButton]}
+            onPress={() => handleNumberPress('+')}
+          >
+            <Text style={styles.operatorButtonText}>+</Text>
           </TouchableOpacity>
         </View>
       </View>
 
+      {/* Image Preview Modal */}
       <Modal visible={previewVisible} transparent>
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.9)',
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}
-        >
-          <Image
-            source={{ uri: selectedImage }}
-            style={{ width: '90%', height: '70%', resizeMode: 'contain' }}
-          />
-
-          <TouchableOpacity
-            onPress={() => setPreviewVisible(false)}
-            style={{ marginTop: 20 }}
-          >
-            <Text style={{ color: 'white', fontSize: 18 }}>Close</Text>
+        <View style={styles.previewModal}>
+          <Image source={{ uri: selectedImage }} style={styles.previewImage} />
+          <TouchableOpacity onPress={closePreview} style={styles.closePreviewButton}>
+            <X size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </Modal>
-
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8F9FA',
   },
-  scrollView: {
-    flex: 1,
+  headerSafeArea: {
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -797,10 +841,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
   },
   backButton: {
-    padding: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
   },
   personInfo: {
@@ -808,279 +858,381 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  toggleContainer: {
-    flexDirection: 'row',
-    marginVertical: 12,
-    borderRadius: 8,
-    alignSelf: 'center', width: '90%',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#4CAF50',
-  },
-
-  toggleButton: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-
-  activeToggle: {
-    backgroundColor: '#4CAF50',
-  },
-
-  toggleText: {
-    color: '#4CAF50',
-    fontWeight: '600',
-  },
-
-  activeToggleText: {
-    color: '#fff',
-  },
-
-  dueDateContainer: {
-    marginTop: 10, width: '90%', alignSelf: 'center'
-  },
-
-  avatar: {
+  avatarContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#81C784',
+    backgroundColor: '#0A4D3C',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   avatarText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  imagesList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 10,
-  },
-  imageWrapper: {
-    margin: 5,
-  },
-  selectedImage: {
-    width: 100,
-    height: 100,
-    resizeMode: 'stretch',
-    borderRadius: 8, margin: 10
-  },
-  personName: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+  },
+  personDetails: {
+    flex: 1,
+  },
+  personName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  balanceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   balanceText: {
-    fontSize: 12,
-    color: '#4CAF50',
+    fontSize: 11,
+    fontWeight: '500',
   },
   securedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8F5E8',
+    backgroundColor: '#F1F5F9',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    gap: 4,
   },
   securedText: {
-    fontSize: 10,
-    color: '#2E7D32',
+    fontSize: 9,
+    color: '#475569',
     fontWeight: '600',
-    marginRight: 4,
+    letterSpacing: 0.3,
   },
-  lockIcon: {
-    fontSize: 10,
+  keyboardAvoidingView: {
+    flex: 1,
   },
-  amountContainer: {
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 250, // Increased padding to accommodate calculator and ensure submit button is visible
+  },
+  limitCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  limitContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  limitIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  limitText: {
+    fontSize: 12,
+    color: '#475569',
+  },
+  limitValue: {
+    fontWeight: '700',
+    color: '#0A4D3C',
+  },
+  planText: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  amountCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  amountHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  amountLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  amountRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'center',
-    paddingVertical: 40,
   },
   currencySymbol: {
-    fontSize: 32,
-    color: '#4CAF50',
-    marginRight: 8,
+    fontSize: 24,
+    color: '#0A4D3C',
+    marginRight: 4,
+    fontWeight: '300',
   },
   amountDisplay: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 36,
+    fontWeight: '600',
+    color: '#1E293B',
   },
-  dateContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
+  amountDivider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginTop: 12,
   },
-  dateLabel: {
-    fontSize: 14,
-    color: '#999',
-    marginBottom: 8,
+  section: {
+    marginBottom: 16,
   },
-  dateSelector: {
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 6,
+    marginLeft: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  selectorButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 8,
-    paddingHorizontal: 16,
+    borderColor: '#F1F5F9',
+    borderRadius: 20,
+    paddingHorizontal: 14,
     paddingVertical: 12,
+    gap: 8,
   },
-  dateText: {
-    fontSize: 16,
-    color: '#333',
-    marginRight: 8,
+  selectorText: {
+    fontSize: 14,
+    color: '#1E293B',
+    fontWeight: '500',
+    flex: 1,
   },
-  dropdownArrow: {
-    fontSize: 16,
-    color: '#666',
-  },
-  buttonRow: {
+  actionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignSelf: 'center', width: '90%',
-    marginBottom: 20,
+    gap: 8,
+    marginBottom: 16,
   },
-  addImagesButton: {
+  actionButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#4CAF50',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 25,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  createBillButton: {
+    backgroundColor: '#0A4D3C',
+  },
+  attachBillButton: {
+    backgroundColor: '#059669',
+  },
+  halfWidthButton: {
     flex: 0.48,
   },
-  addBillButton: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
-  },
-  addImagesText: {
-    fontSize: 16,
-    color: '#4CAF50',
-    fontWeight: '500',
-    marginLeft: 8,
-  },
-  addBillText: {
-    color: '#ffffff',
-  },
-  imagesContainer: {
-    marginHorizontal: 24,
-    marginBottom: 20,
-  },
-  imagesTitle: {
-    fontSize: 16,
+  actionButtonText: {
+    fontSize: 13,
+    color: '#FFFFFF',
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
   },
-  imagesScrollView: {
-    paddingVertical: 8,
+  imagesSection: {
+    marginBottom: 16,
   },
-  imageWrapper: {
+  imageItem: {
     position: 'relative',
-    marginRight: 12,
+    marginRight: 10,
+  },
+  thumbnailImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   removeImageButton: {
     position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: '#FF4444',
+    top: -6,
+    right: -6,
+    backgroundColor: '#DC2626',
     borderRadius: 12,
-    width: 24,
-    height: 24,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noteSection: {
+    marginBottom: 16,
+  },
+  noteInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#1E293B',
+    minHeight: 45,
+  },
+  toggleSection: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  toggleOption: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  activeToggleOption: {
+    backgroundColor: '#0A4D3C',
+    borderColor: '#0A4D3C',
+  },
+  toggleOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  activeToggleOptionText: {
+    color: '#FFFFFF',
+  },
+  upcomingDueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingHorizontal: 4,
+    gap: 6,
+  },
+  upcomingDueLabel: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  upcomingDueValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0A4D3C',
+  },
+  submitContainer: {
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  submitButton: {
+    backgroundColor: '#0A4D3C',
+    paddingVertical: 16,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  noteContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 24,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-  },
-  noteInput: {
-    flex: 1,
+  submitButtonText: {
     fontSize: 16,
-    paddingVertical: 16,
-    color: '#333333',
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
-  micButton: {
-    padding: 8,
-  },
-  calculator: {
-    paddingHorizontal: 24,
-    marginBottom: 24,
+  calculatorContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   calculatorRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 8,
+    gap: 8,
   },
   calcButton: {
-    width: 70,
-    height: 50,
-    borderRadius: 8,
-    backgroundColor: '#F5F5F5',
+    flex: 1,
+    height: 48,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  operatorButton: {
-    backgroundColor: '#E8F5E8',
-  },
-  equalsButton: {
-    backgroundColor: '#4CAF50',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   calcButtonText: {
     fontSize: 18,
     fontWeight: '500',
-    color: '#333',
+    color: '#1E293B',
   },
-  actionButtons: {
-    flexDirection: 'row',
-    paddingHorizontal: 24,
-    paddingBottom: 32,
+  operatorButton: {
+    backgroundColor: '#F1F5F9',
   },
-  receivedButton: {
-    flex: 1,
-    backgroundColor: '#E8F5E8',
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  givenButton: {
-    flex: 1,
-    backgroundColor: '#FFEBEE',
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  receivedText: {
-    fontSize: 16,
-    color: '#2E7D32',
+  operatorButtonText: {
+    fontSize: 18,
     fontWeight: '600',
+    color: '#475569',
   },
-  givenText: {
-    fontSize: 16,
-    color: '#C62828',
+  equalsButton: {
+    backgroundColor: '#0A4D3C',
+    borderColor: '#0A4D3C',
+  },
+  equalsButtonText: {
+    fontSize: 18,
     fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  previewModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: width - 32,
+    height: '70%',
+    resizeMode: 'contain',
+    borderRadius: 20,
+  },
+  closePreviewButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
 });

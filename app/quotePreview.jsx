@@ -8,9 +8,11 @@ import {
   ScrollView,
   SafeAreaView,
   Alert,
+  StatusBar,
+  Dimensions,
 } from 'react-native';
-import { Appbar, Divider, RadioButton } from 'react-native-paper';
-import { ArrowLeft, Circle, DotSquare, Download, FileText, Square } from 'lucide-react-native';
+import { Appbar, Divider, RadioButton, ActivityIndicator } from 'react-native-paper';
+import { ArrowLeft, Download, FileText, User, MapPin, Phone, Calendar, Tag, CheckCircle, Award } from 'lucide-react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -20,21 +22,38 @@ import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import billPDF from './components/billPDF';
 import ApiService from './components/ApiServices';
-
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function QuotePreview() {
   const [userDetails, setUserDetails] = useState(null);
   const [customerInfo, setCustomerInfo] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const router = useRouter();
   const { items, totalAmount, bill, customerData } = useLocalSearchParams();
   const parsedItems = items ? JSON.parse(items) : [];
 
   useEffect(() => {
-    setCustomerInfo(JSON.parse(customerData))
+    if (customerData) {
+      setCustomerInfo(JSON.parse(customerData));
+    }
+  }, [customerData]);
 
-  }, [])
   const saveBill = async () => {
+    if (saving) return;
+
+    setSaving(true);
+    setLoading(true);
+
     const pdfFile = await billPDF(userDetails, customerInfo, bill, parsedItems, totalAmount);
+   
+    if (!pdfFile) {
+      Alert.alert('Error', 'Failed to generate PDF');
+      setSaving(false);
+      setLoading(false);
+      return;
+    }
+
     try {
 
       const uploadData = new FormData();
@@ -43,7 +62,7 @@ export default function QuotePreview() {
         name: pdfFile.name,
         type: pdfFile.type
       });
-      console.log("uploadData ::", uploadData)
+
       const response = await ApiService.post(`/upload`, uploadData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -54,12 +73,14 @@ export default function QuotePreview() {
       const uploadedPath = `https://aquaservices.esotericprojects.tech/uploads/${uploadJson.file_info.filename}`;
       handleSave(uploadedPath)
     } catch (error) {
-      console.log("error ::", error)
+      console.log("error ::", error);
+      Alert.alert('Error', 'Failed to save quotation');
+      setSaving(false);
+      setLoading(false);
     }
   }
 
   const handleSave = async (uploadedPath) => {
-    console.log("uploadedPath :", uploadedPath)
     try {
 
       // 2. upload PDF
@@ -89,18 +110,34 @@ export default function QuotePreview() {
       const encodedCustomerData = encodeURIComponent(JSON.stringify(customerInfo)); 
      const response= await ApiService.post(`/bill`, payload);
      const billData=response.data.bill
-console.log("rrr:",billData)
-      router.push({
-        pathname: '/quotationDetails',
-        params: {
-          billId: billData?.id,
-          customerInfo: encodedCustomerData,
-          bill: bill
+     
+     setSaving(false);
+     setLoading(false);
+     
+     Alert.alert(
+      'Success',
+      'Quotation saved successfully',
+      [
+        {
+          text: 'View Details',
+          onPress: () => {
+            router.push({
+              pathname: '/quotationDetails',
+              params: {
+                billId: billData?.id,
+                customerInfo: encodedCustomerData,
+                bill: bill
+              }
+            });
+          }
         }
-      });
-    } catch (error) {
+      ]
+    );
+  } catch (error) {
       console.error("handleSave error", error);
-      ToastAndroid.show("An unexpected error occurred", ToastAndroid.LONG);
+      Alert.alert("Error", "An unexpected error occurred");
+      setSaving(false);
+      setLoading(false);
     }
   };
 
@@ -111,182 +148,441 @@ console.log("rrr:",billData)
     }
     fetchBills();
   }, []);
+
   return (
-    <SafeAreaView>
-      <Appbar.Header style={{ backgroundColor: "#ffffff", borderBottomWidth: 2, borderColor: '#f2f7f6' }}>
-        <ArrowLeft size={24} color={'#2E7D32'} style={{ marginStart: 10 }} onPress={() => router.back()} />
-        <Appbar.Content title="Quote Preview" titleStyle={{ color: '#333333', fontWeight: 'bold', marginLeft: 20 }} />
-      </Appbar.Header>
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* Quotation Section */}
-        <View style={{position:'absolute',backgroundColor:'#33333310',zIndex:99,width:"100%",height:'100%',alignSelf:'center'}}>
-        <Text style={{fontSize:50,direction:'ltr',justifyContent:'center',color:'#aaaaaa70',textAlign:'center',fontWeight:'bold'}}>Quotation</Text>
-      </View>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
 
-        <View style={styles.quotationBox}>
-          <Text style={styles.heading}>{userDetails?.name}</Text>
-          {userDetails?.address && <Text style={styles.address}>
-            {userDetails?.address}
-          </Text>}
-          <Text style={styles.mobile}>Mobile Number: {userDetails?.mobile}</Text>
-          <Divider style={{ marginVertical: 5 }} />
-          {
-            customerInfo && (
-              <>
-                <Text style={styles.heading}>{customerInfo?.name}</Text>
-                {customerInfo?.address && <Text style={styles.address}>
-                  {customerInfo?.address}
-                </Text>}
-                <Text style={styles.mobile}>Mobile Number: {customerInfo?.mobile}</Text>
+      {/* Premium Header with Gradient */}
+      <LinearGradient
+        colors={['#0A4D3C', '#1B6B50']}
+        style={styles.headerGradient}
+      >
+        <SafeAreaView>
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <ArrowLeft size={24} color="#FFFFFF" />
+            </TouchableOpacity>
 
-              </>
-            )
-          }
-          <Divider style={{ marginVertical: 5 }} />
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>Quote Preview</Text>
+              <Text style={styles.headerSubtitle}>
+                Review your quotation
+              </Text>
+            </View>
 
-          <View style={styles.row}>
-            <Text style={styles.label}>Quotation No.: <Text style={styles.bold}>{bill}</Text></Text>
-            <Text style={styles.label}>Date: <Text style={styles.bold}>{moment().format('DD MMM YYYY')}</Text></Text>
+            <View style={styles.headerRightPlaceholder}>
+              <Award size={20} color="rgba(255,255,255,0.8)" />
+            </View>
           </View>
+        </SafeAreaView>
+      </LinearGradient>
 
-          <View style={styles.tableHeader}>
-            <Text style={styles.cell}>Item Name</Text>
-            <Text style={styles.cell}>Qty</Text>
-            <Text style={styles.cell}>MRP(₹)</Text>
-            <Text style={styles.cell}>Net Rate(₹)</Text>
-            <Text style={styles.cell}>Total(₹)</Text>
-          </View>
-          {parsedItems?.map((item, index) => {
-            return (
-              <View key={index} style={styles.tableRow}>
-                <Text style={styles.cell}>{item?.name}</Text>
-                <Text style={styles.cell}>{item?.quantity}</Text>
-                <Text style={styles.cell}>{item?.price}</Text>
-                <Text style={styles.cell}>{Number(item?.quantity) * Number(item?.price)}</Text>
-                <Text style={styles.cell}>{Number(item?.quantity) * Number(item?.price)}</Text>
-              </View>)
-          })}
-          <View style={[styles.tableRow, { borderTopWidth: 1 }]}>
-            <Text style={[styles.cell, { flex: 4, fontWeight: 'bold' }]}>TOTAL</Text>
-            <Text style={[styles.cell, { fontWeight: 'bold' }]}>₹ {totalAmount}</Text>
-          </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Watermark */}
+        <View style={styles.watermarkContainer}>
+          <Text style={styles.watermarkText}>QUOTATION</Text>
         </View>
 
-        {/* Options */}
-        <View style={styles.actionSection}>
+        {/* Preview Card */}
+        <View style={styles.previewCard}>
+          {/* Business Info */}
+          <View style={styles.businessHeader}>
+            <View style={styles.businessIconContainer}>
+              <FileText size={24} color="#0A4D3C" />
+            </View>
+            <View style={styles.businessInfo}>
+              <Text style={styles.businessName}>{userDetails?.name || 'Business Name'}</Text>
+              {userDetails?.address && (
+                <View style={styles.infoRow}>
+                  <MapPin size={12} color="#64748B" />
+                  <Text style={styles.infoText}>{userDetails.address}</Text>
+                </View>
+              )}
+              <View style={styles.infoRow}>
+                <Phone size={12} color="#64748B" />
+                <Text style={styles.infoText}>{userDetails?.mobile}</Text>
+              </View>
+            </View>
+          </View>
 
-          {/* Radio Group */}
+          <Divider style={styles.divider} />
+
+          {/* Customer Info */}
+          {customerInfo && (
+            <View style={styles.customerHeader}>
+              <View style={styles.customerIconContainer}>
+                <User size={24} color="#FFFFFF" />
+              </View>
+              <View style={styles.customerInfo}>
+                <Text style={styles.customerName}>{customerInfo?.name}</Text>
+                {customerInfo?.address && (
+                  <View style={styles.infoRow}>
+                    <MapPin size={12} color="#64748B" />
+                    <Text style={styles.infoText}>{customerInfo.address}</Text>
+                  </View>
+                )}
+                <View style={styles.infoRow}>
+                  <Phone size={12} color="#64748B" />
+                  <Text style={styles.infoText}>{customerInfo?.mobile}</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          <Divider style={styles.divider} />
+
+          {/* Quote Details */}
+          <View style={styles.quoteDetailsRow}>
+            <View style={styles.quoteDetailItem}>
+              <Tag size={14} color="#0A4D3C" />
+              <Text style={styles.quoteDetailLabel}>Quote No.</Text>
+              <Text style={styles.quoteDetailValue}>{bill}</Text>
+            </View>
+            <View style={styles.quoteDetailItem}>
+              <Calendar size={14} color="#0A4D3C" />
+              <Text style={styles.quoteDetailLabel}>Date</Text>
+              <Text style={styles.quoteDetailValue}>{moment().format('DD MMM YYYY')}</Text>
+            </View>
+          </View>
+
+          {/* Items Table */}
+          <View style={styles.tableContainer}>
+            <View style={styles.tableHeader}>
+              <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Item</Text>
+              <Text style={styles.tableHeaderCell}>Qty</Text>
+              <Text style={styles.tableHeaderCell}>Rate</Text>
+              <Text style={styles.tableHeaderCell}>Total</Text>
+            </View>
+
+            {parsedItems?.map((item, index) => {
+              const itemTotal = Number(item?.quantity) * Number(item?.price);
+              return (
+                <View key={index} style={styles.tableRow}>
+                  <Text style={[styles.tableCell, { flex: 2 }]} numberOfLines={1}>
+                    {item?.name || item?.itemName}
+                  </Text>
+                  <Text style={styles.tableCell}>{item?.quantity}</Text>
+                  <Text style={styles.tableCell}>₹{Number(item?.price).toFixed(2)}</Text>
+                  <Text style={styles.tableCell}>₹{itemTotal.toFixed(2)}</Text>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Total */}
+          <View style={styles.totalContainer}>
+            <Text style={styles.totalLabel}>Total Amount</Text>
+            <Text style={styles.totalAmount}>₹ {Number(totalAmount).toFixed(2)}</Text>
+          </View>
+
+          {/* Footer Note */}
+          <View style={styles.footerNote}>
+            <Text style={styles.noteText}>
+              This is a computer generated quotation
+            </Text>
+          </View>
         </View>
       </ScrollView>
-        <TouchableOpacity style={styles.downloadBtn} onPress={saveBill}>
-          <Download size={18} color="#000" />
-          <Text style={styles.downloadText}>Save</Text>
+
+      {/* Save Button */}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={styles.saveButton}
+          onPress={saveBill}
+          disabled={saving}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#0A4D3C', '#1B6B50']}
+            style={styles.saveButtonGradient}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Download size={20} color="#FFFFFF" />
+                <Text style={styles.saveButtonText}>Save Quotation</Text>
+              </>
+            )}
+          </LinearGradient>
         </TouchableOpacity>
-    </SafeAreaView>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  headerGradient: {
+    paddingTop: 20,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  headerTitleContainer: {
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  headerRightPlaceholder: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrollContent: {
     padding: 16,
     paddingBottom: 100,
   },
-  quotationBox: {
-    backgroundColor: '#fff',
+  watermarkContainer: {
+    position: 'absolute',
+    top: '40%',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+    opacity: 0.05,
+    transform: [{ rotate: '-30deg' }],
+  },
+  watermarkText: {
+    fontSize: 60,
+    fontWeight: '900',
+    color: '#0A4D3C',
+    letterSpacing: 10,
+  },
+  previewCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     padding: 20,
-    borderRadius: 8,
-    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(10,77,60,0.1)',
   },
-  heading: {
-    textAlign: 'center',
-    fontSize: 18, textTransform: 'capitalize',
-    fontWeight: 'bold',
+  businessHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  address: {
-    textAlign: 'center',
-    marginTop: 4, textTransform: 'capitalize',
-    fontSize: 16,
-    color: '#555',
+  businessIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
   },
-  mobile: {
-    textAlign: 'center',
-    marginBottom: 8,
-    fontWeight: 'bold',
+  businessInfo: {
+    flex: 1,
   },
-  row: {
+  businessName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0A4D3C',
+    marginBottom: 4,
+    textTransform: 'capitalize',
+  },
+  customerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  customerIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: '#0A4D3C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  customerInfo: {
+    flex: 1,
+  },
+  customerName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0A4D3C',
+    marginBottom: 4,
+    textTransform: 'capitalize',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  infoText: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  divider: {
+    backgroundColor: '#E2E8F0',
+    height: 1,
+    marginVertical: 16,
+  },
+  quoteDetailsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
+    marginBottom: 20,
   },
-  label: {
-    fontSize: 13,
+  quoteDetailItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 10,
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  bold: {
-    fontWeight: 'bold',
+  quoteDetailLabel: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  quoteDetailValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0A4D3C',
+    marginLeft: 'auto',
+  },
+  tableContainer: {
+    marginBottom: 16,
   },
   tableHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 16,
-    borderBottomWidth: 1,
-    paddingBottom: 6,
-    borderTopWidth: 1,
-    paddingTop: 6,
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  tableHeaderCell: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    textAlign: 'center',
   },
   tableRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
-  cell: {
+  tableCell: {
     flex: 1,
     fontSize: 12,
+    color: '#1E293B',
     textAlign: 'center',
   },
-  actionSection: {
-    marginTop: 30, flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'space-between'
-  },
-  convertBtn: {
+  totalContainer: {
     flexDirection: 'row',
-    backgroundColor: '#0A8F73',
-    padding: 12,
-    borderRadius: 30,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingVertical: 16,
+    marginTop: 8,
+    borderTopWidth: 2,
+    borderTopColor: '#0A4D3C',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 16,
+    borderRadius: 10,
   },
-  convertText: {
-    color: '#fff',
-    marginLeft: 8,
-    fontWeight: 'bold',
-  },
-  radioGroup: {
-    padding: 10, flexDirection: 'row',
-    gap: 12, justifyContent: 'space-between'
-  },
-  radioOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  label: {
-    marginLeft: 8,
+  totalLabel: {
     fontSize: 16,
+    fontWeight: '700',
+    color: '#0A4D3C',
   },
-  downloadBtn: {
-    flexDirection: 'row', elevation: 5, shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,width:"50%",alignSelf:'center',
-    shadowOffset: { width: 0, height: 2 },
-    backgroundColor: '#E6F4F1', justifyContent: 'center',
-    paddingVertical: 20, shadowRadius: 10,
-    paddingHorizontal: 20, shadowColor: '#0A8F73',
-    borderRadius: 30, marginBottom: 20,
+  totalAmount: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0A4D3C',
+  },
+  footerNote: {
+    marginTop: 20,
+    padding: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     alignItems: 'center',
   },
-  downloadText: {
-    marginLeft: 8,
-    color: '#000',
-    fontWeight: 'bold',
+  noteText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontStyle: 'italic',
+  },
+  buttonContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 16,
+    right: 16,
+  },
+  saveButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#0A4D3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  saveButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

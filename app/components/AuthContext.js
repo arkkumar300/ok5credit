@@ -1,7 +1,7 @@
 // contexts/AuthContext.js
 import { createContext, useState, useEffect } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ApiService from '../components/ApiServices.js'; // Adjust path as needed
+import ApiService from './ApiServices.js'; // Adjust path as needed
 import moment from 'moment';
 
 export const AuthContext = createContext();

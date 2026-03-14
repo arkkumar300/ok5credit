@@ -1,8 +1,8 @@
 // ProfileScreen.js
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TextInput, SafeAreaView, StyleSheet, ScrollView, Alert, TouchableOpacity, Modal, Linking, } from 'react-native';
-import { Mic, X, Pencil, Paperclip as PaperclipIcon, Camera, Share2, Store, Phone, FileText, Hash, Building2, MapPin, Mail, ArrowLeft, User } from 'lucide-react-native';
+import { View, Text, TextInput, SafeAreaView, StyleSheet, ScrollView, Alert, TouchableOpacity, Modal, Dimensions, StatusBar } from 'react-native';
+import { Mic, X, Pencil, Paperclip as PaperclipIcon, Camera, Share2, Store, Phone, FileText, Hash, Building2, MapPin, Mail, ArrowLeft, User, ChevronRight, CheckCircle, XCircle, Clock } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Avatar } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
@@ -256,73 +256,205 @@ const ProfileScreen = () => {
 
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Appbar.Header style={{ backgroundColor: "#ffffff", borderBottomWidth: 2, borderColor: '#f2f7f6' }}>
-        <ArrowLeft size={24} color={'#2E7D32'} style={{ marginStart: 10 }} onPress={() => router.back()} />
-        <Appbar.Content title={userData?.name} titleStyle={{ color: '#333333', fontWeight: 'bold', marginLeft: 20, textTransform: 'capitalize' }} />
-      </Appbar.Header>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Avatar.Image
-            source={{ uri: imageUri ? imageUri : 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=400&h=300' }}
-            size={80} color="#ccc" />
-         <TouchableOpacity 
-              style={styles.cameraButton} 
-              onPress={showImagePickerOptions}
+      {/* Premium Header - Solid Color */}
+      <View style={styles.headerSolid}>
+        <SafeAreaView>
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+              activeOpacity={0.7}
             >
-              <Camera size={20} color={'#ffffff'} />
+              <ArrowLeft size={22} color="#FFFFFF" />
             </TouchableOpacity>
+
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>Profile</Text>
+              <Text style={styles.headerSubtitle}>{userData?.name || 'Your Account'}</Text>
+            </View>
+
+            <View style={styles.headerRight}>
+              <View style={styles.headerBadge} />
+            </View>
+          </View>
+        </SafeAreaView>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile Header with Avatar */}
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarWrapper}>
+            <Avatar.Image
+              source={{
+                uri: imageUri ? imageUri : 'https://img.freepik.com/premium-psd/professional-businessman-portrait_1296994-97379.jpg?w=1060' // Professional suit image
+              }}
+              size={100}
+              style={styles.avatar}
+            />
+            <View style={styles.cameraButtonSolid}>
+              <TouchableOpacity onPress={showImagePickerOptions}>
+                <Camera size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>{userData?.name || 'Add Your Name'}</Text>
+            <View style={styles.profileBadge}>
+              <CheckCircle size={14} color="#0A4D3C" />
+              <Text style={styles.profileBadgeText}>Verified User</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Business Info List */}
-        <View style={styles.card}>
-          <ProfileItem icon={Share2} label="Share your business card" onPress={() => openModal('businessCard')} />
-          <ProfileItem icon={Store} label={userData?.businessName || "Enter Business Name"} subtitle="Profile name will be visible to your customers" onPress={() => openModal('storeName')} />
-          <ProfileItem icon={Phone} label={userData?.mobile || "Enter your Number"} isEditable />
-          <ProfileItem icon={FileText} label={userData?.GST || "Enter your GST Number"} onPress={() => openModal('gst')} />
-          {/* <ProfileItem icon={Hash} label="Enter your Udyam number" onPress={() => openModal('udyam')} /> */}
-          <ProfileItem icon={Building2} label={userData?.businessType || "Select Your Business Type"} onPress={() => openModal('businessType')} />
-          {/* <ProfileItem icon={Building2} label="Select your category" onPress={() => openModal('category')} /> */}
-          <ProfileItem icon={User} label={userData?.name || "Enter your Name"} onPress={() => openModal('UserName')} />
-          <ProfileItem icon={Mail} label={userData?.email || "Enter your Email"} onPress={() => openModal('Email')} />
-          <ProfileItem icon={MapPin} label={userData?.address || "Enter your address"} onPress={() => openModal('address')} />
+        {/* Business Info Card */}
+        <View style={styles.premiumCard}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Business Information</Text>
+            <Text style={styles.cardSubtitle}>Manage your profile details</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Profile Items */}
+          <ProfileItem
+            icon={Share2}
+            label="Share your business card"
+            onPress={() => openModal('businessCard')}
+            isPremium
+          />
+
+          <ProfileItem
+            icon={Store}
+            label={userData?.businessName || "Enter Business Name"}
+            subtitle="Profile name will be visible to your customers"
+            onPress={() => openModal('storeName')}
+          />
+
+          <ProfileItem
+            icon={Phone}
+            label={userData?.mobile || "Enter your Number"}
+            isEditable={false}
+          />
+
+          <ProfileItem
+            icon={FileText}
+            label={userData?.GST || "Enter your GST Number"}
+            onPress={() => openModal('gst')}
+          />
+
+          <ProfileItem
+            icon={Building2}
+            label={userData?.businessType || "Select Your Business Type"}
+            onPress={() => openModal('businessType')}
+          />
+
+          <ProfileItem
+            icon={User}
+            label={userData?.name || "Enter your Name"}
+            onPress={() => openModal('UserName')}
+          />
+
+          <ProfileItem
+            icon={Mail}
+            label={userData?.email || "Enter your Email"}
+            onPress={() => openModal('Email')}
+          />
+
+          <ProfileItem
+            icon={MapPin}
+            label={userData?.address || "Enter your address"}
+            onPress={() => openModal('address')}
+          />
         </View>
 
-        {/* Modals (You can customize each one separately below) */}
-        <BusinessCardModal visible={activeModal === 'businessCard'} onClose={closeModal} userDetails={userData} onPress={() => shareCardOnWhatsApp(userData)} />
-        <StoreNameModal visible={activeModal === 'storeName'} onClose={closeModal} businessName={userData?.businessName || ""} onUpdate={handleUserUpdate} />
-        {/* <ProfileModal visible={activeModal === 'phone'} onClose={closeModal} title="Phone Number" phone={userData?.mobile} /> */}
-        <GSTModal visible={activeModal === 'gst'} onClose={closeModal} userGST={userData?.GST || ""} onUpdate={handleUserUpdate} />
-        {/* <ProfileModal visible={activeModal === 'udyam'} onClose={closeModal} title="Udyam Number" /> */}
-        <BusinessTypeModal visible={activeModal === 'businessType'} onClose={closeModal} businessType={userData?.businessType || ""} onUpdate={handleUserUpdate} />
-        {/* <ProfileModal visible={activeModal === 'category'} onClose={closeModal} title="Category" /> */}
-        <UseNameModal visible={activeModal === 'UserName'} onClose={closeModal} name={userData?.name || ""} onUpdate={handleUserUpdate} />
-        <OTPModal visible={activeModal === 'OTP'} onClose={closeModal} />
-        <UserEmailModal visible={activeModal === 'Email'} onClose={closeModal} email={userData?.email || ""} onUpdate={handleUserUpdate} />
-        <AddressModal visible={activeModal === 'address'} onClose={closeModal} userAddress={userData?.address || ""} onUpdate={handleUserUpdate} />
+        {/* Modals */}
+        <BusinessCardModal
+          visible={activeModal === 'businessCard'}
+          onClose={closeModal}
+          userDetails={userData}
+        />
+
+        <StoreNameModal
+          visible={activeModal === 'storeName'}
+          onClose={closeModal}
+          businessName={userData?.businessName || ""}
+          onUpdate={handleUserUpdate}
+        />
+
+        <GSTModal
+          visible={activeModal === 'gst'}
+          onClose={closeModal}
+          userGST={userData?.GST || ""}
+          onUpdate={handleUserUpdate}
+        />
+
+        <BusinessTypeModal
+          visible={activeModal === 'businessType'}
+          onClose={closeModal}
+          businessType={userData?.businessType || ""}
+          onUpdate={handleUserUpdate}
+        />
+
+        <UseNameModal
+          visible={activeModal === 'UserName'}
+          onClose={closeModal}
+          name={userData?.name || ""}
+          onUpdate={handleUserUpdate}
+        />
+
+        <UserEmailModal
+          visible={activeModal === 'Email'}
+          onClose={closeModal}
+          email={userData?.email || ""}
+          onUpdate={handleUserUpdate}
+        />
+
+        <AddressModal
+          visible={activeModal === 'address'}
+          onClose={closeModal}
+          userAddress={userData?.address || ""}
+          onUpdate={handleUserUpdate}
+        />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
-const ProfileItem = ({ icon: Icon, label, subtitle, isEditable, onPress }) => (
-  <TouchableOpacity style={styles.item} onPress={onPress}>
+// Enhanced ProfileItem Component
+const ProfileItem = ({ icon: Icon, label, subtitle, isEditable = true, onPress, isPremium }) => (
+  <TouchableOpacity
+    style={styles.item}
+    onPress={onPress}
+    activeOpacity={0.7}
+  >
     <View style={styles.iconContainer}>
-      <Icon size={24} color="#007B83" />
+      <View style={styles.iconSolid}>
+        <Icon size={22} color="#0A4D3C" />
+      </View>
     </View>
+
     <View style={styles.textContainer}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, !label.includes('Enter') && styles.labelFilled]}>
+        {label}
+      </Text>
       {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
     </View>
-    {/* {isEditable && <Text style={styles.editSymbol}>✎</Text>} */}
+    {isEditable && (
+      <ChevronRight size={20} color="#0A4D3C" />
+    )}
   </TouchableOpacity>
 );
 
-
-const BusinessCardModal = ({ visible, onClose, userDetails, onPress }) => {
+const BusinessCardModal = ({ visible, onClose, userDetails }) => {
   const cardRef = useRef(null);
+
   const shareOnWhatsApp = async () => {
     try {
       const uri = await cardRef.current.capture();
@@ -351,51 +483,73 @@ const BusinessCardModal = ({ visible, onClose, userDetails, onPress }) => {
       onRequestClose={onClose}
     >
       <View style={styles.modalBackground}>
-        <View style={styles.bottomSheet}>
-          {/* Header */}
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Your Business Card</Text>
+            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+              <XCircle size={24} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+
           <ViewShot
             ref={cardRef}
             options={{ format: 'png', quality: 1.0 }}
           >
-            <View style={styles.cardPreview}>
-              <Text style={[styles.cardNumber, { alignSelf: 'center', fontSize: 18 }]}>
-                {userDetails?.businessName}
-              </Text>
-              <Text style={[styles.cardNumber, { alignSelf: 'center', fontSize: 14 }]}>
-                {userDetails?.mobile}
-              </Text>
-              <Text
-                style={[
-                  styles.cardNumber,
-                  { alignSelf: 'center', fontSize: 10, textTransform: 'capitalize' },
-                ]}
-              >
-                {userDetails?.address}
-              </Text>
+            <View style={styles.premiumCardPreviewSolid}>
+              <View style={styles.cardContent}>
+                <View style={styles.cardLogoSolid}>
+                  <Text style={styles.cardLogoText}>A</Text>
+                </View>
 
-              <View style={styles.aquaCreditBadge}>
-                <Text style={styles.aquaCreditText}>Verified User</Text>
-                <Text style={styles.aquaCreditBrand}>AquaCredit</Text>
+                <Text style={styles.cardBusinessName}>
+                  {userDetails?.businessName || 'Your Business Name'}
+                </Text>
+
+                <View style={styles.cardDetail}>
+                  <Phone size={14} color="#FFFFFF" />
+                  <Text style={styles.cardDetailText}>
+                    {userDetails?.mobile || '+91 98765 43210'}
+                  </Text>
+                </View>
+
+                <View style={styles.cardDetail}>
+                  <MapPin size={14} color="#FFFFFF" />
+                  <Text style={styles.cardDetailText}>
+                    {userDetails?.address || 'Your Business Address'}
+                  </Text>
+                </View>
+
+                <View style={styles.cardBadgeSolid}>
+                  <CheckCircle size={12} color="#10B981" />
+                  <Text style={styles.cardBadgeText}>Verified User</Text>
+                </View>
+
+                <Text style={styles.cardBrand}>AquaCredit</Text>
               </View>
             </View>
           </ViewShot>
-          <TouchableOpacity style={styles.whatsappButton} onPress={shareOnWhatsApp}>
-            <Text style={styles.whatsappButtonText}>📤 Share on WhatsApp</Text>
+
+          <TouchableOpacity
+            style={styles.whatsappButtonSolid}
+            onPress={shareOnWhatsApp}
+            activeOpacity={0.8}
+          >
+            <Share2 size={20} color="#FFFFFF" />
+            <Text style={styles.whatsappButtonText}>Share on WhatsApp</Text>
           </TouchableOpacity>
         </View>
-
-        {/* WhatsApp Share Button */}
       </View>
     </Modal>
-  )
+  );
 };
 
+// Enhanced StoreNameModal - Solid Colors
 const StoreNameModal = ({ visible, onClose, businessName, onUpdate }) => {
-  const [storeName, setStoreName] = useState();
+  const [storeName, setStoreName] = useState('');
 
   useEffect(() => {
-    setStoreName(businessName)
-  }, [businessName])
+    setStoreName(businessName);
+  }, [businessName]);
 
   const payload = { businessName: storeName };
 
@@ -412,44 +566,64 @@ const StoreNameModal = ({ visible, onClose, businessName, onUpdate }) => {
       onRequestClose={onClose}
     >
       <View style={styles.modalBackground}>
-        <View style={styles.bottomSheet}>
-          <Text style={styles.modalTitle}>Add Store Name</Text>
-          <Text style={styles.subtitleText}>Please add your Store Name</Text>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add Store Name</Text>
+            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+              <XCircle size={24} color="#64748B" />
+            </TouchableOpacity>
+          </View>
 
-          <View style={styles.inputRow}>
+          <Text style={styles.modalSubtitle}>Please enter your store name</Text>
+
+          <View style={styles.inputContainer}>
+            <Store size={20} color="#0A4D3C" style={styles.inputIcon} />
             <TextInput
-              style={styles.textInput}
+              style={styles.modalInput}
               value={storeName}
               onChangeText={setStoreName}
               placeholder="Store Name"
+              placeholderTextColor="#94A3B8"
+              autoFocus
             />
-            <TouchableOpacity onPress={onClose} style={styles.iconButton}>
-              <Text style={styles.cancelIcon}>✕</Text>
+          </View>
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.cancelButton]}
+              onPress={onClose}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleConfirm} style={styles.iconButton}>
-              <Text style={styles.confirmIcon}>✔</Text>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.confirmButtonSolid]}
+              onPress={handleConfirm}
+            >
+              <Text style={styles.confirmButtonText}>Save</Text>
             </TouchableOpacity>
           </View>
         </View>
-        {/* WhatsApp Share Button */}
       </View>
     </Modal>
-  )
+  );
 };
 
+// Enhanced UseNameModal - Solid Colors
 const UseNameModal = ({ visible, onClose, name, onUpdate }) => {
   const [userName, setUserName] = useState('');
-  useEffect(() => {
-    setUserName(name)
-  }, [name])
 
-  const payload = { name: userName }
+  useEffect(() => {
+    setUserName(name);
+  }, [name]);
+
+  const payload = { name: userName };
+
   const handleConfirm = async () => {
     await onUpdate(payload);
     onClose();
   };
 
-
   return (
     <Modal
       visible={visible}
@@ -458,123 +632,50 @@ const UseNameModal = ({ visible, onClose, name, onUpdate }) => {
       onRequestClose={onClose}
     >
       <View style={styles.modalBackground}>
-        <View style={styles.bottomSheet}>
-          <Text style={styles.modalTitle}>Add Name</Text>
-          <Text style={styles.subtitleText}>Please add your Name</Text>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add Your Name</Text>
+            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+              <XCircle size={24} color="#64748B" />
+            </TouchableOpacity>
+          </View>
 
-          <View style={styles.inputRow}>
+          <Text style={styles.modalSubtitle}>Please enter your full name</Text>
+
+          <View style={styles.inputContainer}>
+            <User size={20} color="#0A4D3C" style={styles.inputIcon} />
             <TextInput
-              style={styles.textInput}
+              style={styles.modalInput}
               value={userName}
               onChangeText={setUserName}
-              placeholder="Name"
+              placeholder="Your Name"
+              placeholderTextColor="#94A3B8"
+              autoFocus
             />
-            <TouchableOpacity onPress={onClose} style={styles.iconButton}>
-              <Text style={styles.cancelIcon}>✕</Text>
+          </View>
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.cancelButton]}
+              onPress={onClose}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleConfirm} style={styles.iconButton}>
-              <Text style={styles.confirmIcon}>✔</Text>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.confirmButtonSolid]}
+              onPress={handleConfirm}
+            >
+              <Text style={styles.confirmButtonText}>Save</Text>
             </TouchableOpacity>
           </View>
         </View>
-        {/* WhatsApp Share Button */}
       </View>
     </Modal>
-  )
+  );
 };
 
-const OTPModal = ({ visible, onClose, onOpen }) => {
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timer, setTimer] = useState(30);
-  const inputRefs = useRef([]);
-  const handleConfirm = () => {
-    // Save the business name logic here (e.g., update state or API call)
-    onClose();
-  };
-  const handleOtpChange = (value, index) => {
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    if (newOtp.every(digit => digit !== '')) {
-      handleVerify(newOtp.join(''));
-    }
-  };
-
-  const handleKeyPress = (e, index) => {
-    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handleVerify = (otpCode = otp.join('')) => {
-    if (otpCode.length === 6) {
-      // Simulate OTP verification
-      onClose();
-      onOpen('phone')
-    }
-  };
-
-  const handleResendOTP = () => {
-    setTimer(30);
-    setOtp(['', '', '', '', '', '']);
-    inputRefs.current[0]?.focus();
-  };
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalBackground}>
-        <View style={styles.bottomSheet}>
-          <Text style={styles.modalTitle}>Add Name</Text>
-          <Text style={styles.subtitleText}>Please add your Name</Text>
-
-          <View style={styles.otpContainer}>
-            {otp.map((digit, index) => (
-              <TextInput
-                key={index}
-                ref={(ref) => (inputRefs.current[index] = ref)}
-                style={[styles.otpInput, digit && styles.otpInputFilled]}
-                value={digit}
-                onChangeText={(value) => handleOtpChange(value, index)}
-                onKeyPress={(e) => handleKeyPress(e, index)}
-                keyboardType="numeric"
-                maxLength={1}
-                autoFocus={index === 0}
-              />
-            ))}
-          </View>
-          <View style={styles.timerContainer}>
-            {timer > 0 ? (
-              <Text style={styles.timerText}>Resend OTP in {timer}s</Text>
-            ) : (
-              <TouchableOpacity onPress={handleResendOTP}>
-                <Text style={styles.resendText}>Resend OTP</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          <TouchableOpacity
-            style={[styles.verifyButton, otp.every(digit => digit !== '') ? styles.verifyButtonActive : styles.verifyButtonDisabled]}
-            onPress={() => handleVerify()}
-            disabled={!otp.every(digit => digit !== '')}
-          >
-            <Text style={styles.verifyButtonText}>Verify & Continue</Text>
-          </TouchableOpacity>
-        </View>
-        {/* WhatsApp Share Button */}
-      </View>
-    </Modal>
-  )
-};
-
+// Enhanced UserEmailModal - Solid Colors
 const UserEmailModal = ({ visible, onClose, email, onUpdate }) => {
   const [userEmail, setUserEmail] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -588,7 +689,6 @@ const UserEmailModal = ({ visible, onClose, email, onUpdate }) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(value);
   };
-
 
   const handleConfirm = async () => {
     if (!validateEmail(userEmail)) {
@@ -605,7 +705,6 @@ const UserEmailModal = ({ visible, onClose, email, onUpdate }) => {
   const handleChange = (text) => {
     setUserEmail(text);
 
-    // Clear error while typing if valid
     if (validateEmail(text)) {
       setEmailError('');
     }
@@ -619,54 +718,81 @@ const UserEmailModal = ({ visible, onClose, email, onUpdate }) => {
       onRequestClose={onClose}
     >
       <View style={styles.modalBackground}>
-        <View style={styles.bottomSheet}>
-          <Text style={styles.modalTitle}>Add User Email</Text>
-          <Text style={styles.subtitleText}>Please add your Email</Text>
-
-          <View
-            style={[
-              styles.inputRow,
-              emailError ? styles.inputErrorBorder : null,
-            ]}
-          >
-            <TextInput
-              style={styles.textInput}
-              value={userEmail}
-              onChangeText={handleChange}
-              placeholder="Email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-
-            <TouchableOpacity onPress={onClose} style={styles.iconButton}>
-              <Text style={styles.cancelIcon}>✕</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={handleConfirm} style={styles.iconButton}>
-              <Text style={styles.confirmIcon}>✔</Text>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add Email Address</Text>
+            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+              <XCircle size={24} color="#64748B" />
             </TouchableOpacity>
           </View>
 
-          {userEmail &&
+          <Text style={styles.modalSubtitle}>Please enter your email address</Text>
 
-            <Text style={validateEmail(userEmail) ? styles.successText : styles.errorText}>{validateEmail(userEmail) ? "✓ Valid email" : "x InValid email"}</Text>
-          }
+          <View style={[
+            styles.inputContainer,
+            emailError ? styles.inputError : null
+          ]}>
+            <Mail size={20} color="#0A4D3C" style={styles.inputIcon} />
+            <TextInput
+              style={styles.modalInput}
+              value={userEmail}
+              onChangeText={handleChange}
+              placeholder="email@example.com"
+              placeholderTextColor="#94A3B8"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoFocus
+            />
+          </View>
+
+          {userEmail.length > 0 && (
+            <View style={styles.validationContainer}>
+              {validateEmail(userEmail) ? (
+                <>
+                  <CheckCircle size={14} color="#0A4D3C" />
+                  <Text style={styles.validText}>Valid email address</Text>
+                </>
+              ) : (
+                <>
+                  <XCircle size={14} color="#EF4444" />
+                  <Text style={styles.errorText}>Invalid email address</Text>
+                </>
+              )}
+            </View>
+          )}
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.cancelButton]}
+              onPress={onClose}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.confirmButtonSolid]}
+              onPress={handleConfirm}
+            >
+              <Text style={styles.confirmButtonText}>Save</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
   );
 };
 
+// Enhanced AddressModal - Solid Colors
 const AddressModal = ({ visible, onClose, userAddress, onUpdate }) => {
   const [address, setAddress] = useState('');
+
   useEffect(() => {
-    setAddress(userAddress)
-  }, [userAddress])
+    setAddress(userAddress);
+  }, [userAddress]);
 
   const handleConfirm = async () => {
-    const payload = { address: address }
+    const payload = { address: address };
     await onUpdate(payload);
-
     onClose();
   };
 
@@ -678,37 +804,61 @@ const AddressModal = ({ visible, onClose, userAddress, onUpdate }) => {
       onRequestClose={onClose}
     >
       <View style={styles.modalBackground}>
-        <View style={styles.bottomSheet}>
-          <Text style={styles.modalTitle}>Add Store Address</Text>
-          <Text style={styles.subtitleText}>Please add your Store Address</Text>
-
-          <View style={styles.inputRow}>
-            <TextInput
-              style={[styles.textInput, { height: 100, }]}
-              value={address} maxLength={200} multiline={true}
-              onChangeText={setAddress}
-              placeholder="Business Name"
-            />
-            <TouchableOpacity onPress={onClose} style={styles.iconButton}>
-              <Text style={styles.cancelIcon}>✕</Text>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add Address</Text>
+            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+              <XCircle size={24} color="#64748B" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleConfirm} style={styles.iconButton}>
-              <Text style={styles.confirmIcon}>✔</Text>
+          </View>
+
+          <Text style={styles.modalSubtitle}>Please enter your business address</Text>
+
+          <View style={styles.inputContainer}>
+            <MapPin size={20} color="#0A4D3C" style={styles.inputIcon} />
+            <TextInput
+              style={[styles.modalInput, styles.textArea]}
+              value={address}
+              onChangeText={setAddress}
+              placeholder="Enter your full address"
+              placeholderTextColor="#94A3B8"
+              multiline
+              numberOfLines={3}
+              maxLength={200}
+              autoFocus
+            />
+          </View>
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.cancelButton]}
+              onPress={onClose}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.confirmButtonSolid]}
+              onPress={handleConfirm}
+            >
+              <Text style={styles.confirmButtonText}>Save</Text>
             </TouchableOpacity>
           </View>
         </View>
-        {/* WhatsApp Share Button */}
       </View>
     </Modal>
-  )
+  );
 };
 
+// Enhanced GSTModal - Solid Colors
 const GSTModal = ({ visible, onClose, userGST, onUpdate }) => {
   const [GST, setGST] = useState('');
-  const payload = { GST: GST }
+
   useEffect(() => {
-    setGST(userGST)
-  }, [userGST])
+    setGST(userGST);
+  }, [userGST]);
+
+  const payload = { GST: GST };
 
   const handleConfirm = async () => {
     await onUpdate(payload);
@@ -723,31 +873,51 @@ const GSTModal = ({ visible, onClose, userGST, onUpdate }) => {
       onRequestClose={onClose}
     >
       <View style={styles.modalBackground}>
-        <View style={styles.bottomSheet}>
-          <Text style={styles.modalTitle}>Add GST Number</Text>
-          <Text style={styles.subtitleText}>Please add your GST Number</Text>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add GST Number</Text>
+            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+              <XCircle size={24} color="#64748B" />
+            </TouchableOpacity>
+          </View>
 
-          <View style={styles.inputRow}>
+          <Text style={styles.modalSubtitle}>Please enter your GST number</Text>
+
+          <View style={styles.inputContainer}>
+            <FileText size={20} color="#0A4D3C" style={styles.inputIcon} />
             <TextInput
-              style={styles.textInput}
+              style={styles.modalInput}
               value={GST}
               onChangeText={setGST}
-              placeholder="GST Number"
+              placeholder="22AAAAA0000A1Z5"
+              placeholderTextColor="#94A3B8"
+              autoCapitalize="characters"
+              autoFocus
             />
-            <TouchableOpacity onPress={onClose} style={styles.iconButton}>
-              <Text style={styles.cancelIcon}>✕</Text>
+          </View>
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.cancelButton]}
+              onPress={onClose}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleConfirm} style={styles.iconButton}>
-              <Text style={styles.confirmIcon}>✔</Text>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.confirmButtonSolid]}
+              onPress={handleConfirm}
+            >
+              <Text style={styles.confirmButtonText}>Save</Text>
             </TouchableOpacity>
           </View>
         </View>
-        {/* WhatsApp Share Button */}
       </View>
     </Modal>
-  )
+  );
 };
 
+// Enhanced BusinessTypeModal - Solid Colors
 const BusinessTypeModal = ({ visible, onClose, businessType, onUpdate }) => {
   const businessTypes = [
     'Retail Shop',
@@ -757,7 +927,7 @@ const BusinessTypeModal = ({ visible, onClose, businessType, onUpdate }) => {
   ];
 
   const handleSelect = async (type) => {
-    const payload = { businessType: type }
+    const payload = { businessType: type };
     await onUpdate(payload);
     onClose();
   };
@@ -770,354 +940,467 @@ const BusinessTypeModal = ({ visible, onClose, businessType, onUpdate }) => {
       onRequestClose={onClose}
     >
       <View style={styles.modalBackground}>
-        <View style={styles.bottomSheet}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-
-            <Text style={styles.modalTitle}>Select your business type</Text>
-            <TouchableOpacity onPress={onClose} style={styles.iconButton}>
-              <Text style={styles.cancelIcon}>✕</Text>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select Business Type</Text>
+            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+              <XCircle size={24} color="#64748B" />
             </TouchableOpacity>
           </View>
-          {businessTypes.map((type, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.optionItem}
-              onPress={() => handleSelect(type)}
-            >
-              <Text style={businessType !== type ? styles.optionText : styles.selectOptionText}>{type}</Text>
-            </TouchableOpacity>
-          ))}
+
+          <Text style={styles.modalSubtitle}>Choose your business category</Text>
+
+          <ScrollView style={styles.optionsList}>
+            {businessTypes.map((type, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.optionItem,
+                  businessType === type && styles.optionItemSelected
+                ]}
+                onPress={() => handleSelect(type)}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.optionText,
+                  businessType === type && styles.optionTextSelected
+                ]}>
+                  {type}
+                </Text>
+                {businessType === type && (
+                  <CheckCircle size={18} color="#0A4D3C" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <TouchableOpacity
+            style={[styles.modalButton, styles.cancelButtonFull]}
+            onPress={onClose}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
   );
 };
 
-const ProfileModal = ({ visible, onClose, title }) => {
-  const [mobile, setMobile] = useState('');
-  const handleConfirm = () => {
-    // Save the business name logic here (e.g., update state or API call)
-    onClose();
-  };
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalBackground}>
-        <View style={styles.bottomSheet}>
-          <Text style={styles.modalTitle}>Update Phone Number</Text>
-          <Text style={styles.subtitleText}>Please change phone number</Text>
-
-          <View style={styles.inputRow}>
-            <TextInput
-              style={styles.textInput}
-              value={mobile}
-              onChangeText={setMobile}
-              placeholder="Phone Number"
-            />
-            <TouchableOpacity onPress={onClose} style={styles.iconButton}>
-              <Text style={styles.cancelIcon}>✕</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleConfirm} style={styles.iconButton}>
-              <Text style={styles.confirmIcon}>✔</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        {/* WhatsApp Share Button */}
-      </View>
-    </Modal>
-  )
-};
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f4f8f8',
+    backgroundColor: '#F8FAFC',
   },
-  scrollContent: {
-    padding: 16,
-  },
-  errorText: {
-    color: '#ff4d4f',
-    marginTop: 6,
-    fontSize: 13,
-  },
-  successText: {
-    color: '#2ecc71',
-    marginTop: 6,
-    fontSize: 13,
+  headerSolid: {
+    backgroundColor: '#0A4D3C',
+    paddingTop: 20,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    shadowColor: '#0A4D3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
-  editIcon: {
-    position: 'relative',
-    right: -20,
-    top: -20, zIndex: 99,
-    backgroundColor: '#fff',
-    borderRadius: 50,
-    padding: 8,
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: 'rgba(255,255,255,0.2)',
   },
-  editText: {
+  headerTitleContainer: {
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  headerSubtitle: {
     fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    paddingVertical: 8,
-    elevation: 2,
+  headerRight: {
+    width: 44,
+  },
+  headerBadge: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+  },
+  scrollContent: {
+    paddingBottom: 30,
+  },
+  profileHeader: {
+    alignItems: 'center',
+    marginTop: -30,
+    marginBottom: 20,
+  },
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: 12,
+  },
+  avatar: {
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  cameraButtonSolid: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#0A4D3C',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    elevation: 3,
+  },
+  profileInfo: {
+    alignItems: 'center',
+  },
+  profileName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#0A4D3C',
+    marginBottom: 6,
+    textTransform: 'capitalize',
+  },
+  profileBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16,185,129,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  profileBadgeText: {
+    fontSize: 12,
+    color: '#0A4D3C',
+    fontWeight: '600',
+  },
+  premiumCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    marginHorizontal: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.1)',
+  },
+  cardHeader: {
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0A4D3C',
+    marginBottom: 4,
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(16,185,129,0.1)',
+    marginVertical: 8,
   },
   item: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: 14, textTransform: 'capitalize',
-    paddingHorizontal: 16,
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f1f1',
+    borderBottomColor: 'rgba(16,185,129,0.1)',
   },
   iconContainer: {
-    width: 30,
-    marginRight: 12,
-    marginTop: 4,
+    marginRight: 16,
+  },
+  iconSolid: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(16,185,129,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   textContainer: {
     flex: 1,
   },
-  bottomSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 40,
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-
-  optionItem: {
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  cameraButton: {
-    position: 'relative',
-    bottom: 30,
-    right: -30,
-    backgroundColor: COLORS.primary,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.white,
-  },
-  optionText: {
-    fontSize: 16,
-    color: '#333',
-  },
-
-  selectOptionText: {
-    fontSize: 16, borderRadius: 5,
-    color: '#3A933A', padding: 8,
-    backgroundColor: "#E6FFE6",
-    fontWeight: 'bold'
-  },
-
   label: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#333',
-    textTransform: 'capitalize'
+    color: '#94A3B8',
+  },
+  labelFilled: {
+    color: '#0A4D3C',
   },
   subtitle: {
     fontSize: 12,
-    color: '#777',
+    color: '#94A3B8',
+    marginTop: 2,
   },
-  editSymbol: {
-    fontSize: 16,
-    color: '#007B83',
-  },
-
-  // Modal Styles
   modalBackground: {
     flex: 1,
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    padding: 20,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
+  modalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
     padding: 24,
-    elevation: 5,
+    minHeight: 300,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 16,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0A4D3C',
   },
-  closeButton: {
-    marginTop: 20,
-    backgroundColor: '#007B83',
-    paddingVertical: 12,
-    borderRadius: 8,
+  modalCloseButton: {
+    padding: 4,
   },
-  businessModal: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
-  businessHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  businessTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  businessSubtitle: {
+  modalSubtitle: {
     fontSize: 14,
-    color: '#555',
-    marginVertical: 10,
-  },
-  cardPreview: {
-    backgroundColor: '#0c1e4d',
-    borderRadius: 12, justifyContent: 'center',
-    padding: 20, height: 200,
-    marginVertical: 16,
-  },
-  cardNumber: {
-    color: '#fff',
-    fontSize: 18,
-    marginBottom: 6,
-  },
-  cardName: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  aquaCreditBadge: {
-    position: 'absolute',
-    bottom: 10,
-    right: 10,
-    backgroundColor: '#fff',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-  },
-  aquaCreditText: {
-    fontSize: 10,
-    color: '#666',
-  },
-  verifyButton: {
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: 'center',
+    color: '#64748B',
     marginBottom: 24,
   },
-  verifyButtonActive: {
-    backgroundColor: '#4CAF50',
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: '#F8FAFC',
   },
-  verifyButtonDisabled: {
-    backgroundColor: '#CCCCCC',
+  inputIcon: {
+    marginRight: 12,
   },
-  verifyButtonText: {
+  modalInput: {
+    flex: 1,
+    paddingVertical: 16,
+    fontSize: 16,
+    color: '#0A4D3C',
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  inputError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  validationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    marginLeft: 4,
+    gap: 8,
+  },
+  validText: {
+    fontSize: 13,
+    color: '#0A4D3C',
+    fontWeight: '500',
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#EF4444',
+    fontWeight: '500',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  modalButton: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  cancelButton: {
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderRadius: 16,
+  },
+  cancelButtonFull: {
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderRadius: 16,
+    marginTop: 16,
+  },
+  cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'white',
+    color: '#64748B',
   },
-  aquaCreditBrand: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#2a9d8f',
+  confirmButtonSolid: {
+    backgroundColor: '#0A4D3C',
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderRadius: 16,
   },
-  otpContainer: {
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  optionsList: {
+    maxHeight: 300,
+    marginBottom: 16,
+  },
+  optionItem: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 32,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(16,185,129,0.1)',
+    borderRadius: 12,
   },
-  otpInput: {
-    width: 48,
-    height: 56,
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    textAlign: 'center',
+  optionItemSelected: {
+    backgroundColor: 'rgba(16,185,129,0.05)',
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#64748B',
+  },
+  optionTextSelected: {
+    color: '#0A4D3C',
+    fontWeight: '600',
+  },
+  premiumCardPreviewSolid: {
+    backgroundColor: '#0A4D3C',
+    borderRadius: 20,
+    padding: 20,
+    marginVertical: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  cardContent: {
+    height: 200,
+    justifyContent: 'space-between',
+  },
+  cardLogoSolid: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  cardLogoText: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
-  otpInputFilled: {
-    borderColor: '#4CAF50',
-    backgroundColor: '#F1F8E9',
+  cardBusinessName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 12,
   },
-  timerContainer: {
+  cardDetail: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 32,
+    gap: 8,
+    marginBottom: 8,
   },
-  timerText: {
-    fontSize: 14,
-    color: '#666',
+  cardDetailText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    opacity: 0.9,
   },
-  whatsappButton: {
-    backgroundColor: '#25D366',
-    paddingVertical: 14,
-    borderRadius: 10,
+  cardBadgeSolid: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    gap: 4,
+  },
+  cardBadgeText: {
+    fontSize: 10,
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  cardBrand: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    opacity: 0.7,
+    alignSelf: 'flex-end',
+  },
+  whatsappButtonSolid: {
+    backgroundColor: '#0A4D3C',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 16,
+    shadowColor: '#0A4D3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   whatsappButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
     fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
-  subtitleText: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 10,
-  },
-
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-  },
-
-  textInput: {
-    flex: 1,
-    fontSize: 16,
-    paddingVertical: 10,
-  },
-
-  iconButton: {
-    padding: 10,
-  },
-
-  cancelIcon: {
-    fontSize: 18,
-    color: 'red',
-  },
-
-  confirmIcon: {
-    fontSize: 20,
-    color: 'green',
-  },
-
 });
 
 export default ProfileScreen;

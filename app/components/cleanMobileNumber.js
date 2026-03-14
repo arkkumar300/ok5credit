@@ -1,5 +1,6 @@
 const  cleanMobileNumber = (number) => {
     if (!number) return "";
+  console.log("rrr::",number)
     // Remove all non-numeric characters
     let cleaned = number.replace(/\D/g, "");
   

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback,useMemo, useContext } from 'react';
-import { View, Text, TextInput, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking, Animated, Alert, ScrollView, Platform } from 'react-native';
+import {View,Text,TextInput,StyleSheet,FlatList,SafeAreaView,TouchableOpacity,Image,Linking,Animated,Alert,ScrollView,Platform,StatusBar} from 'react-native';
 import { PhoneCall, Bell, Delete, MessageSquare, Send, MessageCircle, Clock, CheckCircle, ArrowDown, Percent, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar, HelpCircle, DeleteIcon, AlertTriangle } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Divider } from 'react-native-paper';
@@ -78,7 +78,7 @@ const DiscountModal = ({ visible, onClose, onSubmit, loading }) => {
 
         <TextInput
           placeholder="Enter discount amount"
-          placeholderTextColor="#aaaaaa"
+          placeholderTextColor="#94A3B8"
           keyboardType="numeric"
           value={discountAmount}
           onChangeText={setDiscountAmount}
@@ -87,7 +87,7 @@ const DiscountModal = ({ visible, onClose, onSubmit, loading }) => {
 
         <TextInput
           placeholder="Note (optional)"
-          placeholderTextColor="#aaaaaa"
+          placeholderTextColor="#94A3B8"
           value={discountNote}
           onChangeText={setDiscountNote}
           style={[styles.input, styles.textArea]}
@@ -601,180 +601,230 @@ Your current balance is ₹${balance} ${balanceType}`;
 
   return (
     <SafeAreaView style={styles.container}>
-      <Appbar.Header style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('./dashboard')}>
-          <ArrowLeft size={24} color="#2E7D32" />
-        </TouchableOpacity>
-        <Appbar.Content
-          title={personName}
-          titleStyle={styles.headerTitle}
-        />
-        <TouchableOpacity
-          onPress={() =>
-            router.push({
-              pathname: '/customerProfile',
-              params: { ID: personId, profileType: 'customer' },
-            })
-          }
-        >
-          <Text style={styles.profileLink}>Customer Profile</Text>
-        </TouchableOpacity>
-      </Appbar.Header>
+      <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
+
+      {/* Premium Header */}
+      <View style={styles.headerSolid}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.push('./dashboard')}
+            activeOpacity={0.7}
+          >
+            <ArrowLeft size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>{personName}</Text>
+            <Text style={styles.headerSubtitle}>Customer Details</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={() =>
+              router.push({
+                pathname: '/customerProfile',
+                params: { ID: personId, profileType: 'customer' },
+              })
+            }
+          >
+            <Text style={styles.profileButtonText}>Profile</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <FlatList
         data={transactionsWithBalance}
         style={styles.list}
-        renderItem={({ item }) => {
-          return (
-            <TransactionItem
-              item={item}
-              personName={personName}
-              router={router}
-              customer={customer}
-            />
-          )
-        }}
+        renderItem={({ item }) => (
+          <TransactionItem
+            item={item}
+            personName={personName}
+            router={router}
+            customer={customer}
+          />
+        )}
         keyExtractor={(item) => item.id?.toString()}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={renderEmptyList}
       />
 
-      {/* Bottom Section */}
+      {/* Premium Bottom Section */}
       <View style={styles.bottomContainer}>
-        <View style={styles.actionsRow}>
-          {customer?.current_balance < 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.actionsScrollContent}
+        >
+          <View style={styles.actionsRow}>
+            {customer?.current_balance < 0 && (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <View style={styles.actionIconContainer}>
+                  <Calendar size={18} color="#0A4D3C" />
+                </View>
+                <Text style={styles.actionText}>
+                  {dueDate ? moment(dueDate).format('DD/MM/YY') : 'Due Date'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => setShowDatePicker(true)}
+              onPress={() => setShowDiscountModal(true)}
             >
-              <Calendar size={20} color="#555" />
-              <Text style={styles.actionText}>
-                {dueDate ? dueDate.toLocaleDateString() : 'Due Date'}
-              </Text>
+              <View style={styles.actionIconContainer}>
+                <Percent size={18} color="#0A4D3C" />
+              </View>
+              <Text style={styles.actionText}>Discount</Text>
             </TouchableOpacity>
-          )}
 
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => setShowDiscountModal(true)}
-          >
-            <Percent size={20} color="#555" />
-            <Text style={styles.actionText}>Discount</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={sendSMS}>
+              <View style={styles.actionIconContainer}>
+                <MessageCircle size={18} color="#0A4D3C" />
+              </View>
+              <Text style={styles.actionText}>SMS</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton} onPress={sendSMS}>
-            <MessageCircle size={20} color="#555" />
-            <Text style={styles.actionText}>SMS</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={openWhatsAppWithImage}
+            >
+              <View style={styles.actionIconContainer}>
+                <Send size={18} color="#0A4D3C" />
+              </View>
+              <Text style={styles.actionText}>WhatsApp</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={openWhatsAppWithImage}
-          >
-            <Send size={24} color="#25D366" />
-            <Text style={styles.actionText}>WhatsApp</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
+              <View style={styles.actionIconContainer}>
+                <PhoneCall size={18} color="#0A4D3C" />
+              </View>
+              <Text style={styles.actionText}>Call</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
-            <PhoneCall size={20} color="#555" />
-            <Text style={styles.actionText}>Call</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={navigateToDefaulter}
-          >
-            <AlertTriangle size={20} color="#FF6B6B" />
-            <Text style={styles.actionText}>Defaulter</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push('./help')
-            }
-          >
-            <HelpCircle color="#555" size={24} />
-            <Text style={styles.actionText}>Help</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={navigateToDefaulter}
+            >
+              <View style={styles.actionIconContainer}>
+                <AlertTriangle size={18} color="#0A4D3C" />
+              </View>
+              <Text style={styles.actionText}>Defaulter</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push({
-              pathname: '/deleteCustomer',
-              params: {
-                transaction_for: 'customer', 
-                id: personId,
-              },
-            })
-            }
-          >
-            <DeleteIcon color="#555" size={24} />
-            <Text style={styles.actionText}>Delete</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push('./help')}
+            >
+              <View style={styles.actionIconContainer}>
+                <HelpCircle size={18} color="#0A4D3C" />
+              </View>
+              <Text style={styles.actionText}>Help</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() =>
-              router.push({
-                pathname: '/customerLedger',
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push({
+                pathname: '/deleteCustomer',
                 params: {
-                  personId: personId,
-                  personName: personName,
-                  roleType: 'CUSTOMER',
+                  transaction_for: 'customer',
+                  id: personId,
                 },
-              })
-            }
-          >
-            <MessageSquare size={20} color="#555" />
-            <Text style={styles.actionText}>Ledgers</Text>
-          </TouchableOpacity>
-        </View>
+              })}
+            >
+              <View style={styles.actionIconContainer}>
+                <DeleteIcon size={18} color="#0A4D3C" />
+              </View>
+              <Text style={styles.actionText}>Delete</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() =>
+                router.push({
+                  pathname: '/customerLedger',
+                  params: {
+                    personId: personId,
+                    personName: personName,
+                    roleType: 'CUSTOMER',
+                  },
+                })
+              }
+            >
+              <View style={styles.actionIconContainer}>
+                <MessageSquare size={18} color="#0A4D3C" />
+              </View>
+              <Text style={styles.actionText}>Ledgers</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
 
         {isSubscribe_user === false && (
           <>
-            <Divider style={styles.planDivider} />
+            <View style={styles.planDivider} />
             <View style={styles.planInfo}>
-              <Text style={styles.planName}>
-                {isSubscribe_user === false ? 'Basic Plan' : subscribePlan}
-              </Text>
-              <Text style={styles.planLimit}>
-                Receive: {payment_got_count_user} / 4
-              </Text>
-              <Text style={styles.planLimit}>
-                Give: {credit_given_count_user} / 2
-              </Text>
+              <View style={styles.planBadge}>
+                <Text style={styles.planName}>Basic Plan</Text>
+              </View>
+              <View style={styles.planLimits}>
+                <Text style={styles.planLimit}>
+                  Receive: <Text style={styles.planLimitValue}>{payment_got_count_user}/4</Text>
+                </Text>
+                <Text style={styles.planLimit}>
+                  Give: <Text style={styles.planLimitValue}>{credit_given_count_user}/2</Text>
+                </Text>
+              </View>
             </View>
-            <Divider style={styles.planDivider} />
+            <View style={styles.planDivider} />
           </>
         )}
 
         <View style={styles.balanceRow}>
-          <Text style={styles.balanceLabel}>Balance Due</Text>
-          <Text
-            style={[
-              styles.balanceAmount,
-              customer?.current_balance > 0
-                ? styles.positiveBalance
-                : styles.negativeBalance,
-            ]}
-          >
-            ₹ {Math.abs(customer?.current_balance || 0)}{' '}
-            {Number(customer?.current_balance) > 0 ? 'Advance' : 'Due'}
-          </Text>
+          <Text style={styles.balanceLabel}>Current Balance</Text>
+          <View style={styles.balanceCard}>
+            <Text
+              style={[
+                styles.balanceAmount,
+                customer?.current_balance > 0
+                  ? styles.positiveBalance
+                  : styles.negativeBalance,
+              ]}
+            >
+              ₹ {Math.abs(customer?.current_balance || 0)}
+            </Text>
+            <View style={[
+              styles.balanceTypeBadge,
+              { backgroundColor: customer?.current_balance > 0 ? 'rgba(10,77,60,0.1)' : 'rgba(220,38,38,0.1)' }
+            ]}>
+              <Text style={[
+                styles.balanceTypeText,
+                { color: customer?.current_balance > 0 ? '#0A4D3C' : '#DC2626' }
+              ]}>
+                {Number(customer?.current_balance) > 0 ? 'Advance' : 'Due'}
+              </Text>
+            </View>
+          </View>
         </View>
 
         <View style={styles.bottomButtonsRow}>
           <TouchableOpacity
-            style={styles.receivedButton}
+            style={[styles.actionButton, styles.receivedButton]}
             onPress={() => handleAddTransaction('you_got')}
           >
-            <Text style={styles.receivedText}>↓ Received</Text>
+            <ArrowDown size={18} color="#0A4D3C" />
+            <Text style={styles.receivedText}>Received</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.givenButton}
+            style={[styles.actionButton, styles.givenButton]}
             onPress={() => handleAddTransaction('you_gave')}
           >
-            <Text style={styles.givenText}>↑ Given</Text>
+            <ArrowUp size={18} color="#DC2626" />
+            <Text style={styles.givenText}>Given</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -812,7 +862,6 @@ Your current balance is ₹${balance} ${balanceType}`;
         style={styles.hiddenView}
       >
         <View style={styles.screenshotContent}>
-          {/* Add content you want to capture in screenshot */}
           <Text style={styles.screenshotText}>Customer: {personName}</Text>
           <Text style={styles.screenshotText}>
             Balance: ₹{Math.abs(customer?.current_balance || 0)}{' '}
@@ -827,42 +876,84 @@ Your current balance is ₹${balance} ${balanceType}`;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#F8F9FA',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingText: {
+    fontSize: 16,
+    color: '#0A4D3C',
+  },
+  headerSolid: {
+    backgroundColor: '#0A4D3C',
+    paddingTop: Platform.OS === 'android' ? 20 : 0,
+    paddingBottom: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#0A4D3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
   header: {
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 2,
-    borderColor: '#f2f7f6',
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    elevation: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  headerTitleContainer: {
+    alignItems: 'center',
+    flex: 1,
   },
   headerTitle: {
-    color: '#333333',
     fontSize: 18,
-    fontWeight: 'bold',
-    marginStart: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
-  profileLink: {
-    color: '#388E3C',
-    fontSize: 13,
-    fontWeight: '500',
-    marginRight: 20,
+  headerSubtitle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  profileButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  profileButtonText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   list: {
-    marginBottom: 50,
+    flex: 1,
   },
   listContent: {
-    paddingBottom: 180,
+    paddingBottom: 220,
     paddingTop: 20,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
   },
   transactionWrapper: {
-    marginVertical: 8,
+    marginVertical: 6,
   },
   leftContainer: {
     alignItems: 'flex-start',
@@ -871,52 +962,86 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   transactionBox: {
-    width: '60%',
+    width: '70%',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 12,
-    padding: 10,
-    backgroundColor: '#fff',
-    elevation: 1,
+    borderColor: 'rgba(10,77,60,0.1)',
+    borderRadius: 16,
+    padding: 12,
+    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
     shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   deletedTransaction: {
     opacity: 0.6,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F8FAFC',
+    borderColor: 'rgba(0,0,0,0.1)',
   },
   amountRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
-  },
-  checkIcon: {
-    marginHorizontal: 5,
+    gap: 6,
   },
   deletedText: {
-    color: 'gray',
+    color: '#94A3B8',
   },
   timeText: {
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  messageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  amountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  amountText: {
     fontSize: 16,
-    color: 'gray',
-    marginLeft: 8,
+    fontWeight: '600',
+  },
+  receivedAmount: {
+    color: '#0A4D3C',
+  },
+  sentAmount: {
+    color: '#DC2626',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(10,77,60,0.05)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  statusText: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '500',
   },
   divider: {
-    marginVertical: 5,
+    marginVertical: 8,
+    backgroundColor: 'rgba(10,77,60,0.1)',
+    height: 1,
   },
   billRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginVertical: 5,
+    gap: 8,
   },
   billText: {
     flex: 1,
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 8,
+    fontSize: 14,
+    color: '#1E293B',
   },
   billAmount: {
     fontWeight: '600',
@@ -925,15 +1050,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    // marginVertical: 5,
+    gap: 8,
   },
   transactionImage: {
-    width: 80,
-    height: 80,
+    width: 60,
+    height: 60,
     borderRadius: 8,
   },
   imageAmount: {
     fontWeight: '600',
+  },
+  balanceNote: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+    marginLeft: 4,
   },
   emptyContainer: {
     flex: 1,
@@ -947,8 +1078,8 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#666',
+    fontWeight: '500',
+    color: '#64748B',
     textAlign: 'center',
     marginTop: 20,
   },
@@ -957,138 +1088,180 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#f2f7f6',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderWidth: 2,
-    borderColor: '#E8F5E9',
-    elevation: 5,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(10,77,60,0.1)',
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: -2 },
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  actionsScrollContent: {
+    paddingBottom: 8,
   },
   actionsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 14,
+    gap: 16,
   },
   actionButton: {
     alignItems: 'center',
-    flex: 1,
+    gap: 4,
+  },
+  actionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(10,77,60,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionText: {
-    marginTop: 6,
     fontSize: 10,
-    color: '#444',
+    color: '#475569',
+    fontWeight: '500',
   },
   planDivider: {
-    height: 0.5,
-    width: '100%',
-    marginVertical: 3,
-    backgroundColor: '#388E3C90',
+    height: 1,
+    backgroundColor: 'rgba(10,77,60,0.1)',
+    marginVertical: 10,
   },
   planInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
+  },
+  planBadge: {
+    backgroundColor: 'rgba(10,77,60,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 16,
   },
   planName: {
-    color: '#388E3C90',
+    color: '#0A4D3C',
     fontWeight: '600',
     fontSize: 12,
-    textTransform: 'capitalize',
-    margin: 5,
+  },
+  planLimits: {
+    flexDirection: 'row',
+    gap: 16,
   },
   planLimit: {
-    fontSize: 12,
-    borderRadius: 5,
-    fontWeight: 'bold',
-    color: '#888',
+    fontSize: 11,
+    color: '#64748B',
+  },
+  planLimitValue: {
+    fontWeight: '700',
+    color: '#0A4D3C',
   },
   balanceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 16,
   },
   balanceLabel: {
-    fontSize: 14,
-    color: '#777',
-    marginRight: 6,
-    marginTop: 8,
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 6,
+  },
+  balanceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(10,77,60,0.1)',
   },
   balanceAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 8,
+    fontSize: 20,
+    fontWeight: '700',
   },
   positiveBalance: {
-    color: '#388E3C',
+    color: '#0A4D3C',
   },
   negativeBalance: {
-    color: '#d32f2f',
+    color: '#DC2626',
+  },
+  balanceTypeBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
+  balanceTypeText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   bottomButtonsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 12,
   },
   receivedButton: {
-    backgroundColor: '#E8F5E9',
-    borderColor: '#388E3C',
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(10,77,60,0.1)',
+    paddingVertical: 12,
+    borderRadius: 30,
+    gap: 6,
     borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 26,
-    borderRadius: 50,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 3,
+    borderColor: 'rgba(10,77,60,0.2)',
   },
   givenButton: {
-    backgroundColor: '#FFEBEE',
-    borderColor: '#D32F2F',
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(220,38,38,0.1)',
+    paddingVertical: 12,
+    borderRadius: 30,
+    gap: 6,
     borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 26,
-    borderRadius: 50,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 3,
+    borderColor: 'rgba(220,38,38,0.2)',
   },
   receivedText: {
-    color: '#388E3C',
+    color: '#0A4D3C',
     fontWeight: '600',
     fontSize: 14,
   },
   givenText: {
-    color: '#D32F2F',
+    color: '#DC2626',
     fontWeight: '600',
     fontSize: 14,
   },
   modalContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
     marginHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: '#0A4D3C',
     textAlign: 'center',
-    marginBottom: 15,
+    marginBottom: 20,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#bbb',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 15,
-    color: '#333',
+    borderColor: 'rgba(10,77,60,0.2)',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    marginBottom: 16,
+    color: '#1E293B',
+    backgroundColor: '#F8FAFC',
   },
   textArea: {
     height: 80,
@@ -1097,31 +1270,33 @@ const styles = StyleSheet.create({
   modalButtonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 8,
   },
   modalButton: {
-    padding: 12,
-    width: '48%',
-    borderRadius: 8,
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#ccc',
+    backgroundColor: '#F1F5F9',
   },
   submitButton: {
-    backgroundColor: '#2E7D32',
+    backgroundColor: '#0A4D3C',
   },
   disabledButton: {
     opacity: 0.6,
   },
   modalButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   cancelButtonText: {
-    color: '#333',
+    color: '#64748B',
   },
   submitButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
   },
   hiddenView: {
     position: 'absolute',
@@ -1131,52 +1306,11 @@ const styles = StyleSheet.create({
   },
   screenshotContent: {
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
   },
   screenshotText: {
     fontSize: 16,
-    color: '#333',
+    color: '#1E293B',
     marginBottom: 10,
   },
-  messageHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  amountContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  amountText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  receivedAmount: {
-    color: '#4CAF50',
-  },
-  sentAmount: {
-    color: '#F44336',
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  statusText: {
-    fontSize: 10,
-    marginLeft: 4,
-    color: '#666',
-    fontWeight: '500',
-  },
-  balanceNote: {
-    fontSize: 13,
-    color: 'gray',
-    marginTop: 4,
-  }
-
 });

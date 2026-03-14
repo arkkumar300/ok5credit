@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl, ActivityIndicator, Modal, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl, ActivityIndicator, Modal, TextInput, ScrollView, KeyboardAvoidingView, Platform, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Appbar, Avatar } from 'react-native-paper';
-import { UserPlus, Users, Mail, Phone, Calendar, ChevronRight, X, Minus, Plus, User, UserMinus } from 'lucide-react-native';
+import { Appbar, Avatar, Divider, Card } from 'react-native-paper';
+import { UserPlus, Minus, Plus, Users, Mail, Phone, Calendar, ChevronRight, X, Award, Shield, CheckCircle, Clock } from 'lucide-react-native';
 import { AuthContext } from './components/AuthContext';
 import ApiService from './components/ApiServices';
 import moment from 'moment';
 import RazorpayCheckout from 'react-native-razorpay';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const YOUR_RAZORPAY_KEY_ID = "rzp_test_RfcfxfJ2sIZdao"; // Move to env variable
 
@@ -20,18 +21,18 @@ export default function SubscriptionMembersScreen() {
   const [isAddModalVisible, setAddModalVisible] = useState(false);
   const [addingMember, setAddingMember] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
-  const [showAddMoreUsersModal, setShowAddMoreUsersModal] = useState(false);
+  // const [showAddMoreUsersModal, setShowAddMoreUsersModal] = useState(false);
   const [selectedPlanData, setSelectedPlanData] = useState(null);
   const [userCount, setUserCount] = useState(1);
   const [additionalUserCount, setAdditionalUserCount] = useState(1);
   const [processingPayment, setProcessingPayment] = useState(false);
-  
+
   // Form state
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
-  
+
   const router = useRouter();
   const {
     user,
@@ -143,14 +144,14 @@ export default function SubscriptionMembersScreen() {
     // Check if user can add more users (within plan limits)
     const maxUsers = selectedPlanData?.NOU || 0;
     const currentUsers = subscriptionDetails?.purchasedCount || 0;
-    
+
     if (currentUsers >= maxUsers) {
       Alert.alert('Limit Reached', `You have already reached the maximum limit of ${maxUsers} users for this plan.`);
       return;
     }
-    
+
     setAdditionalUserCount(1);
-    setShowAddMoreUsersModal(true);
+    setShowUserModal(true);
   };
 
   const validateForm = () => {
@@ -194,7 +195,7 @@ export default function SubscriptionMembersScreen() {
         return;
       }
       const userDetails = JSON.parse(userData);
-      console.log("userDetails :::",userDetails)
+      console.log("userDetails :::", userDetails)
       if (!selectedPlanData || !subscription) {
         Alert.alert("Error", "Subscription details not found");
         return;
@@ -210,15 +211,15 @@ export default function SubscriptionMembersScreen() {
         subscriber_email: userDetails.email,
         subscriber_phone: userDetails.mobile
       };
-  
+
       console.log("Sending payload:", payload);
-  
+
       // Create order for additional users
       const res = await ApiService.post(
-        `/payment_rozarpay/add-subscription-users`, 
+        `/payment_rozarpay/add-subscription-users`,
         payload,
         {
-          headers: { 
+          headers: {
             "Content-Type": "application/json"
           }
         }
@@ -291,15 +292,15 @@ export default function SubscriptionMembersScreen() {
         razorpay_signature: paymentResult.razorpay_signature
       };
 
-      const res = await ApiService.post("/payment_rozarpay/verify-additional-users-payment", verificationData,{
-        headers: { 
+      const res = await ApiService.post("/payment_rozarpay/verify-additional-users-payment", verificationData, {
+        headers: {
           "Content-Type": "application/json"
         }
       });
 
       if (res.data.success) {
         Alert.alert(
-          "Success", 
+          "Success",
           `Payment successful! You can now add ${additionalUserCount} more user${additionalUserCount > 1 ? 's' : ''} to your subscription.`,
           [
             {
@@ -420,96 +421,180 @@ export default function SubscriptionMembersScreen() {
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
-        <Text style={styles.loadingText}>Loading members...</Text>
+        <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
+        <LinearGradient
+          colors={['#0A4D3C', '#1B6B50']}
+          style={styles.loadingHeader}
+        >
+          <SafeAreaView>
+            <View style={styles.loadingHeaderContent}>
+              <Text style={styles.loadingHeaderTitle}>Subscription Members</Text>
+            </View>
+          </SafeAreaView>
+        </LinearGradient>
+        <View style={styles.loadingContent}>
+          <ActivityIndicator size="large" color="#0A4D3C" />
+          <Text style={styles.loadingText}>Loading members...</Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Appbar.Header>
-        <Appbar.BackAction onPress={() => router.back()} />
-        <Appbar.Content title="Subscription Members" />
-        <View style={styles.headerButtons}>
-          {subscriptionDetails && selectedPlanData && 
-           subscriptionDetails.purchasedCount < selectedPlanData.NOU && (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
+
+      {/* Premium Header with Gradient */}
+      <LinearGradient
+        colors={['#0A4D3C', '#1B6B50']}
+        style={styles.headerGradient}
+      >
+        <SafeAreaView>
+          <View style={styles.header}>
             <TouchableOpacity
-              style={styles.addMoreButton}
-              onPress={handleAddMoreUsers}
+              onPress={() => router.back()}
+              style={styles.backButton}
             >
-              <UserMinus size={24} color="#4CAF50" />
+              <ChevronRight size={24} color="#FFFFFF" style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
-          )}
-          {subscriptionDetails?.availableSlots > 0 && (
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={handleAddMember}
-            >
-              <UserPlus size={24} color="#4CAF50" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </Appbar.Header>
+
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>Team Members</Text>
+              <Text style={styles.headerSubtitle}>
+                Manage your subscription members
+              </Text>
+            </View>
+
+            {subscriptionDetails?.availableSlots > 0 && (
+              <TouchableOpacity
+                style={styles.headerAddButton}
+                onPress={handleAddMember}
+              >
+                <UserPlus size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
 
       {/* Subscription Info Card */}
       {subscriptionDetails && (
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <Users size={20} color="#4CAF50" />
-            <Text style={styles.infoText}>
-              Total Members: {subscriptionDetails.totalMembers} / {subscriptionDetails.purchasedCount}
-            </Text>
-          </View>
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  width: `${(subscriptionDetails.totalMembers / subscriptionDetails.purchasedCount) * 100}%`,
-                  backgroundColor: subscriptionDetails.availableSlots > 0 ? '#4CAF50' : '#FF9800'
-                }
-              ]}
-            />
-          </View>
-          <Text style={styles.slotsText}>
-            {subscriptionDetails.availableSlots > 0
-              ? `${subscriptionDetails.availableSlots} slots available`
-              : 'No slots available'}
-          </Text>
-          
-          {/* Show plan limits */}
-          {selectedPlanData && (
-            <View style={styles.planLimitInfo}>
-              <Text style={styles.planLimitText}>
-                Plan Limit: {subscriptionDetails.purchasedCount} / {selectedPlanData.NOU} users
-              </Text>
-              {subscriptionDetails.purchasedCount < selectedPlanData.NOU && (
-                <TouchableOpacity onPress={handleAddMoreUsers}>
-                  <Text style={styles.addMoreLink}>Add More Users</Text>
-                </TouchableOpacity>
-              )}
+        <Card style={styles.infoCard}>
+          <Card.Content>
+            <View style={styles.infoHeader}>
+              <View style={styles.infoTitleContainer}>
+                <Award size={20} color="#0A4D3C" />
+                <Text style={styles.infoTitle}>Subscription Status</Text>
+              </View>
+              <View style={[
+                styles.slotsBadge,
+                { backgroundColor: subscriptionDetails.availableSlots > 0 ? '#E8F5E9' : '#FEE2E2' }
+              ]}>
+                <Text style={[
+                  styles.slotsBadgeText,
+                  { color: subscriptionDetails.availableSlots > 0 ? '#0A4D3C' : '#DC2626' }
+                ]}>
+                  {subscriptionDetails.availableSlots > 0
+                    ? `${subscriptionDetails.availableSlots} slots left`
+                    : 'Full'}
+                </Text>
+              </View>
             </View>
-          )}
-        </View>
-      )}
 
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Users size={16} color="#64748B" />
+                <Text style={styles.statLabel}>Total</Text>
+                <Text style={styles.statValue}>{subscriptionDetails.totalMembers}</Text>
+              </View>
+
+              <View style={styles.statDivider} />
+
+              <View style={styles.statItem}>
+                <Shield size={16} color="#64748B" />
+                <Text style={styles.statLabel}>Purchased</Text>
+                <Text style={styles.statValue}>{subscriptionDetails.purchasedCount}</Text>
+              </View>
+
+              <View style={styles.statDivider} />
+
+              <View style={styles.statItem}>
+                <CheckCircle size={16} color="#64748B" />
+                <Text style={styles.statLabel}>Available</Text>
+                <Text style={styles.statValue}>{subscriptionDetails.availableSlots}</Text>
+              </View>
+            </View>
+
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBar}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${(subscriptionDetails.totalMembers / subscriptionDetails.purchasedCount) * 100}%`,
+                    }
+                  ]}
+                />
+              </View>
+            </View>
+
+            {/* New plan limit info section */}
+            {selectedPlanData && (
+              <View style={styles.planLimitInfo}>
+                <Text style={styles.planLimitText}>
+                  Plan Limit: {subscriptionDetails.purchasedCount} / {selectedPlanData.NOU} users
+                </Text>
+                {subscriptionDetails.purchasedCount < selectedPlanData.NOU && (
+                  <TouchableOpacity onPress={handleAddMoreUsers}>
+                    <Text style={styles.addMoreLink}>Add More Users</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </Card.Content>
+        </Card>
+      )}
       <FlatList
         data={members}
         keyExtractor={(item) => item.id.toString()}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#0A4D3C']}
+            tintColor="#0A4D3C"
+          />
+        }
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          members.length > 0 ? (
+            <View style={styles.listHeader}>
+              <Text style={styles.listHeaderTitle}>Team Members</Text>
+              <Text style={styles.listHeaderCount}>{members.length} member(s)</Text>
+            </View>
+          ) : null
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Users size={60} color="#ccc" />
-            <Text style={styles.emptyText}>No members found</Text>
+            <Users size={60} color="#E2E8F0" />
+            <Text style={styles.emptyTitle}>No Members Found</Text>
+            <Text style={styles.emptySubtext}>
+              {subscriptionDetails?.availableSlots > 0
+                ? 'Add your first team member to get started'
+                : 'No available slots to add members'}
+            </Text>
             {subscriptionDetails?.availableSlots > 0 && (
               <TouchableOpacity
-                style={styles.addMemberButton}
+                style={styles.emptyAddButton}
                 onPress={handleAddMember}
               >
-                <Text style={styles.addMemberButtonText}>Add Member</Text>
+                <LinearGradient
+                  colors={['#0A4D3C', '#1B6B50']}
+                  style={styles.emptyAddButtonGradient}
+                >
+                  <UserPlus size={18} color="#FFFFFF" />
+                  <Text style={styles.emptyAddButtonText}>Add Member</Text>
+                </LinearGradient>
               </TouchableOpacity>
             )}
           </View>
@@ -518,37 +603,45 @@ export default function SubscriptionMembersScreen() {
           <TouchableOpacity
             style={styles.memberCard}
             onPress={() => handleMemberPress(item)}
+            activeOpacity={0.7}
           >
-            <Avatar.Text
-              size={50}
-              label={getInitials(item.user.name)}
-              color="#fff"
-              style={{ backgroundColor: getRandomColor(item.user.id) }}
-            />
+            <LinearGradient
+              colors={[getRandomColor(item.user.id), getRandomColor(item.user.id + 1)]}
+              style={styles.avatarGradient}
+            >
+              <Text style={styles.avatarText}>
+                {getInitials(item.user.name)}
+              </Text>
+            </LinearGradient>
 
             <View style={styles.memberInfo}>
               <Text style={styles.memberName}>{item.user.name || item.user.mobile}</Text>
+
               {item.user.email && (
                 <View style={styles.detailRow}>
-                  <Mail size={14} color="#666" />
+                  <Mail size={12} color="#64748B" />
                   <Text style={styles.detailText}>{item.user.email}</Text>
                 </View>
               )}
+
               {item.user.mobile && (
                 <View style={styles.detailRow}>
-                  <Phone size={14} color="#666" />
+                  <Phone size={12} color="#64748B" />
                   <Text style={styles.detailText}>{item.user.mobile}</Text>
                 </View>
               )}
+
               <View style={styles.detailRow}>
-                <Calendar size={14} color="#666" />
+                <Clock size={12} color="#64748B" />
                 <Text style={styles.detailText}>
                   Member since {moment(item.createdAt).format('DD MMM YYYY')}
                 </Text>
               </View>
             </View>
 
-            <ChevronRight size={20} color="#666" />
+            <View style={styles.chevronContainer}>
+              <ChevronRight size={18} color="#0A4D3C" />
+            </View>
           </TouchableOpacity>
         )}
       />
@@ -565,58 +658,79 @@ export default function SubscriptionMembersScreen() {
           style={styles.modalContainer}
         >
           <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
+            <LinearGradient
+              colors={['#0A4D3C', '#1B6B50']}
+              style={styles.modalHeader}
+            >
               <Text style={styles.modalTitle}>Add New Member</Text>
-              <TouchableOpacity onPress={() => setAddModalVisible(false)}>
-                <X size={24} color="#666" />
+              <TouchableOpacity
+                onPress={() => setAddModalVisible(false)}
+                style={styles.modalCloseButton}
+              >
+                <X size={20} color="#FFFFFF" />
               </TouchableOpacity>
-            </View>
+            </LinearGradient>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalScrollContent}
+            >
               <View style={styles.formContainer}>
-                <Text style={styles.label}>Name *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter full name"
-                  value={name}
-                  onChangeText={setName}
-                  editable={!addingMember}
-                />
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Full Name <Text style={styles.required}>*</Text></Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter member's full name"
+                    placeholderTextColor="#94A3B8"
+                    value={name}
+                    onChangeText={setName}
+                    editable={!addingMember}
+                  />
+                </View>
 
-                <Text style={styles.label}>Mobile Number *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter 10-digit mobile number"
-                  value={mobile}
-                  onChangeText={setMobile}
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                  editable={!addingMember}
-                />
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Mobile Number <Text style={styles.required}>*</Text></Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter 10-digit mobile number"
+                    placeholderTextColor="#94A3B8"
+                    value={mobile}
+                    onChangeText={setMobile}
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                    editable={!addingMember}
+                  />
+                </View>
 
-                <Text style={styles.label}>Email (Optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter email address"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  editable={!addingMember}
-                />
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Email Address <Text style={styles.optional}>(Optional)</Text></Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter email address"
+                    placeholderTextColor="#94A3B8"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    editable={!addingMember}
+                  />
+                </View>
 
-                <Text style={styles.label}>Password *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter password (min. 6 characters)"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  editable={!addingMember}
-                />
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Password <Text style={styles.required}>*</Text></Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter password (min. 6 characters)"
+                    placeholderTextColor="#94A3B8"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    editable={!addingMember}
+                  />
+                </View>
 
                 <View style={styles.slotsInfo}>
-                  <Users size={16} color="#4CAF50" />
+                  <Users size={16} color="#0A4D3C" />
                   <Text style={styles.slotsInfoText}>
                     Available slots: {subscriptionDetails?.availableSlots || 0}
                   </Text>
@@ -627,11 +741,19 @@ export default function SubscriptionMembersScreen() {
                   onPress={handleSubmit}
                   disabled={addingMember}
                 >
-                  {addingMember ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.submitButtonText}>Add Member</Text>
-                  )}
+                  <LinearGradient
+                    colors={['#0A4D3C', '#1B6B50']}
+                    style={styles.submitButtonGradient}
+                  >
+                    {addingMember ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <>
+                        <UserPlus size={18} color="#FFFFFF" />
+                        <Text style={styles.submitButtonText}>Add Member</Text>
+                      </>
+                    )}
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -639,90 +761,6 @@ export default function SubscriptionMembersScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Add More Users Modal */}
-      <Modal
-        visible={showAddMoreUsersModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowAddMoreUsersModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add More Users</Text>
-              <TouchableOpacity onPress={() => setShowAddMoreUsersModal(false)}>
-                <X size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            {selectedPlanData && subscriptionDetails && (
-              <>
-                <View style={styles.infoContainer}>
-                  <Text style={styles.infoText}>
-                    Current Users: {subscriptionDetails.purchasedCount} / {selectedPlanData.NOU}
-                  </Text>
-                  <Text style={styles.infoText}>
-                    Available to Add: {selectedPlanData.NOU - subscriptionDetails.purchasedCount}
-                  </Text>
-                </View>
-
-                <View style={styles.userCountContainer}>
-                  <TouchableOpacity
-                    style={styles.userCountButton}
-                    onPress={decrementAdditionalUserCount}
-                    disabled={additionalUserCount <= 1}
-                  >
-                    <Minus size={20} color={additionalUserCount <= 1 ? "#ccc" : "#4CAF50"} />
-                  </TouchableOpacity>
-
-                  <View style={styles.userCountDisplay}>
-                    <Text style={styles.userCountText}>{additionalUserCount}</Text>
-                    <Text style={styles.userCountLabel}>Additional Users</Text>
-                  </View>
-
-                  <TouchableOpacity
-                    style={styles.userCountButton}
-                    onPress={incrementAdditionalUserCount}
-                    disabled={additionalUserCount >= (selectedPlanData.NOU - subscriptionDetails.purchasedCount)}
-                  >
-                    <Plus size={20} color={additionalUserCount >= (selectedPlanData.NOU - subscriptionDetails.purchasedCount) ? "#ccc" : "#4CAF50"} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.priceBreakdown}>
-                  <Text style={styles.breakdownTitle}>Price Breakdown</Text>
-                  <View style={styles.breakdownRow}>
-                    <Text style={styles.breakdownLabel}>Price per user:</Text>
-                    <Text style={styles.breakdownValue}>₹{selectedPlanData.price}</Text>
-                  </View>
-                  <View style={styles.breakdownRow}>
-                    <Text style={styles.breakdownLabel}>Additional users:</Text>
-                    <Text style={styles.breakdownValue}>{additionalUserCount}</Text>
-                  </View>
-                  <View style={styles.breakdownRow}>
-                    <Text style={styles.breakdownLabel}>Total Amount:</Text>
-                    <Text style={styles.breakdownTotal}>₹{calculateAdditionalPrice()}</Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.proceedButton}
-                  onPress={handleProceedToAdditionalPayment}
-                  disabled={processingPayment}
-                >
-                  {processingPayment ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.proceedButtonText}>Proceed to Payment</Text>
-                  )}
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* User Count Modal (for initial subscription) */}
       <Modal
         visible={showUserModal}
         transparent={true}
@@ -791,177 +829,393 @@ export default function SubscriptionMembersScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F8FAFC',
   },
   loadingContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  loadingHeader: {
+    paddingTop: 20,
+    paddingBottom: 20,
+  },
+  loadingHeaderContent: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  loadingHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  loadingContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  addButton: {
-    marginRight: 16,
-    padding: 4,
-  },
-  addMoreButton: {
-    marginRight: 8,
-    padding: 4,
-  },
-  infoCard: {
-    backgroundColor: '#fff',
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  infoText: {
-    marginLeft: 8,
+    marginTop: 12,
     fontSize: 14,
-    color: '#333',
+    color: '#64748B',
     fontWeight: '500',
   },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 8,
+  headerGradient: {
+    paddingTop: 20,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
-  progressFill: {
-    height: '100%',
-    borderRadius: 4,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
-  slotsText: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'right',
-    marginBottom: 8,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
-  planLimitInfo: {
+  headerTitleContainer: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  headerAddButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  infoCard: {
+    margin: 16,
+    borderRadius: 16,
+    elevation: 3,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  infoHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    marginBottom: 16,
   },
-  planLimitText: {
-    fontSize: 13,
-    color: '#666',
+  infoTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  addMoreLink: {
-    fontSize: 13,
-    color: '#4CAF50',
+  infoTitle: {
+    fontSize: 15,
     fontWeight: '600',
+    color: '#0A4D3C',
+  },
+  slotsBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  slotsBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+  statItem: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#E2E8F0',
+  },
+  progressContainer: {
+    marginTop: 8,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#0A4D3C',
+    borderRadius: 4,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  listHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    marginTop: 8,
+  },
+  listHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  listHeaderCount: {
+    fontSize: 13,
+    color: '#64748B',
   },
   emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 30,
   },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 10,
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0A4D3C',
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
     marginBottom: 20,
   },
-  addMemberButton: {
-    backgroundColor: '#4CAF50',
+  emptyAddButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  emptyAddButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 8,
+    gap: 8,
   },
-  addMemberButtonText: {
-    color: '#fff',
-    fontSize: 16,
+  emptyAddButtonText: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
   memberCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginBottom: 8,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 10,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowRadius: 4,
     elevation: 2,
+  },
+  avatarGradient: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   memberInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 14,
   },
   memberName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#1E293B',
     marginBottom: 4,
+    textTransform: 'capitalize',
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     marginTop: 2,
   },
   detailText: {
     fontSize: 12,
-    color: '#666',
-    marginLeft: 4,
+    color: '#64748B',
   },
-  // Modal Styles
+  chevronContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   modalContainer: {
     flex: 1,
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
   modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    padding: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalScrollContent: {
+    padding: 20,
+  },
+  formContainer: {
+    gap: 16,
+  },
+  inputGroup: {
+    gap: 6,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  required: {
+    color: '#DC2626',
+  },
+  optional: {
+    color: '#64748B',
+    fontWeight: '400',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 14,
+    color: '#1E293B',
+    backgroundColor: '#F8FAFC',
+  },
+  slotsInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    padding: 14,
+    borderRadius: 12,
+    gap: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#0A4D3C',
+  },
+  slotsInfoText: {
+    fontSize: 14,
+    color: '#0A4D3C',
+    fontWeight: '600',
+  },
+  submitButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  submitButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  planLimitInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  planLimitText: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  addMoreLink: {
+    fontSize: 14,
+    color: '#0A4D3C',
+    fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalTitle: {
     fontSize: 20,
@@ -1000,13 +1254,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2E7D32',
     fontWeight: '500',
-  },
-  submitButton: {
-    backgroundColor: '#4CAF50',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 20,
   },
   disabledButton: {
     backgroundColor: '#ccc',
@@ -1097,5 +1344,5 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     marginBottom: 16,
-  },
+  }
 });

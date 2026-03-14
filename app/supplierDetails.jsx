@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking, Alert, Platform, ActivityIndicator } from 'react-native';
-import { PhoneCall, MessageSquare, ArrowDown, Send, MessageCircle, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar, DeleteIcon } from 'lucide-react-native';
+import {View,Text,StyleSheet,FlatList,SafeAreaView,TouchableOpacity,Image,Linking,Alert,Platform,ActivityIndicator,StatusBar,ScrollView} from 'react-native';
+import {PhoneCall,MessageSquare,ArrowDown,Send,MessageCircle,ArrowUp,ArrowLeft,CheckCircle,File,ChevronRight,Calendar,DeleteIcon,Clock,Percent,HelpCircle,AlertTriangle} from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Divider } from 'react-native-paper';
 import moment from 'moment';
@@ -17,6 +17,30 @@ const TransactionItem = React.memo(
   ({ item, personName, router, supplier }) => {
     const isReceived = item.transaction_type === 'you_got';
     const balanceText = item.balanceText
+    const isApproved = item.is_Approved;
+   
+    if (item.is_Deleted) {
+      return (
+        <View
+          style={[
+            styles.transactionWrapper,
+            isReceived ? styles.leftContainer : styles.rightContainer,
+          ]}
+        >
+          <View style={[styles.transactionBox, styles.deletedTransaction]}>
+            <View style={styles.amountRow}>
+              <CheckCircle size={20} color="#94A3B8" />
+              <Text style={[styles.amountText, styles.deletedText]}>
+                ₹ {item.amount}
+              </Text>
+            </View>
+            <Text style={[styles.timeText, styles.deletedText]}>
+              Deleted on: {moment(item.delete_date).format('DD/MM/YYYY')}
+            </Text>
+          </View>
+        </View>
+      );
+    }
 
     const handlePress = () => {
       router.push({
@@ -56,7 +80,7 @@ const TransactionItem = React.memo(
       }
     };
 
-    const renderTransactionImage = () => {
+    const renderImage = () => {
       const images = parseTransactionImages(item?.transaction_pic);
 
       const url =
@@ -68,34 +92,18 @@ const TransactionItem = React.memo(
         <Image
           source={{ uri: url }}
           style={styles.transactionImage}
-          resizeMode="stretch"
+          resizeMode="cover"
         />
       );
     };
 
-    if (item.is_Deleted) {
-      return (
-        <View
-          style={[
-            styles.transactionWrapper,
-            isReceived ? styles.leftContainer : styles.rightContainer,
-            styles.deletedTransaction,
-          ]}
-        >
-          <View style={[styles.transactionBox, styles.deletedBox]}>
-            <View style={styles.amountRow}>
-              <CheckIcon size={20} color="gray" />
-              <Text style={[styles.amountText, styles.deletedText]}>
-                ₹ {item.amount}
-              </Text>
-            </View>
-            <Text style={[styles.timeText, styles.deletedText]}>
-              Deleted on: {moment(item.delete_date).format('DD/MM/YYYY')}
-            </Text>
-          </View>
-        </View>
-      );
-    }
+    const getStatusIcon = () => {
+      if (isApproved) {
+        return <CheckCircle size={14} color="#0A4D3C" />;
+      } else {
+        return <Clock size={14} color="#F59E0B" />;
+      }
+    };
 
     return (
       <TouchableOpacity
@@ -106,58 +114,67 @@ const TransactionItem = React.memo(
         onPress={handlePress}
         activeOpacity={0.7}
       >
-        <View>
-          <View style={styles.transactionBox}>
-            <View style={styles.amountRow}>
+        <View style={styles.transactionBox}>
+          <View style={styles.messageHeader}>
+            <View style={styles.amountContainer}>
               {isReceived ? (
-                <ArrowDown size={20} color="green" />
+                <ArrowDown size={16} color="#0A4D3C" />
               ) : (
-                <ArrowUp size={20} color="red" />
+                <ArrowUp size={16} color="#DC2626" />
               )}
-              <Text style={styles.amountText}>₹ {item.amount}</Text>
-              <Text style={styles.timeText}>
-                {moment(item.transaction_date).format('DD/MM/YYYY')}
+              <Text style={[
+                styles.amountText,
+                isReceived ? styles.receivedAmount : styles.sentAmount
+              ]}>
+                ₹ {parseFloat(item.amount).toFixed(2)}
               </Text>
-              <CheckIcon size={20} color="green" style={styles.checkIcon} />
             </View>
-
-            {item.bill_id && (
-              <>
-                <Divider style={styles.divider} />
-                <TouchableOpacity
-                  style={styles.billRow}
-                  onPress={handleBillPress}
-                  activeOpacity={0.7}
-                >
-                  <File size={24} color="green" />
-                  <Text style={styles.billText}>{item.bill_id}</Text>
-                  <Text style={[styles.amountText, styles.billAmount]}>
-                    ₹ {item.amount}
-                  </Text>
-                  <ChevronRight size={24} color="green" />
-                </TouchableOpacity>
-              </>
-            )}
-
-            {item?.transaction_pic?.length > 0 && (
-              <>
-                <Divider style={styles.divider} />
-                <TouchableOpacity
-                  style={styles.imageRow}
-                  onPress={handlePress}
-                  activeOpacity={0.7}
-                >
-                  {renderTransactionImage()}
-                  <Text style={[styles.amountText, styles.imageAmount]}>
-                    ₹ {item.amount}
-                  </Text>
-                  <ChevronRight size={24} color="green" />
-                </TouchableOpacity>
-              </>
+            {item.transaction_type === 'you_gave' && (
+              <View style={styles.statusContainer}>
+                {getStatusIcon()}
+                <Text style={styles.statusText}>
+                  {isApproved ? 'Approved' : 'Pending'}
+                </Text>
+              </View>
             )}
           </View>
-          <Text style={styles.balanceNote}>{balanceText}</Text>
+
+          {item?.bill_id && (
+            <>
+              <Divider style={styles.divider} />
+              <TouchableOpacity
+                style={styles.billRow}
+                onPress={handleBillPress}
+                activeOpacity={0.7}
+              >
+                <File size={20} color="#0A4D3C" />
+                <Text style={styles.billText} numberOfLines={1}>{item.bill_id}</Text>
+                <Text style={[styles.amountText, styles.billAmount]}>
+                  ₹ {item.amount}
+                </Text>
+                <ChevronRight size={18} color="#0A4D3C" />
+              </TouchableOpacity>
+            </>
+          )}
+
+          {item?.transaction_pic?.length > 0 && (
+            <>
+              <Divider style={styles.divider} />
+              <TouchableOpacity
+                style={styles.imageRow}
+                onPress={handlePress}
+                activeOpacity={0.7}
+              >
+                {renderImage()}
+                <Text style={[styles.amountText, styles.imageAmount]}>
+                  ₹ {item.amount}
+                </Text>
+                <ChevronRight size={18} color="#0A4D3C" />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
+        <Text style={styles.balanceNote}>{balanceText}</Text>
       </TouchableOpacity>
     );
   }
@@ -511,32 +528,6 @@ Your current balance is ₹${balance} ${balanceType}`;
     }
   };
 
-  // const calculateBalance = useCallback(
-  //   (item, isReceived) => {
-  //     let balance = runningBalance;
-
-  //     if (item.is_Deleted) {
-  //       // Don't update balance for deleted transactions
-  //       return balance < 0
-  //         ? `${Math.abs(balance)} Due`
-  //         : `${balance} Advance`;
-  //     }
-
-  //     if (isReceived) {
-  //       balance += Number(item.amount);
-  //     } else {
-  //       balance -= Number(item.amount);
-  //     }
-
-  //     setRunningBalance(balance);
-
-  //     return balance < 0
-  //       ? `${Math.abs(balance)} Due`
-  //       : `${balance} Advance`;
-  //   },
-  //   [runningBalance]
-  // );
-
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
       <Image
@@ -586,143 +577,217 @@ Your current balance is ₹${balance} ${balanceType}`;
 
   return (
     <SafeAreaView style={styles.container}>
-      <Appbar.Header style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('./dashboard')}>
-          <ArrowLeft size={24} color="#2E7D32" />
-        </TouchableOpacity>
-        <Appbar.Content title={personName} titleStyle={styles.headerTitle} />
-        <TouchableOpacity
-          onPress={() =>
-            router.push({
-              pathname: '/customerProfile',
-              params: { ID: personId, profileType: 'supplier' },
-            })
-          }
-        >
-          <Text style={styles.profileLink}>Supplier Profile</Text>
-        </TouchableOpacity>
-      </Appbar.Header>
+      <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
+
+      {/* Premium Header */}
+      <View style={styles.headerSolid}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.push('./dashboard')}
+            activeOpacity={0.7}
+          >
+            <ArrowLeft size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>{personName}</Text>
+            <Text style={styles.headerSubtitle}>Supplier Details</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={() =>
+              router.push({
+                pathname: '/customerProfile',
+                params: { ID: personId, profileType: 'supplier' },
+              })
+            }
+          >
+            <Text style={styles.profileButtonText}>Profile</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <FlatList
         data={transactionsWithBalance}
-        keyExtractor={(item, index) => item.id?.toString() || index.toString()}
+        style={styles.list}
         renderItem={({ item }) => (
           <TransactionItem
             item={item}
             personName={personName}
             router={router}
             supplier={supplier}
-          // calculateBalance={calculateBalance}
           />
         )}
+        keyExtractor={(item) => item.id?.toString()}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={renderEmptyList}
       />
 
-      {/* Bottom Section */}
+      {/* Premium Bottom Section */}
       <View style={styles.bottomContainer}>
-        <View style={styles.actionsRow}>
-          {supplier?.current_balance < 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.actionsScrollContent}
+        >
+          <View style={styles.actionsRow}>
+            {supplier?.current_balance < 0 && (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <View style={styles.actionIconContainer}>
+                  <Calendar size={18} color="#0A4D3C" />
+                </View>
+                <Text style={styles.actionText}>
+                  {dueDate ? moment(dueDate).format('DD/MM/YY') : 'Due Date'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
+              <View style={styles.actionIconContainer}>
+                <PhoneCall size={18} color="#0A4D3C" />
+              </View>
+              <Text style={styles.actionText}>Call</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => setShowDatePicker(true)}
+              onPress={() =>
+                router.push({
+                  pathname: '/customerLedger',
+                  params: {
+                    personId: personId,
+                    personName: personName,
+                    roleType: 'SUPPLIER',
+                  },
+                })
+              }
             >
-              <Calendar size={20} color="#555" />
+              <View style={styles.actionIconContainer}>
+                <MessageSquare size={18} color="#0A4D3C" />
+              </View>
+              <Text style={styles.actionText}>Ledgers</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButton} onPress={sendSMS}>
+              <View style={styles.actionIconContainer}>
+                <MessageCircle size={18} color="#0A4D3C" />
+              </View>
+              <Text style={styles.actionText}>SMS</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={openWhatsAppWithImage}
+              disabled={isCapturing}
+            >
+              <View style={styles.actionIconContainer}>
+                {isCapturing ? (
+                  <ActivityIndicator size="small" color="#0A4D3C" />
+                ) : (
+                  <Send size={18} color="#0A4D3C" />
+                )}
+              </View>
               <Text style={styles.actionText}>
-                {dueDate ? dueDate.toLocaleDateString() : 'Due Date'}
+                {isCapturing ? 'Preparing...' : 'WhatsApp'}
               </Text>
             </TouchableOpacity>
-          )}
 
-          <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
-            <PhoneCall size={20} color="#555" />
-            <Text style={styles.actionText}>Call</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push('./help')}
+            >
+              <View style={styles.actionIconContainer}>
+                <HelpCircle size={18} color="#0A4D3C" />
+              </View>
+              <Text style={styles.actionText}>Help</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() =>
-              router.push({
-                pathname: '/customerLedger',
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push({
+                pathname: '/deleteCustomer',
                 params: {
-                  personId: personId,
-                  personName: personName,
-                  roleType: 'SUPPLIER',
+                  transaction_for: 'supplier',
+                  id: personId,
                 },
-              })
-            }
-          >
-            <MessageSquare size={20} color="#555" />
-            <Text style={styles.actionText}>Ledgers</Text>
-          </TouchableOpacity>
+              })}
+            >
+              <View style={styles.actionIconContainer}>
+                <DeleteIcon size={18} color="#0A4D3C" />
+              </View>
+              <Text style={styles.actionText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
 
-          <TouchableOpacity style={styles.actionButton} onPress={sendSMS}>
-            <MessageCircle size={20} color="#555" />
-            <Text style={styles.actionText}>SMS</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push({
-              pathname: '/deleteCustomer',
-              params: {
-                transaction_for: 'supplier', 
-                id: personId,
-              },
-            })
-            }
-          >
-            <DeleteIcon color="#555" size={24} />
-            <Text style={styles.actionText}>Delete</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={openWhatsAppWithImage} // Most reliable option
-            disabled={isCapturing}
-          >
-            {isCapturing ? (
-              <ActivityIndicator size="small" color="#25D366" />
-            ) : (
-              <Send size={24} color="#25D366" />
-            )}
-            <Text style={styles.actionText}>
-              {isCapturing ? 'Preparing...' : 'WhatsApp'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {renderPlanInfo()}
+        {isSubscribe_user === false && (
+          <>
+            <View style={styles.planDivider} />
+            <View style={styles.planInfo}>
+              <View style={styles.planBadge}>
+                <Text style={styles.planName}>Basic Plan</Text>
+              </View>
+              <View style={styles.planLimits}>
+                <Text style={styles.planLimit}>
+                  Receive: <Text style={styles.planLimitValue}>{payment_got_count_user}/4</Text>
+                </Text>
+                <Text style={styles.planLimit}>
+                  Give: <Text style={styles.planLimitValue}>{credit_given_count_user}/2</Text>
+                </Text>
+              </View>
+            </View>
+            <View style={styles.planDivider} />
+          </>
+        )}
 
         <View style={styles.balanceRow}>
-          <Text style={styles.balanceLabel}>Balance Due</Text>
-          <Text
-            style={[
-              styles.balanceAmount,
-              supplier?.current_balance > 0
-                ? styles.positiveBalance
-                : styles.negativeBalance,
-            ]}
-          >
-            ₹ {Math.abs(supplier?.current_balance || 0)}{' '}
-            {Number(supplier?.current_balance) > 0 ? 'Advance' : 'Due'}
-          </Text>
+          <Text style={styles.balanceLabel}>Current Balance</Text>
+          <View style={styles.balanceCard}>
+            <Text
+              style={[
+                styles.balanceAmount,
+                supplier?.current_balance > 0
+                  ? styles.positiveBalance
+                  : styles.negativeBalance,
+              ]}
+            >
+              ₹ {Math.abs(supplier?.current_balance || 0)}
+            </Text>
+            <View style={[
+              styles.balanceTypeBadge,
+              { backgroundColor: supplier?.current_balance > 0 ? 'rgba(10,77,60,0.1)' : 'rgba(220,38,38,0.1)' }
+            ]}>
+              <Text style={[
+                styles.balanceTypeText,
+                { color: supplier?.current_balance > 0 ? '#0A4D3C' : '#DC2626' }
+              ]}>
+                {Number(supplier?.current_balance) > 0 ? 'Advance' : 'Due'}
+              </Text>
+            </View>
+          </View>
         </View>
 
         <View style={styles.bottomButtonsRow}>
           <TouchableOpacity
-            style={styles.receivedButton}
+            style={[styles.actionButton, styles.receivedButton]}
             onPress={() => navigateToTransaction('you_got')}
           >
-            <Text style={styles.receivedText}>↓ Received</Text>
+            <ArrowDown size={18} color="#0A4D3C" />
+            <Text style={styles.receivedText}>Received</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.givenButton}
+            style={[styles.actionButton, styles.givenButton]}
             onPress={() => navigateToTransaction('you_gave')}
           >
-            <Text style={styles.givenText}>↑ Given</Text>
+            <ArrowUp size={18} color="#DC2626" />
+            <Text style={styles.givenText}>Given</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -761,7 +826,7 @@ Your current balance is ₹${balance} ${balanceType}`;
           {dueDate && supplier?.current_balance < 0 && (
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Due Date:</Text>
-              <Text style={styles.infoValue}>{dueDate.toLocaleDateString()}</Text>
+              <Text style={styles.infoValue}>{moment(dueDate).format('DD/MM/YYYY')}</Text>
             </View>
           )}
         </View>
@@ -773,7 +838,7 @@ Your current balance is ₹${balance} ${balanceType}`;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#F8F9FA',
   },
   loadingContainer: {
     flex: 1,
@@ -782,36 +847,76 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    color: '#666',
-    fontSize: 16,
+    color: '#64748B',
+    fontSize: 14,
+  },
+  headerSolid: {
+    backgroundColor: '#0A4D3C',
+    paddingTop: Platform.OS === 'android' ? 20 : 0,
+    paddingBottom: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#0A4D3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   header: {
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 2,
-    borderColor: '#f2f7f6',
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    elevation: 0,
-    paddingHorizontal: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  headerTitleContainer: {
+    alignItems: 'center',
+    flex: 1,
   },
   headerTitle: {
-    color: '#333333',
     fontSize: 18,
-    fontWeight: 'bold',
-    marginStart: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
-  profileLink: {
-    color: '#388E3C',
-    fontSize: 13,
-    fontWeight: '500',
-    marginRight: 10,
+  headerSubtitle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  profileButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  profileButtonText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  list: {
+    flex: 1,
   },
   listContent: {
-    paddingBottom: 180,
+    paddingBottom: 220,
     paddingTop: 20,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
   },
   transactionWrapper: {
-    marginVertical: 8,
+    marginVertical: 6,
   },
   leftContainer: {
     alignItems: 'flex-start',
@@ -820,64 +925,86 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   transactionBox: {
-    width: '90%',
+    width: '70%',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 12,
-    padding: 10,
-    backgroundColor: '#fff',
-    elevation: 1,
+    borderColor: 'rgba(10,77,60,0.1)',
+    borderRadius: 16,
+    padding: 12,
+    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
     shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   deletedTransaction: {
     opacity: 0.6,
+    backgroundColor: '#F8FAFC',
+    borderColor: 'rgba(0,0,0,0.1)',
   },
-  deletedBox: {
-    backgroundColor: '#f5f5f5',
+  deletedText: {
+    color: '#94A3B8',
   },
   amountRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
-  },
-  checkIcon: {
-    marginHorizontal: 5,
-  },
-  amountText: {
-    fontSize: 18,
-    color: '#333',
-    marginLeft: 8,
-  },
-  deletedText: {
-    color: 'gray',
+    gap: 6,
   },
   timeText: {
-    fontSize: 16,
-    color: 'gray',
-    marginLeft: 8,
+    fontSize: 12,
+    color: '#94A3B8',
   },
-  balanceNote: {
-    fontSize: 13,
-    color: 'gray',
-    marginTop: 4,
+  messageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  amountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  amountText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  receivedAmount: {
+    color: '#0A4D3C',
+  },
+  sentAmount: {
+    color: '#DC2626',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(10,77,60,0.05)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  statusText: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '500',
   },
   divider: {
-    marginVertical: 5,
+    marginVertical: 8,
+    backgroundColor: 'rgba(10,77,60,0.1)',
+    height: 1,
   },
   billRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginVertical: 5,
+    gap: 8,
   },
   billText: {
     flex: 1,
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 8,
+    fontSize: 14,
+    color: '#1E293B',
   },
   billAmount: {
     fontWeight: '600',
@@ -886,15 +1013,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginVertical: 5,
+    gap: 8,
   },
   transactionImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 3,
+    width: 60,
+    height: 60,
+    borderRadius: 8,
   },
   imageAmount: {
     fontWeight: '600',
+  },
+  balanceNote: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+    marginLeft: 4,
   },
   emptyContainer: {
     flex: 1,
@@ -908,8 +1041,8 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#666',
+    fontWeight: '500',
+    color: '#64748B',
     textAlign: 'center',
     marginTop: 20,
   },
@@ -918,115 +1051,150 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#f2f7f6',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderWidth: 2,
-    borderColor: '#E8F5E9',
-    elevation: 5,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(10,77,60,0.1)',
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: -2 },
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  actionsScrollContent: {
+    paddingBottom: 8,
   },
   actionsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 14,
+    gap: 16,
   },
   actionButton: {
     alignItems: 'center',
-    flex: 1,
+    gap: 4,
+  },
+  actionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(10,77,60,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionText: {
-    marginTop: 6,
     fontSize: 10,
-    color: '#444',
+    color: '#475569',
+    fontWeight: '500',
   },
   planDivider: {
-    height: 0.5,
-    width: '100%',
-    marginVertical: 3,
-    backgroundColor: '#388E3C90',
+    height: 1,
+    backgroundColor: 'rgba(10,77,60,0.1)',
+    marginVertical: 10,
   },
   planInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
+  },
+  planBadge: {
+    backgroundColor: 'rgba(10,77,60,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 16,
   },
   planName: {
-    color: '#388E3C90',
+    color: '#0A4D3C',
     fontWeight: '600',
     fontSize: 12,
-    textTransform: 'capitalize',
-    margin: 5,
+  },
+  planLimits: {
+    flexDirection: 'row',
+    gap: 16,
   },
   planLimit: {
-    fontSize: 12,
-    borderRadius: 5,
-    fontWeight: 'bold',
-    color: '#888',
+    fontSize: 11,
+    color: '#64748B',
+  },
+  planLimitValue: {
+    fontWeight: '700',
+    color: '#0A4D3C',
   },
   balanceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 16,
   },
   balanceLabel: {
-    fontSize: 14,
-    color: '#777',
-    marginRight: 6,
-    marginTop: 8,
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 6,
+  },
+  balanceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(10,77,60,0.1)',
   },
   balanceAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 8,
+    fontSize: 20,
+    fontWeight: '700',
   },
   positiveBalance: {
-    color: '#388E3C',
+    color: '#0A4D3C',
   },
   negativeBalance: {
-    color: '#d32f2f',
+    color: '#DC2626',
+  },
+  balanceTypeBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
+  balanceTypeText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   bottomButtonsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 12,
   },
   receivedButton: {
-    backgroundColor: '#E8F5E9',
-    borderColor: '#388E3C',
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(10,77,60,0.1)',
+    paddingVertical: 12,
+    borderRadius: 30,
+    gap: 6,
     borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 26,
-    borderRadius: 50,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 3,
+    borderColor: 'rgba(10,77,60,0.2)',
   },
   givenButton: {
-    backgroundColor: '#FFEBEE',
-    borderColor: '#D32F2F',
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(220,38,38,0.1)',
+    paddingVertical: 12,
+    borderRadius: 30,
+    gap: 6,
     borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 26,
-    borderRadius: 50,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 3,
+    borderColor: 'rgba(220,38,38,0.2)',
   },
   receivedText: {
-    color: '#388E3C',
+    color: '#0A4D3C',
     fontWeight: '600',
     fontSize: 14,
   },
   givenText: {
-    color: '#D32F2F',
+    color: '#DC2626',
     fontWeight: '600',
     fontSize: 14,
   },
@@ -1038,11 +1206,26 @@ const styles = StyleSheet.create({
   },
   screenshotContent: {
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
   },
   screenshotText: {
     fontSize: 16,
-    color: '#333',
+    color: '#1E293B',
     marginBottom: 10,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 8,
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0A4D3C',
   },
 });

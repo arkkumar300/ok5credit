@@ -1,8 +1,8 @@
 // App.js
 import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, SafeAreaView } from 'react-native';
-import { Appbar, RadioButton, Divider } from 'react-native-paper';
-import { ArrowLeft, Download } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, SafeAreaView, StatusBar, Dimensions } from 'react-native';
+import { Appbar, RadioButton, Divider, ActivityIndicator } from 'react-native-paper';
+import { ArrowLeft, Download, CheckCircle, FileText, Image as ImageIcon, User, MapPin, Phone, Calendar, Tag, IndianRuque, Percent, Home } from 'lucide-react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
 import billPDF from './components/billPDF';
 import moment from 'moment';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function BillDetails() {
   const [format, setFormat] = useState('pdf');
@@ -24,15 +25,13 @@ export default function BillDetails() {
   const [chargesAmount, setChargesAmount] = useState(0);
   const [itemsAmount, setItemsAmount] = useState(0);
   const [extraCharges, setExtraCharges] = useState([]);
-
+  const [generating, setGenerating] = useState(false);
   const quoteRef = useRef();
   const router = useRouter();
   const { billId, supplierInfo, bill, transaction_for } = useLocalSearchParams();
-
   // ---------- Parse supplier data ----------
   useEffect(() => {
     if (supplierInfo) {
-      console.log("supplierInfo::", supplierInfo)
       try {
         const parsedData = JSON.parse(decodeURIComponent(supplierInfo));
         setSupplierData(parsedData);
@@ -45,11 +44,14 @@ export default function BillDetails() {
   // ---------- SHARE OR DOWNLOAD PDF / IMAGE ----------
   const handleDownload = async () => {
     try {
+      setGenerating(true);
+
       if (format === 'pdf') {
         const pdf = await billPDF(userDetails, supplierData, bill, items, extraCharges, totalPrice);
 
         if (!pdf || !pdf.uri) {
           Alert.alert("Error", "Could not generate PDF");
+          setGenerating(false);
           return;
         }
 
@@ -58,16 +60,19 @@ export default function BillDetails() {
           mimeType: "application/pdf",
           dialogTitle: "Share PDF"
         });
+        setGenerating(false);
         return;
       }
 
       // ---------- SHARE IMAGE ----------
       const imageUri = await captureRef(quoteRef, { format: 'png', quality: 1 });
       await Sharing.shareAsync(imageUri);
+      setGenerating(false);
 
     } catch (error) {
       console.log("Share error", error);
       Alert.alert('Error', error.message || 'Something went wrong');
+      setGenerating(false);
     }
   };
 
@@ -82,7 +87,6 @@ export default function BillDetails() {
       if (!response) { 
         throw new Error("Failed to fetch user data");
       }
-      console.log("ownerData::", response.data)
       setUserDetails(response.data);
 
     } catch (error) {
@@ -138,167 +142,547 @@ export default function BillDetails() {
     fetchBills();
   }, []);
 
+  const handleDonePress = async () => {
+    const personInfo = await JSON.parse(supplierInfo);
+      router.navigate({
+        pathname: '/customerDetails',
+        params: {
+          personName: personInfo.name,
+          personType: "customer",
+          personId: personInfo.id,
+        },
+      });
+    
+  };
+
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <Appbar.Header style={{ backgroundColor: "#fff", borderBottomWidth: 2, borderColor: '#f2f7f6' }}>
-        <ArrowLeft
-          size={24}
-          color={'#2E7D32'}
-          style={{ marginStart: 10 }}
-          onPress={() => {
-            router.push({
-              pathname: './bills',
-            })
-          }
-          }
-        />
-        <Appbar.Content title={billDetails?.bill_id || "Bill"} titleStyle={{ marginLeft: 20 }} />
-      </Appbar.Header>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
 
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* QUOTE VIEW */}
-        <View style={styles.quotationBox} ref={quoteRef}>
-          <Text style={styles.heading}>{userDetails?.name}</Text>
-          {userDetails?.address && <Text style={styles.address}>{userDetails.address}</Text>}
-          <Text style={styles.mobile}>Mobile: {userDetails?.mobile}</Text>
+      {/* Premium Header with Gradient */}
+      <LinearGradient
+        colors={['#0A4D3C', '#1B6B50']}
+        style={styles.headerGradient}
+      >
+        <SafeAreaView>
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => {
+                router.push({
+                  pathname: './bills',
+                });
+              }}
+              style={styles.backButton}
+            >
+              <ArrowLeft size={24} color="#FFFFFF" />
+            </TouchableOpacity>
 
-          <Divider style={{ marginVertical: 5 }} />
-
-          {supplierData && (
-            <>
-              <Text style={styles.heading}>{supplierData?.name}</Text>
-              {supplierData?.address && <Text style={styles.address}>{supplierData.address}</Text>}
-              <Text style={styles.mobile}>Mobile: {supplierData?.mobile}</Text>
-            </>
-          )}
-
-          <Divider style={{ marginVertical: 5 }} />
-
-          <View style={styles.row}>
-            <Text>Quotation No.: <Text style={styles.bold}>{bill}</Text></Text>
-            <Text>Date: <Text style={styles.bold}>{moment().format('DD MMM YYYY')}</Text></Text>
-          </View>
-
-          {/* ITEMS TABLE */}
-          <View style={styles.tableHeader}>
-            <Text style={styles.cell}>Item</Text>
-            <Text style={styles.cell}>Qty</Text>
-            <Text style={styles.cell}>Rate</Text>
-            <Text style={styles.cell}>Total</Text>
-          </View>
-
-          {items?.map((item, index) => (
-            <View key={index} style={styles.tableRow}>
-              <Text style={styles.cell}>{item.name}</Text>
-              <Text style={styles.cell}>{item.quantity}</Text>
-              <Text style={styles.cell}>{item.price}</Text>
-              <Text style={styles.cell}>
-                {Number(item.quantity) * Number(item.price)}
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>Bill Details</Text>
+              <Text style={styles.headerSubtitle}>
+                {billDetails?.bill_id || bill || 'Bill'}
               </Text>
             </View>
-          ))}
 
-          {/* SUMMARY */}
-          <View style={[styles.tableRow, { borderTopWidth: 1 }]}>
-            <Text style={[styles.cell, { flex: 3 }]}>Items Total</Text>
-            <Text style={styles.cell}>₹ {parseFloat(itemsAmount).toFixed(2)}</Text>
+            <View style={styles.headerRightPlaceholder} />
           </View>
+        </SafeAreaView>
+      </LinearGradient>
 
-          <View style={[styles.tableRow, { borderTopWidth: 1 }]}>
-            <Text style={[styles.cell, { flex: 3 }]}>Taxable Amount</Text>
-            <Text style={styles.cell}>₹ {parseFloat(taxableAmount).toFixed(2)}</Text>
-          </View>
-
-          <View style={[styles.tableRow, { borderTopWidth: 1 }]}>
-            <Text style={[styles.cell, { flex: 3 }]}>Charges</Text>
-            <Text style={styles.cell}>₹ {parseFloat(chargesAmount).toFixed(2)}</Text>
-          </View>
-
-          <View style={[styles.tableRow, { borderTopWidth: 1 }]}>
-            <Text style={[styles.cell, { flex: 3, fontWeight: 'bold' }]}>TOTAL</Text>
-            <Text style={[styles.cell, { fontWeight: 'bold' }]}>₹ {parseFloat(totalPrice).toFixed(2)}</Text>
-          </View>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0A4D3C" />
+          <Text style={styles.loadingText}>Loading bill details...</Text>
         </View>
-
-        {/* ACTION SECTION */}
-        <View style={styles.actionSection}>
-          <RadioButton.Group onValueChange={setFormat} value={format}>
-            <View style={styles.radioGroup}>
-              <CustomRadioButton label="PDF" value="pdf" selected={format === 'pdf'} onPress={setFormat} />
-              <CustomRadioButton label="Photo" value="photo" selected={format === 'photo'} onPress={setFormat} />
-            </View>
-          </RadioButton.Group>
-
-          <TouchableOpacity style={styles.downloadBtn} onPress={handleDownload}>
-            <Download size={18} color="#000" />
-            <Text style={styles.downloadText}>Download</Text>
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity
-          style={[styles.downloadBtn, { alignSelf: 'center' }]}
-          onPress={() => {
-            const personInfo=JSON.parse(supplierInfo)
-            if (transaction_for === "customer") {
-
-              router.navigate({
-                pathname: '/customerDetails',
-                params: {
-                  personName: personInfo.name,
-                  personType: "customer",
-                  personId: personInfo.id,
-                },
-              });
-            } else {
-
-              router.navigate({
-                pathname: '/customerDetails',
-                params: {
-                  personName: personInfo.name,
-                  personType: "customer",
-                  personId: personInfo.id,
-                },
-              });
-            }
-          }}
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          <Download size={18} color="#000" />
-          <Text style={styles.downloadText}>Done</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+          {/* Bill Preview Card */}
+          <View style={styles.previewCard} ref={quoteRef} collapsable={false}>
+            {/* Business Info */}
+            <View style={styles.businessHeader}>
+              <View style={styles.businessIconContainer}>
+                <FileText size={24} color="#0A4D3C" />
+              </View>
+              <View style={styles.businessInfo}>
+                <Text style={styles.businessName}>{userDetails?.name || 'Business Name'}</Text>
+                {userDetails?.address && (
+                  <View style={styles.infoRow}>
+                    <MapPin size={12} color="#64748B" />
+                    <Text style={styles.infoText}>{userDetails.address}</Text>
+                  </View>
+                )}
+                <View style={styles.infoRow}>
+                  <Phone size={12} color="#64748B" />
+                  <Text style={styles.infoText}>{userDetails?.mobile}</Text>
+                </View>
+              </View>
+            </View>
+
+            <Divider style={styles.divider} />
+
+            {/* Customer/Supplier Info */}
+            {supplierData && (
+              <View style={styles.customerHeader}>
+                <View style={styles.customerIconContainer}>
+                  <User size={24} color="#FFFFFF" />
+                </View>
+                <View style={styles.customerInfo}>
+                  <Text style={styles.customerName}>{supplierData?.name}</Text>
+                  {supplierData?.address && (
+                    <View style={styles.infoRow}>
+                      <MapPin size={12} color="#64748B" />
+                      <Text style={styles.infoText}>{supplierData.address}</Text>
+                    </View>
+                  )}
+                  <View style={styles.infoRow}>
+                    <Phone size={12} color="#64748B" />
+                    <Text style={styles.infoText}>{supplierData?.mobile}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            <Divider style={styles.divider} />
+
+            {/* Bill Details */}
+            <View style={styles.billDetailsRow}>
+              <View style={styles.billDetailItem}>
+                <Tag size={14} color="#0A4D3C" />
+                <Text style={styles.billDetailLabel}>Bill No.</Text>
+                <Text style={styles.billDetailValue}>{bill}</Text>
+              </View>
+              <View style={styles.billDetailItem}>
+                <Calendar size={14} color="#0A4D3C" />
+                <Text style={styles.billDetailLabel}>Date</Text>
+                <Text style={styles.billDetailValue}>{moment().format('DD MMM YYYY')}</Text>
+              </View>
+            </View>
+
+            {/* Items Table */}
+            <View style={styles.tableContainer}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Item</Text>
+                <Text style={styles.tableHeaderCell}>Qty</Text>
+                <Text style={styles.tableHeaderCell}>Rate</Text>
+                <Text style={styles.tableHeaderCell}>Total</Text>
+              </View>
+
+              {items?.map((item, index) => (
+                <View key={index} style={styles.tableRow}>
+                  <Text style={[styles.tableCell, { flex: 2 }]} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={styles.tableCell}>{item.quantity}</Text>
+                  <Text style={styles.tableCell}>₹{item.price}</Text>
+                  <Text style={styles.tableCell}>
+                    ₹{Number(item.quantity) * Number(item.price)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Summary */}
+            <View style={styles.summaryContainer}>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Items Total</Text>
+                <Text style={styles.summaryValue}>₹ {parseFloat(itemsAmount).toFixed(2)}</Text>
+              </View>
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Taxable Amount</Text>
+                <Text style={styles.summaryValue}>₹ {parseFloat(taxableAmount).toFixed(2)}</Text>
+              </View>
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Charges</Text>
+                <Text style={styles.summaryValue}>₹ {parseFloat(chargesAmount).toFixed(2)}</Text>
+              </View>
+
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>TOTAL</Text>
+                <Text style={styles.totalAmount}>₹ {parseFloat(totalPrice).toFixed(2)}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Action Section */}
+          <View style={styles.actionSection}>
+            <Text style={styles.sectionTitle}>Download Format</Text>
+
+            <View style={styles.formatOptions}>
+              <TouchableOpacity
+                style={[
+                  styles.formatOption,
+                  format === 'pdf' && styles.formatOptionActive
+                ]}
+                onPress={() => setFormat('pdf')}
+              >
+                <FileText size={20} color={format === 'pdf' ? '#FFFFFF' : '#64748B'} />
+                <Text style={[
+                  styles.formatOptionText,
+                  format === 'pdf' && styles.formatOptionTextActive
+                ]}>PDF</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.formatOption,
+                  format === 'photo' && styles.formatOptionActive
+                ]}
+                onPress={() => setFormat('photo')}
+              >
+                <ImageIcon size={20} color={format === 'photo' ? '#FFFFFF' : '#64748B'} />
+                <Text style={[
+                  styles.formatOptionText,
+                  format === 'photo' && styles.formatOptionTextActive
+                ]}>Photo</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.downloadButton}
+              onPress={handleDownload}
+              disabled={generating}
+            >
+              {generating ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Download size={20} color="#FFFFFF" />
+                  <Text style={styles.downloadButtonText}>Download & Share</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Done Button */}
+          <TouchableOpacity
+            style={styles.doneButton}
+            onPress={handleDonePress}
+          >
+            <CheckCircle size={20} color="#0A4D3C" />
+            <Text style={styles.doneButtonText}>Done</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, paddingBottom: 100 },
-  quotationBox: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 8,
-    elevation: 2,
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
   },
-  heading: { textAlign: 'center', fontSize: 18, fontWeight: 'bold', textTransform: 'capitalize' },
-  address: { textAlign: 'center', fontSize: 12, marginTop: 4 },
-  mobile: { textAlign: 'center', marginVertical: 6, fontWeight: 'bold' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  tableHeader: {
+  headerGradient: {
+    paddingTop: 20,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  header: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    paddingVertical: 6,
-    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
-  tableRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
-  cell: { flex: 1, textAlign: 'center', fontSize: 12 },
-  actionSection: { marginTop: 30, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  radioGroup: { flexDirection: 'row' },
-  downloadBtn: {
-    flexDirection: 'row',
-    backgroundColor: '#E6F4F1',
-    padding: 15,
-    paddingHorizontal: 20,
-    borderRadius: 30,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  headerTitleContainer: {
     alignItems: 'center',
   },
-  downloadText: { marginLeft: 8, fontWeight: 'bold' }
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  headerRightPlaceholder: {
+    width: 40,
+    height: 40,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  previewCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16,
+  },
+  businessHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  businessIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  businessInfo: {
+    flex: 1,
+  },
+  businessName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0A4D3C',
+    marginBottom: 4,
+    textTransform: 'capitalize',
+  },
+  customerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  customerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#0A4D3C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  customerInfo: {
+    flex: 1,
+  },
+  customerName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0A4D3C',
+    marginBottom: 4,
+    textTransform: 'capitalize',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  infoText: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  divider: {
+    backgroundColor: '#E2E8F0',
+    height: 1,
+    marginVertical: 16,
+  },
+  billDetailsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  billDetailItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F8FAFC',
+    padding: 10,
+    borderRadius: 8,
+    marginHorizontal: 4,
+  },
+  billDetailLabel: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  billDetailValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0A4D3C',
+    marginLeft: 'auto',
+  },
+  tableContainer: {
+    marginBottom: 16,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  tableHeaderCell: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  tableCell: {
+    flex: 1,
+    fontSize: 12,
+    color: '#1E293B',
+    textAlign: 'center',
+  },
+  summaryContainer: {
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  summaryValue: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#1E293B',
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    marginTop: 6,
+    borderTopWidth: 2,
+    borderTopColor: '#0A4D3C',
+  },
+  totalLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0A4D3C',
+  },
+  totalAmount: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0A4D3C',
+  },
+  actionSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0A4D3C',
+    marginBottom: 16,
+  },
+  formatOptions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  formatOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+  },
+  formatOptionActive: {
+    backgroundColor: '#0A4D3C',
+    borderColor: '#0A4D3C',
+  },
+  formatOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  formatOptionTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  downloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0A4D3C',
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 10,
+  },
+  downloadButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  doneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#0A4D3C',
+    marginBottom: 20,
+  },
+  doneButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0A4D3C',
+  },
 });

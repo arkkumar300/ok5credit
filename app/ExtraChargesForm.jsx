@@ -153,38 +153,36 @@ export default function ExtraChargesForm({ setItem, setNewItem, totalAmount }) {
                 horizontal
                 contentContainerStyle={{ paddingBottom: 120 }}
             > */}
-                <View style={styles.container}>
-                    <Text style={styles.header}>Charges & Discounts</Text>
+            <View style={styles.container}>
+                <Text style={styles.header}>Charges & Discounts</Text>
 
-                    <FlatList
-                        data={items}
-                        renderItem={renderItem}
-                        keyExtractor={(_, i) => i.toString()}
-                        ListFooterComponent={() => {
-                            return (
-                                <>
+                <FlatList
+                    data={items}
+                    renderItem={renderItem}
+                    keyExtractor={(_, i) => i.toString()}
+                    ListFooterComponent={() => {
+                        return (
+                            <>
                                 <TouchableOpacity style={styles.addMoreBtn} onPress={addMore}>
                                     <Text style={styles.addMoreTxt}>+ Add More</Text>
                                 </TouchableOpacity>
-                                                    <View style={{ flexDirection: 'row', justifyContent: 'space-around', width: "100%" ,marginBottom:80}}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-around', width: "100%", marginBottom: 80 }}>
 
-                                                    <TouchableOpacity style={styles.saveBtn} onPress={() => setItem(false)}>
-                                                        <Text style={styles.saveTxt}>Close</Text>
-                                                    </TouchableOpacity>
-                            
-                                                    <TouchableOpacity style={styles.saveBtn} onPress={save}>
-                                                        <Text style={styles.saveTxt}>Save</Text>
-                                                    </TouchableOpacity>
-                                                </View>
-                                                </>
-                            
-                                )
-                        }}
-                    />
+                                    <TouchableOpacity style={styles.saveBtn} onPress={() => setItem(false)}>
+                                        <Text style={styles.saveTxt}>Close</Text>
+                                    </TouchableOpacity>
 
+                                    <TouchableOpacity style={styles.saveBtn} onPress={save}>
+                                        <Text style={styles.saveTxt}>Save</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </>
 
+                        )
+                    }}
+                />
 
-                </View>
+            </View>
             {/* </ScrollView> */}
         </KeyboardAvoidingView>
     );
@@ -227,7 +225,7 @@ const styles = StyleSheet.create({
         padding: 10,
         borderRadius: 8,
         marginTop: 8,
-        color:"#333333"
+        color: "#333333"
     },
 
     innerToggleRow: {

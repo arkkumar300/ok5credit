@@ -1,25 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, SafeAreaView } from 'react-native';
-import { Text, TextInput, Button, Appbar, Divider } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, SafeAreaView, StatusBar, Dimensions, TouchableOpacity } from 'react-native';
+import { Text, TextInput, Button, Appbar, Divider, Card, ActivityIndicator } from 'react-native-paper';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { ArrowLeft, File, Barcode, IndianRupee, PercentCircle } from 'lucide-react-native';
+import { ArrowLeft, File, Barcode, IndianRupee, Percent, Package, Tag, Scale, Info, CheckCircle } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import ApiService from './components/ApiServices';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
 
 export default function AddEditItem() {
   const { item } = useLocalSearchParams();
   const [selectedItem, setSelectedItem] = useState(null);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
+
+  // Dropdown states
+  const [unitOpen, setUnitOpen] = useState(false);
+  const [gstOpen, setGstOpen] = useState(false);
+  const [rateTypeOpen, setRateTypeOpen] = useState(false);
+
   useEffect(() => {
     if (item) {
       try {
         const parsedItem = JSON.parse(decodeURIComponent(item));
-
         setSelectedItem(parsedItem);
-
         setId(parsedItem.id || '');
-
         setItemName(parsedItem.itemName || '');
         setQuantity(String(parsedItem.quantity ?? ''));
         setPrice(String(parsedItem.price ?? ''));
@@ -27,11 +33,9 @@ export default function AddEditItem() {
         setBarcode(parsedItem.barcode || '');
         setDescription(parsedItem.description || '');
         setCess(String(parsedItem.cess ?? ''));
-
         setUnitValue(parsedItem.unitValue || 'Nos');
         setGstValue(String(parsedItem.gstValue ?? '0.25'));
         setRateTypeValue(parsedItem.rateType || 'inclusive');
-
       } catch (e) {
         console.error('Invalid item param:', e);
       }
@@ -47,7 +51,6 @@ export default function AddEditItem() {
   const [description, setDescription] = useState('');
   const [cess, setCess] = useState('');
 
-  const [unitOpen, setUnitOpen] = useState(false);
   const [unitValue, setUnitValue] = useState('Nos');
   const [unitItems, setUnitItems] = useState([
     { label: 'Nos', value: 'Nos' },
@@ -64,32 +67,38 @@ export default function AddEditItem() {
     { label: 'Units', value: 'Units' }
   ]);
 
-  const [gstOpen, setGstOpen] = useState(false);
   const [gstValue, setGstValue] = useState('0.25');
   const [gstItems, setGstItems] = useState([
     { label: '0.25%', value: '0.25' },
+    { label: '3%', value: '3' },
     { label: '5%', value: '5' },
     { label: '12%', value: '12' },
-    { label: '18%', value: '18' }
+    { label: '18%', value: '18' },
+    { label: '28%', value: '28' }
   ]);
 
-  const [rateTypeOpen, setRateTypeOpen] = useState(false);
   const [rateTypeValue, setRateTypeValue] = useState('inclusive');
   const [rateTypeItems, setRateTypeItems] = useState([
     { label: 'Rate Including Tax', value: 'inclusive' },
     { label: 'Rate Excluding Tax', value: 'exclusive' }
   ]);
 
-  // const qty = parseFloat(quantity) || 0;
-  // const basePrice = parseFloat(price) || 0;
-  // const gstPercent = parseFloat(gstValue) || 0;
-  // const cessPercent = parseFloat(cess) || 0;
+  // Handle dropdown opens
+  const handleUnitOpen = () => {
+    setGstOpen(false);
+    setRateTypeOpen(false);
+  };
 
-  // const taxableAmount =
-  //   (basePrice * qty * 100) / (100 + gstPercent + cessPercent);
-  // const gstAmount = (taxableAmount * gstPercent) / 100;
-  // const cessAmount = (taxableAmount * cessPercent) / 100;
-  // const total = basePrice * qty;
+  const handleGstOpen = () => {
+    setUnitOpen(false);
+    setRateTypeOpen(false);
+  };
+
+  const handleRateTypeOpen = () => {
+    setUnitOpen(false);
+    setGstOpen(false);
+  };
+
   const calculateTax = ({
     qty,
     rate,
@@ -110,13 +119,11 @@ export default function AddEditItem() {
     let totalAmount = 0;
 
     if (rateType === 'inclusive') {
-      // Rate includes tax
       totalAmount = rate * qty;
       taxableAmount = (totalAmount * 100) / (100 + totalTaxPercent);
       gstAmount = (taxableAmount * gstPercent) / 100;
       cessAmount = (taxableAmount * cessPercent) / 100;
     } else {
-      // Rate excludes tax
       taxableAmount = rate * qty;
       gstAmount = (taxableAmount * gstPercent) / 100;
       cessAmount = (taxableAmount * cessPercent) / 100;
@@ -145,7 +152,7 @@ export default function AddEditItem() {
   });
 
   const handleSave = async () => {
-    if (saving) return; // prevent double tap
+    if (saving) return;
 
     setSaving(true);
 
@@ -160,7 +167,6 @@ export default function AddEditItem() {
       cess,
       unitValue,
       rateType: rateTypeValue,
-
       taxableAmount: Number(taxableAmount.toFixed(2)),
       gstAmount: Number(gstAmount.toFixed(2)),
       cessAmount: Number(cessAmount.toFixed(2)),
@@ -169,7 +175,6 @@ export default function AddEditItem() {
 
     try {
       let response;
-
       if (id) {
         response = await ApiService.put(`/item/${id}`, newItem);
       } else {
@@ -177,7 +182,7 @@ export default function AddEditItem() {
       }
 
       if (response?.data) {
-        router.replace('./items'); // better UX than push
+        router.replace('./items');
       }
     } catch (err) {
       console.error("Error saving item:", err);
@@ -187,212 +192,563 @@ export default function AddEditItem() {
   };
 
   return (
-    <SafeAreaView>
-      <Appbar.Header>
-        <Appbar.BackAction onPress={() => router.back()} icon={() => <ArrowLeft size={22} />} />
-        <Appbar.Content title={selectedItem ? 'Edit Item' : 'Add New Item'} />
-      </Appbar.Header>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
 
-      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-        <TextInput
-          label="Item Name"
-          placeholder='name'
-          placeholderTextColor={"#aaaaaa"}
-          value={itemName}
-          onChangeText={setItemName}
-          left={<TextInput.Icon icon={() => <File size={18} />} />}
-          mode="outlined"
-          style={styles.input}
-        />
+      {/* Premium Header with Gradient */}
+      <LinearGradient
+        colors={['#0A4D3C', '#1B6B50']}
+        style={styles.headerGradient}
+      >
+        <SafeAreaView>
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <ArrowLeft size={24} color="#FFFFFF" />
+            </TouchableOpacity>
 
-        <View style={styles.row}>
-          <TextInput
-            label="Quantity"
-            placeholder='Quantity'
-            placeholderTextColor={"#aaaaaa"}
-            value={quantity}
-            onChangeText={setQuantity}
-            keyboardType="numeric"
-            mode="outlined"
-            style={[styles.input, { flex: 1 }]}
-          />
-          <View style={{ flex: 1, zIndex: 10 }}>
-            <DropDownPicker
-              open={unitOpen}
-              value={unitValue}
-              items={unitItems}
-              setOpen={setUnitOpen}
-              setValue={setUnitValue}
-              setItems={setUnitItems}
-              style={styles.dropdown}
-              placeholder="Select Unit"
-              listMode="SCROLLVIEW"
-            />
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>
+                {selectedItem ? 'Edit Item' : 'Add New Item'}
+              </Text>
+              <Text style={styles.headerSubtitle}>
+                {selectedItem ? 'Update item details' : 'Create a new item'}
+              </Text>
+            </View>
+
+            <View style={styles.headerRightPlaceholder} />
           </View>
-        </View>
+        </SafeAreaView>
+      </LinearGradient>
 
-        <View style={styles.row}>
-          <TextInput
-            label="Rate"
-            placeholder='Rate'
-            placeholderTextColor={"#aaaaaa"}
-            value={price}
-            onChangeText={setPrice}
-            keyboardType="numeric"
-            left={<TextInput.Icon icon={() => <IndianRupee size={18} />} />}
-            mode="outlined"
-            style={[styles.input, { flex: 1 }]}
-          />
-          <TextInput
-            label="MRP"
-            placeholder='MRP'
-            placeholderTextColor={"#aaaaaa"}
-            value={mrp}
-            onChangeText={setMrp}
-            keyboardType="numeric"
-            mode="outlined"
-            style={[styles.input, { flex: 1 }]}
-          />
-        </View>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        scrollEnabled={!unitOpen && !gstOpen && !rateTypeOpen}
+      >
+        {/* Item Name Card */}
+        <Card style={styles.formCard}>
+          <Card.Content>
+            <View style={styles.sectionHeader}>
+              <Package size={18} color="#0A4D3C" />
+              <Text style={styles.sectionTitle}>Basic Information</Text>
+            </View>
 
-        <View style={styles.row}>
-          <View style={{ flex: 1, zIndex: 9 }}>
-            <DropDownPicker
-              open={gstOpen}
-              value={gstValue}
-              items={gstItems}
-              setOpen={setGstOpen}
-              setValue={setGstValue}
-              setItems={setGstItems}
-              style={styles.dropdown}
-              placeholder="GST"
-              listMode="SCROLLVIEW"
-            />
-          </View>
-          <TextInput
-            label="CESS %"
-            placeholder='CESS %'
-            placeholderTextColor={"#aaaaaa"}
-            value={cess}
-            onChangeText={setCess}
-            keyboardType="numeric"
-            left={<TextInput.Icon icon={() => <PercentCircle size={18} />} />}
-            mode="outlined"
-            style={[styles.input, { flex: 1 }]}
-          />
-        </View>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                label="Item Name"
+                placeholder="Enter item name"
+                placeholderTextColor="#94A3B8"
+                value={itemName}
+                onChangeText={setItemName}
+                left={<TextInput.Icon icon={() => <File size={18} color="#64748B" />} />}
+                mode="outlined"
+                style={styles.input}
+                outlineColor="#E2E8F0"
+                activeOutlineColor="#0A4D3C"
+              />
+            </View>
+          </Card.Content>
+        </Card>
 
-        <View style={{ zIndex: 8 }}>
-          <DropDownPicker
-            open={rateTypeOpen}
-            value={rateTypeValue}
-            items={rateTypeItems}
-            setOpen={setRateTypeOpen}
-            setValue={setRateTypeValue}
-            setItems={setRateTypeItems}
-            style={styles.dropdown}
-            placeholder="Rate Type"
-            listMode="SCROLLVIEW"
-          />
-        </View>
+        {/* Quantity & Unit Card */}
+        <Card style={styles.formCard}>
+          <Card.Content>
+            <View style={styles.sectionHeader}>
+              <Scale size={18} color="#0A4D3C" />
+              <Text style={styles.sectionTitle}>Quantity & Unit</Text>
+            </View>
 
-        <TextInput
-          label="Barcode"
-          placeholder='Barcode %'
-          placeholderTextColor={"#aaaaaa"}
-          value={barcode}
-          onChangeText={setBarcode}
-          keyboardType="numeric"
-          left={<TextInput.Icon icon={() => <Barcode size={18} />} />}
-          mode="outlined"
-          style={styles.input}
-        />
+            <View style={styles.row}>
+              <View style={styles.halfInput}>
+                <TextInput
+                  label="Quantity"
+                  placeholder="0"
+                  placeholderTextColor="#94A3B8"
+                  value={quantity}
+                  onChangeText={setQuantity}
+                  keyboardType="numeric"
+                  mode="outlined"
+                  style={styles.input}
+                  outlineColor="#E2E8F0"
+                  activeOutlineColor="#0A4D3C"
+                />
+              </View>
 
-        <TextInput
-          label="Description"
-          placeholder='Description'
-          placeholderTextColor={"#aaaaaa"}
-          value={description}
-          onChangeText={setDescription}
-          left={<TextInput.Icon icon={() => <File size={18} />} />}
-          mode="outlined"
-          style={styles.input}
-        />
+              <View style={styles.halfInput}>
+                <DropDownPicker
+                  open={unitOpen}
+                  value={unitValue}
+                  items={unitItems}
+                  setOpen={setUnitOpen}
+                  setValue={setUnitValue}
+                  setItems={setUnitItems}
+                  onOpen={handleUnitOpen}
+                  style={styles.dropdown}
+                  dropDownContainerStyle={styles.dropdownList}
+                  textStyle={styles.dropdownText}
+                  placeholder="Select Unit"
+                  listMode="SCROLLVIEW"
+                  zIndex={3000}
+                  zIndexInverse={1000}
+                  dropDownDirection="AUTO"
+                />
+              </View>
+            </View>
+          </Card.Content>
+        </Card>
 
-        {/* <View style={styles.totalBox}>
-          <Text variant="titleMedium" style={{ fontWeight: '600' }}>
-            Total: ₹ {totalAmount.toFixed(2)}
-          </Text>
+        {/* Pricing Card */}
+        <Card style={styles.formCard}>
+          <Card.Content>
+            <View style={styles.sectionHeader}>
+              <IndianRupee size={18} color="#0A4D3C" />
+              <Text style={styles.sectionTitle}>Pricing Details</Text>
+            </View>
 
-          <Divider style={{ marginVertical: 8 }} />
+            <View style={styles.row}>
+              <View style={styles.halfInput}>
+                <TextInput
+                  label="Rate (₹)"
+                  placeholder="0.00"
+                  placeholderTextColor="#94A3B8"
+                  value={price}
+                  onChangeText={setPrice}
+                  keyboardType="numeric"
+                  left={<TextInput.Icon icon={() => <IndianRupee size={16} color="#64748B" />} />}
+                  mode="outlined"
+                  style={styles.input}
+                  outlineColor="#E2E8F0"
+                  activeOutlineColor="#0A4D3C"
+                />
+              </View>
 
-          <Text>Taxable Amount: ₹ {taxableAmount.toFixed(2)}</Text>
-          <Text>GST @ {gstValue}% : ₹ {gstAmount.toFixed(2)}</Text>
-          <Text>CESS @ {cess || 0}% : ₹ {cessAmount.toFixed(2)}</Text>
+              <View style={styles.halfInput}>
+                <TextInput
+                  label="MRP (₹)"
+                  placeholder="0.00"
+                  placeholderTextColor="#94A3B8"
+                  value={mrp}
+                  onChangeText={setMrp}
+                  keyboardType="numeric"
+                  left={<TextInput.Icon icon={() => <Tag size={16} color="#64748B" />} />}
+                  mode="outlined"
+                  style={styles.input}
+                  outlineColor="#E2E8F0"
+                  activeOutlineColor="#0A4D3C"
+                />
+              </View>
+            </View>
+          </Card.Content>
+        </Card>
 
-          <Text style={{ marginTop: 6 }}>
-            Qty {quantity || 0} × Rate ₹ {Number(price || 0).toFixed(2)}
-            {rateTypeValue === 'inclusive' ? ' (incl. tax)' : ' (excl. tax)'}
-          </Text>
-        </View>
- */}
-        <View style={styles.buttonRow}>
-          <Button
-            mode="outlined"
-            loading={saving}
-            disabled={saving}
-            onPress={handleSave}
-            style={{ flex: 1 }}
+        {/* Tax Card */}
+        <Card style={styles.formCard}>
+          <Card.Content>
+            <View style={styles.sectionHeader}>
+              <Percent size={18} color="#0A4D3C" />
+              <Text style={styles.sectionTitle}>Tax Information</Text>
+            </View>
+
+            <View style={styles.row}>
+              <View style={styles.halfInput}>
+                <DropDownPicker
+                  open={gstOpen}
+                  value={gstValue}
+                  items={gstItems}
+                  setOpen={setGstOpen}
+                  setValue={setGstValue}
+                  setItems={setGstItems}
+                  onOpen={handleGstOpen}
+                  style={styles.dropdown}
+                  dropDownContainerStyle={styles.dropdownList}
+                  textStyle={styles.dropdownText}
+                  placeholder="GST %"
+                  listMode="SCROLLVIEW"
+                  zIndex={2000}
+                  zIndexInverse={2000}
+                  dropDownDirection="AUTO"
+                />
+              </View>
+
+              <View style={styles.halfInput}>
+                <TextInput
+                  label="CESS %"
+                  placeholder="0"
+                  placeholderTextColor="#94A3B8"
+                  value={cess}
+                  onChangeText={setCess}
+                  keyboardType="numeric"
+                  left={<TextInput.Icon icon={() => <Percent size={16} color="#64748B" />} />}
+                  mode="outlined"
+                  style={styles.input}
+                  outlineColor="#E2E8F0"
+                  activeOutlineColor="#0A4D3C"
+                />
+              </View>
+            </View>
+
+            <View style={styles.fullWidthDropdown}>
+              <DropDownPicker
+                open={rateTypeOpen}
+                value={rateTypeValue}
+                items={rateTypeItems}
+                setOpen={setRateTypeOpen}
+                setValue={setRateTypeValue}
+                setItems={setRateTypeItems}
+                onOpen={handleRateTypeOpen}
+                style={styles.dropdown}
+                dropDownContainerStyle={styles.dropdownList}
+                textStyle={styles.dropdownText}
+                placeholder="Rate Type"
+                listMode="SCROLLVIEW"
+                zIndex={1000}
+                zIndexInverse={3000}
+                dropDownDirection="AUTO"
+              />
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* Additional Info Card */}
+        <Card style={styles.formCard}>
+          <Card.Content>
+            <View style={styles.sectionHeader}>
+              <Info size={18} color="#0A4D3C" />
+              <Text style={styles.sectionTitle}>Additional Information</Text>
+            </View>
+
+            <View style={styles.inputWrapper}>
+              <TextInput
+                label="Barcode"
+                placeholder="Enter barcode"
+                placeholderTextColor="#94A3B8"
+                value={barcode}
+                onChangeText={setBarcode}
+                left={<TextInput.Icon icon={() => <Barcode size={18} color="#64748B" />} />}
+                mode="outlined"
+                style={styles.input}
+                outlineColor="#E2E8F0"
+                activeOutlineColor="#0A4D3C"
+              />
+            </View>
+
+            <View style={styles.inputWrapper}>
+              <TextInput
+                label="Description"
+                placeholder="Enter description"
+                placeholderTextColor="#94A3B8"
+                value={description}
+                onChangeText={setDescription}
+                left={<TextInput.Icon icon={() => <File size={18} color="#64748B" />} />}
+                mode="outlined"
+                style={[styles.input, styles.textArea]}
+                outlineColor="#E2E8F0"
+                activeOutlineColor="#0A4D3C"
+                multiline
+                numberOfLines={3}
+              />
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* Tax Summary Card */}
+        <Card style={styles.summaryCard}>
+          <Card.Content>
+            <View style={styles.summaryHeader}>
+              <CheckCircle size={18} color="#0A4D3C" />
+              <Text style={styles.summaryTitle}>Tax Summary</Text>
+            </View>
+
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Taxable Amount</Text>
+              <Text style={styles.summaryValue}>₹ {taxableAmount.toFixed(2)}</Text>
+            </View>
+
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>GST @ {gstValue}%</Text>
+              <Text style={styles.summaryValue}>₹ {gstAmount.toFixed(2)}</Text>
+            </View>
+
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>CESS @ {cess || 0}%</Text>
+              <Text style={styles.summaryValue}>₹ {cessAmount.toFixed(2)}</Text>
+            </View>
+
+            <Divider style={styles.summaryDivider} />
+
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Total Amount</Text>
+              <Text style={styles.totalValue}>₹ {totalAmount.toFixed(2)}</Text>
+            </View>
+
+            <View style={styles.calculationNote}>
+              <Text style={styles.noteText}>
+                {quantity || 0} × ₹ {Number(price || 0).toFixed(2)}
+                {rateTypeValue === 'inclusive' ? ' (incl. tax)' : ' (excl. tax)'}
+              </Text>
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* Action Buttons */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.cancelButton]}
+            onPress={() => router.back()}
           >
-            {selectedItem ? 'Update' : '+ Save & New'}
-          </Button>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
 
-          <Button
-            mode="contained"
-            loading={saving}
-            disabled={saving}
+          <TouchableOpacity
+            style={[styles.actionButton, styles.saveButton]}
             onPress={handleSave}
-            style={{ flex: 1 }}
+            disabled={saving}
           >
-            Done
-          </Button>
+            <LinearGradient
+              colors={['#0A4D3C', '#1B6B50']}
+              style={styles.saveButtonGradient}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <CheckCircle size={18} color="#FFFFFF" />
+                  <Text style={styles.saveButtonText}>
+                    {selectedItem ? 'Update Item' : 'Save Item'}
+                  </Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>);
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  headerGradient: {
+    paddingTop: 20,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 24,
-    backgroundColor: '#fff',
+    paddingVertical: 8,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  headerTitleContainer: {
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  headerRightPlaceholder: {
+    width: 40,
+    height: 40,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 30,
+  },
+  formCard: {
+    marginBottom: 16,
+    borderRadius: 12,
+    elevation: 2,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0A4D3C',
+  },
+  inputWrapper: {
+    marginBottom: 8,
   },
   input: {
-    marginBottom: 16,
-    backgroundColor: '#fff',
-    height: 52,
+    backgroundColor: '#FFFFFF',
+    height: 48,
+    fontSize: 14,
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
   },
   row: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
-    zIndex: 1,
+    gap: 12,
+    marginBottom: 12,
+  },
+  halfInput: {
+    flex: 1,
+    height: 48,
+    justifyContent: 'center',
+  },
+  fullWidthDropdown: {
+    height: 48,
+    justifyContent: 'center',
+    marginTop: 8,
   },
   dropdown: {
-    borderColor: '#ccc',
-    minHeight: 52,
-    borderRadius: 6, zIndex: 9999
-  },
-  totalBox: {
-    padding: 16,
-    backgroundColor: '#f1f8f5',
+    borderColor: '#E2E8F0',
     borderRadius: 8,
-    marginBottom: 20
+    minHeight: 48,
+    backgroundColor: '#FFFFFF',
   },
-  buttonRow: {
+  dropdownList: {
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  dropdownText: {
+    fontSize: 14,
+    color: '#1E293B',
+  },
+  summaryCard: {
+    marginBottom: 20,
+    borderRadius: 12,
+    elevation: 2,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  summaryTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0A4D3C',
+  },
+  summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  summaryLabel: {
+    fontSize: 13,
+    color: '#64748B',
+  },
+  summaryValue: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#1E293B',
+  },
+  summaryDivider: {
+    backgroundColor: '#E2E8F0',
+    height: 1,
+    marginVertical: 10,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  totalLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0A4D3C',
+  },
+  totalValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0A4D3C',
+  },
+  calculationNote: {
+    marginTop: 10,
+    padding: 8,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 6,
+  },
+  noteText: {
+    fontSize: 11,
+    color: '#0A4D3C',
+    textAlign: 'center',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
     gap: 12,
-    marginBottom: 32
-  }
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  actionButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  cancelButton: {
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  cancelButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  saveButton: {
+    overflow: 'hidden',
+  },
+  saveButtonGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  saveButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
 });

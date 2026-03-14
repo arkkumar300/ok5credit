@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, Image, ScrollView, TouchableOpacity,
-  Alert, Modal, TextInput
+  Alert, Modal, TextInput, StatusBar, Platform
 } from 'react-native';
 import { Linking } from 'react-native';
-import { Calendar, MessageCircle, Share2, Check, FileText, HelpCircle, ArrowLeft, Plus, Edit, Delete } from 'lucide-react-native';
+import { Calendar, MessageCircle, Share2, Check, FileText, HelpCircle, ArrowLeft, Plus, Edit, Delete, Clock, X } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Appbar, Avatar } from 'react-native-paper';
 import moment from 'moment';
@@ -254,8 +254,6 @@ export default function TransactionDetails() {
         amount: Number(newAmount),
       };
 
-      console.log("UPDATE PAYLOAD:", payload);
-
       const response = await ApiService.put(url, payload, {
         headers: { "Content-Type": "application/json" },
       });
@@ -285,8 +283,6 @@ export default function TransactionDetails() {
 
       const payload = { transaction_pic: updatedImages };
 
-      console.log("UPDATE PAYLOAD:", payload);
-
       const response = await ApiService.put(url, payload, {
         headers: { "Content-Type": "application/json" },
       });
@@ -294,7 +290,6 @@ export default function TransactionDetails() {
       if (!response.data) {
         Alert.alert("Update Failed", response.data?.message || "Unknown error");
       }
-      console.log("rer:::", response)
     } catch (error) {
       console.error("API Error:", error);
       Alert.alert("Error", "Something went wrong!");
@@ -303,121 +298,182 @@ export default function TransactionDetails() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <Appbar.Header style={[styles.header, { borderColor: "#f3f3f3", borderBottomWidth: 3 }]}>
-        <ArrowLeft size={24} onPress={() => navigation.goBack()} style={{ marginHorizontal: 10 }} />
+      <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
 
-        <View style={styles.userInfo}>
-          <Avatar.Text size={30} label={Name?.charAt(0).toUpperCase()} style={{ marginLeft: 10 }} />
-          <Text style={[styles.userName, { marginLeft: 10 }]}>{Name}</Text>
+      {/* Premium Header */}
+      <View style={styles.headerSolid}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <ArrowLeft size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <View style={styles.userInfo}>
+            <Avatar.Text
+              size={36}
+              label={Name?.charAt(0).toUpperCase()}
+              style={styles.avatar}
+              color="#FFFFFF"
+              theme={{ colors: { primary: '#0A4D3C' } }}
+            />
+            <View style={styles.userDetails}>
+              <Text style={styles.userName}>{Name}</Text>
+              <Text style={styles.transactionType}>
+                {transaction?.transaction_type === 'you_got' ? 'Received' : 'Given'}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.helpButton}
+            onPress={() => router.replace('./help')}
+          >
+            <HelpCircle size={20} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
+      </View>
 
-        <HelpCircle color="#555" size={24} onPress={() => router.replace('./help') // better UX than push
-        } />
-      </Appbar.Header>
-
-      {/* Amount */}
-      <View style={styles.amountContainer}>
+      {/* Amount Card */}
+      <View style={styles.amountCard}>
+        <Text style={styles.amountLabel}>Transaction Amount</Text>
         <Text style={styles.amount}>₹ {Number(transaction?.amount || 0).toFixed(2)}</Text>
+        <View style={styles.amountBadge}>
+          <Clock size={12} color="#64748B" />
+          <Text style={styles.dateText}>{formateDate(transaction?.transaction_date)}</Text>
+        </View>
       </View>
 
       {/* Details */}
-      <ScrollView style={styles.detailsContainer}>
+      <ScrollView
+        style={styles.detailsContainer}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.detailsContent}
+      >
+        {/* Images Section */}
         {images.length > 0 && (
-          <View style={{ marginTop: 20, backgroundColor: '#f3f3f3', padding: 10, borderRadius: 10 }}>
-
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <Text style={{ fontWeight: "bold" }}>
-                Transaction Images
-              </Text>
-
-              <TouchableOpacity onPress={openImageOptions}>
-                <Plus size={22} color="#25D366" />
+          <View style={styles.imagesSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Transaction Images</Text>
+              <TouchableOpacity onPress={openImageOptions} style={styles.addImageButton}>
+                <Plus size={18} color="#0A4D3C" />
+                <Text style={styles.addImageText}>Add</Text>
               </TouchableOpacity>
             </View>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagesScroll}>
               {images.map((img, index) => (
                 <Image
                   key={index}
                   source={{ uri: img }}
-                  style={{
-                    width: 85,
-                    height: 85,
-                    marginRight: 10,
-                    borderRadius: 8,
-                    backgroundColor: "#ffffff",
-                  }}
+                  style={styles.thumbnailImage}
                   resizeMode="cover"
                 />
               ))}
             </ScrollView>
           </View>
         )}
-        <View style={styles.row}>
-          <FileText size={18} color="#555" />
-          <Text style={styles.rowText}>Bill Number: {transaction?.bill_id ?? "N/A"}</Text>
-        </View>
 
-        <View style={styles.row}>
-          <Check size={18} color="#4CAF50" />
-          <Text style={styles.rowText}>Sync Successful</Text>
-        </View>
+        {/* Details Cards */}
+        <View style={styles.detailsCard}>
+          {transaction?.bill_id && (
+            <View style={styles.detailRow}>
+              <View style={[styles.detailIcon, { backgroundColor: 'rgba(10,77,60,0.1)' }]}>
+                <FileText size={18} color="#0A4D3C" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Bill Number</Text>
+                <Text style={styles.detailValue}>{transaction.bill_id}</Text>
+              </View>
+            </View>
+          )}
 
-        <View style={styles.row}>
-          <Calendar size={18} color="#555" />
-          <Text style={styles.rowText}>Added On {formateDate(transaction?.transaction_date)}</Text>
-        </View>
+          <View style={styles.detailRow}>
+            <View style={[styles.detailIcon, { backgroundColor: 'rgba(16,185,129,0.1)' }]}>
+              <Check size={18} color="#10B981" />
+            </View>
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>Status</Text>
+              <Text style={styles.detailValue}>Sync Successful</Text>
+            </View>
+          </View>
 
-        {/* {transactionType === "you_gave" && (
+          <View style={styles.detailRow}>
+            <View style={[styles.detailIcon, { backgroundColor: 'rgba(245,158,11,0.1)' }]}>
+              <Calendar size={18} color="#F59E0B" />
+            </View>
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>Transaction Date</Text>
+              <Text style={styles.detailValue}>{formateDate(transaction?.transaction_date)}</Text>
+            </View>
+          </View>
+
+          {transactionType === "you_gave" && (
+            <TouchableOpacity
+              style={styles.detailRow}
+              onPress={() => {
+                setNewAmount(String(transaction?.amount));
+                setShowEditModal(true);
+              }}
+            >
+              <View style={[styles.detailIcon, { backgroundColor: 'rgba(37,211,102,0.1)' }]}>
+                <Edit size={18} color="#10B981" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Edit Transaction</Text>
+                <Text style={[styles.detailValue, styles.editText]}>Tap to edit amount</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
-            style={styles.row}
-            onPress={() => {
-              setNewAmount(String(transaction?.amount));
-              setShowEditModal(true);
-            }}
+            style={[styles.detailRow, styles.deleteRow]}
+            onPress={() => setShowDeleteModal(true)}
           >
-            <Edit size={18} color="#25D366" />
-            <Text style={[styles.rowText, { color: "#25D366" }]}>Edit Transaction</Text>
+            <View style={[styles.detailIcon, { backgroundColor: 'rgba(220,38,38,0.1)' }]}>
+              <Delete size={18} color="#DC2626" />
+            </View>
+            <View style={styles.detailContent}>
+              <Text style={[styles.detailLabel, { color: '#DC2626' }]}>Delete Transaction</Text>
+              <Text style={[styles.detailValue, { color: '#DC2626' }]}>Remove permanently</Text>
+            </View>
           </TouchableOpacity>
-        )} */}
+        </View>
 
-        <TouchableOpacity
-          style={styles.row}
-          onPress={() => setShowDeleteModal(true)}
-        >
-          <Delete size={18} color="red" />
-          <Text style={[styles.rowText, { color: "red" }]}>Delete Transaction</Text>
-        </TouchableOpacity>
+        {/* Share Buttons */}
         <View style={styles.shareContainer}>
-          {/* SMS */}
           <TouchableOpacity
-            style={[styles.materialBtn, styles.smsBtn]}
+            style={[styles.shareButton, styles.smsButton]}
             onPress={handleSmsShare}
-            activeOpacity={0.85}
+            activeOpacity={0.8}
           >
-            <MessageCircle size={20} color="#fff" />
-            <Text style={styles.materialBtnText}>SMS</Text>
+            <MessageCircle size={18} color="#FFFFFF" />
+            <Text style={styles.shareButtonText}>SMS</Text>
           </TouchableOpacity>
 
-          {/* WhatsApp */}
           <TouchableOpacity
-            style={[styles.materialBtn, styles.whatsappBtn]}
+            style={[styles.shareButton, styles.whatsappButton]}
             onPress={handleWhatsAppShare}
-            activeOpacity={0.85}
+            activeOpacity={0.8}
           >
-            <Share2 size={20} color="#fff" />
-            <Text style={styles.materialBtnText}>WhatsApp</Text>
+            <Share2 size={18} color="#FFFFFF" />
+            <Text style={styles.shareButtonText}>WhatsApp</Text>
           </TouchableOpacity>
         </View>
-
       </ScrollView>
 
-      {/* ---------------- MODAL FOR EDIT --------------------- */}
+      {/* Edit Modal */}
       <Modal visible={showEditModal} transparent animationType="slide">
         <View style={modalStyles.modalOverlay}>
           <View style={modalStyles.modalContainer}>
-            <Text style={modalStyles.title}>Edit Amount</Text>
+            <View style={modalStyles.modalHeader}>
+              <Text style={modalStyles.modalTitle}>Edit Amount</Text>
+              <TouchableOpacity onPress={() => setShowEditModal(false)} style={modalStyles.closeButton}>
+                <X size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
 
             <TextInput
               value={newAmount}
@@ -425,72 +481,301 @@ export default function TransactionDetails() {
               keyboardType="numeric"
               style={modalStyles.input}
               placeholder="Enter new amount"
+              placeholderTextColor="#94A3B8"
+              autoFocus
             />
 
-            <View style={modalStyles.btnRow}>
+            <View style={modalStyles.buttonRow}>
               <TouchableOpacity
-                style={[modalStyles.button, { backgroundColor: "#ccc" }]}
+                style={[modalStyles.button, modalStyles.cancelButton]}
                 onPress={() => setShowEditModal(false)}
               >
-                <Text style={modalStyles.btnText}>Cancel</Text>
+                <Text style={modalStyles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[modalStyles.button, { backgroundColor: "#25D366" }]}
+                style={[modalStyles.button, modalStyles.updateButton]}
                 onPress={handleUpdateTransaction}
               >
-                <Text style={[modalStyles.btnText, { color: "#fff" }]}>
-                  Update
-                </Text>
+                <Text style={modalStyles.updateButtonText}>Update</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* ---------------- DELETE CONFIRM MODAL --------------------- */}
+      {/* Delete Modal */}
       <Modal visible={showDeleteModal} transparent animationType="fade">
         <View style={modalStyles.modalOverlay}>
           <View style={modalStyles.modalContainer}>
-            <Text style={modalStyles.title}>Delete Transaction?</Text>
-            <Text style={{ textAlign: "center", marginBottom: 20 }}>
-              Are you sure you want to delete this transaction?
+            <View style={modalStyles.modalHeader}>
+              <Text style={modalStyles.modalTitle}>Delete Transaction?</Text>
+              <TouchableOpacity onPress={() => setShowDeleteModal(false)} style={modalStyles.closeButton}>
+                <X size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={modalStyles.modalMessage}>
+              Are you sure you want to delete this transaction? This action cannot be undone.
             </Text>
 
-            <View style={modalStyles.btnRow}>
+            <View style={modalStyles.buttonRow}>
               <TouchableOpacity
-                style={[modalStyles.button, { backgroundColor: "#ccc" }]}
+                style={[modalStyles.button, modalStyles.cancelButton]}
                 onPress={() => setShowDeleteModal(false)}
               >
-                <Text style={modalStyles.btnText}>Cancel</Text>
+                <Text style={modalStyles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[modalStyles.button, { backgroundColor: "red" }]}
+                style={[modalStyles.button, modalStyles.deleteButton]}
                 onPress={handleDeleteTransaction}
               >
-                <Text style={[modalStyles.btnText, { color: "#fff" }]}>Delete</Text>
+                <Text style={modalStyles.deleteButtonText}>Delete</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-
     </SafeAreaView>
   );
 }
 
 // ---------- STYLES ----------
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  header: { flexDirection: "row", alignItems: "center", padding: 16, justifyContent: "space-between" },
-  userInfo: { flexDirection: "row", alignItems: "center", flex: 1 },
-  userName: { fontSize: 16, fontWeight: "600" },
-  amountContainer: { alignItems: "center", paddingVertical: 20 },
-  amount: { fontSize: 40, fontWeight: "bold", color: "#000" },
-  detailsContainer: { paddingHorizontal: 20 },
-  row: { flexDirection: "row", alignItems: "center", paddingVertical: 15, borderBottomColor: "#eee", borderBottomWidth: 1 },
-  rowText: { marginLeft: 12, fontSize: 15 },
+  container: {
+    flex: 1,
+    backgroundColor: "#F8FAFC"
+  },
+  headerSolid: {
+    backgroundColor: '#0A4D3C',
+    paddingTop: Platform.OS === 'android' ? 20 : 0,
+    paddingBottom: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#0A4D3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginLeft: 12,
+  },
+  avatar: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  userDetails: {
+    marginLeft: 12,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  transactionType: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  helpButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  amountCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: -20,
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(10,77,60,0.1)',
+  },
+  amountLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  amount: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: '#0A4D3C',
+    marginBottom: 12,
+  },
+  amountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  dateText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  detailsContainer: {
+    flex: 1,
+  },
+  detailsContent: {
+    padding: 16,
+    paddingBottom: 30,
+  },
+  imagesSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(10,77,60,0.1)',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0A4D3C',
+  },
+  addImageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(10,77,60,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  addImageText: {
+    fontSize: 11,
+    color: '#0A4D3C',
+    fontWeight: '600',
+  },
+  imagesScroll: {
+    marginTop: 4,
+  },
+  thumbnailImage: {
+    width: 80,
+    height: 80,
+    marginRight: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(10,77,60,0.1)',
+  },
+  detailsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 8,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(10,77,60,0.1)',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(10,77,60,0.1)',
+  },
+  deleteRow: {
+    borderBottomWidth: 0,
+  },
+  detailIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  detailContent: {
+    flex: 1,
+  },
+  detailLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#1E293B',
+    fontWeight: '500',
+  },
+  editText: {
+    color: '#10B981',
+  },
+  shareContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  shareButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 30,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  smsButton: {
+    backgroundColor: '#0A4D3C',
+  },
+  whatsappButton: {
+    backgroundColor: '#10B981',
+  },
+  shareButtonText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
 });
 
 // ---------- MODAL STYLES ----------
@@ -502,47 +787,84 @@ const modalStyles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
-
-  shareContainer: {
+  modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginHorizontal: 16,
-    marginVertical: 20,
-    gap: 12,
-  },
-
-  materialBtn: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12, // Material 3
-    elevation: 3, // Android shadow
-    shadowColor: '#000', // iOS shadow
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-  },
-
-  smsBtn: {
-    backgroundColor: '#1E88E5', // Material Blue
-  },
-
-  whatsappBtn: {
-    backgroundColor: '#25D366', // WhatsApp Green
-  },
-
-
-  title: { fontSize: 18, fontWeight: "bold", marginBottom: 15, textAlign: "center" },
-  input: {
-    borderWidth: 1, borderColor: "#aaa", padding: 12, borderRadius: 8, fontSize: 16,
     marginBottom: 20,
   },
-  btnRow: { flexDirection: "row", justifyContent: "space-between" },
-  button: { padding: 12, borderRadius: 8, width: "48%", alignItems: "center" },
-  btnText: { fontWeight: "600", fontSize: 16 },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0A4D3C',
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    padding: 16,
+    fontSize: 16,
+    color: '#1E293B',
+    marginBottom: 24,
+    backgroundColor: '#F8FAFC',
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  button: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: "center",
+  },
+  cancelButton: {
+    backgroundColor: "#F1F5F9",
+  },
+  updateButton: {
+    backgroundColor: "#0A4D3C",
+  },
+  deleteButton: {
+    backgroundColor: "#DC2626",
+  },
+  cancelButtonText: {
+    color: "#64748B",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  updateButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  deleteButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 15,
+  },
 });

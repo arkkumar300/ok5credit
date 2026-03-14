@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView, ScrollView, BackHandler, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView, ScrollView, BackHandler, Alert, Dimensions, StatusBar} from 'react-native';
 import { useRouter } from 'expo-router';
-import { MoreHorizontal, Users, Search, Filter, TrendingUp, Settings, X, Share, UserPlus } from 'lucide-react-native';
+import { MoreHorizontal, Users, Search, Filter, TrendingUp, Settings, X, Share, UserPlus, ChevronRight, CheckCircle, Award, Clock, Download, Plus, Home, BarChart3, User, LogOut} from 'lucide-react-native';
 import Modal from 'react-native-modal';
 import { Appbar, Avatar } from 'react-native-paper';
 import ApiService from './components/ApiServices';
@@ -13,18 +13,10 @@ import { useTranslation } from 'react-i18next';
 import i18n from './i18n/i18n';
 import { AuthContext } from './components/AuthContext';
 import getStageColor from './components/defaulterColor';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Animatable from 'react-native-animatable';
 
-let transactionData = {
-  customers: [
-    { id: 1, name: 'madhu', amount: 111, type: 'Advance', date: 'Today', initial: 'M', color: '#FFC107' },
-    { id: 2, name: 'ravi', amount: 10, type: 'Due', date: 'Yesterday', initial: 'R', color: '#FF5722' },
-    { id: 3, name: 'suresh kumar', amount: 1, type: 'Due', date: '15 Jul, 2025', initial: 'S', color: '#2196F3' },
-  ],
-  suppliers: [
-    { id: 1, name: 'Wholesale Mart', amount: 500, type: 'Due', date: 'Today', initial: 'W', color: '#9C27B0' },
-    { id: 2, name: 'Supply Co', amount: 250, type: 'Advance', date: 'Yesterday', initial: 'S', color: '#FF9800' },
-  ]
-};
+const { width } = Dimensions.get('window');
 
 const FILTER_CATEGORIES = ['Sort By', 'Name'];
 const SORT_OPTIONS = [
@@ -279,45 +271,9 @@ export default function DashboardScreen() {
     router.push('/subscription-members');
   };
 
-  const addTransaction = (personName, personType, amount, transactionType) => {
-    const newTransaction = {
-      id: Date.now(),
-      name: personName,
-      amount: parseInt(amount),
-      type: transactionType === 'received' ? 'Advance' : 'Due',
-      date: 'Today',
-      initial: personName.charAt(0).toUpperCase(),
-      color: '#4CAF50'
-    };
-
-    if (personType === 'customer') {
-      const existingCustomer = customers.find(c => c.name.toLowerCase() === personName.toLowerCase());
-      if (existingCustomer) {
-        setCustomers(prev => prev.map(c =>
-          c.id === existingCustomer.id
-            ? { ...c, amount: newTransaction.amount, type: newTransaction.type, date: 'Today' }
-            : c
-        ));
-      } else {
-        setCustomers(prev => [...prev, newTransaction]);
-      }
-    } else {
-      const existingSupplier = suppliers.find(s => s.name.toLowerCase() === personName.toLowerCase());
-      if (existingSupplier) {
-        setSuppliers(prev => prev.map(s =>
-          s.id === existingSupplier.id
-            ? { ...s, amount: newTransaction.amount, type: newTransaction.type, date: 'Today' }
-            : s
-        ));
-      } else {
-        setSuppliers(prev => [...prev, newTransaction]);
-      }
-    }
+  const handleProfilePress = () => {
+    router.push('/profile');
   };
-
-  useEffect(() => {
-    const handleTransactionUpdate = () => { };
-  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -335,210 +291,293 @@ export default function DashboardScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Appbar.Header style={{ elevation: 5 }}>
-        <TouchableOpacity onPress={() => router.push('/profile')}>
-          <Avatar.Text
-            label={initialsLetter}
-            size={38}
-            color="#ffffff"
-            style={{ backgroundColor: '#2E7D32', marginStart: 8, elevation: 3 }}
-          />
-        </TouchableOpacity>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
 
-        <Appbar.Content
-          title="Aqua Credit"
-          titleStyle={{ textAlign: 'center', fontWeight: 'bold' }}
-        />
+      {/* Premium Header with Gradient */}
+      <LinearGradient
+        colors={['#0A4D3C', '#1B6B50']}
+        style={styles.headerGradient}
+      >
+        <SafeAreaView>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={handleProfilePress} style={styles.profileButton}>
+              <View style={styles.avatarSolid}>
+                <Text style={styles.avatarText}>{initialsLetter || 'U'}</Text>
+              </View>
+            </TouchableOpacity>
 
-        <Appbar.Action
-          icon={() => <Share size={22} color="#2E7D32" />}
-          onPress={() => {
-            if (activeTab === 'Customer') {
-              exportDataAsPDF(customersList, `${activeTab}`);
-            } else {
-              exportDataAsPDF(suppliersList, `${activeTab}`);
-            }
-          }}
-          color="#2E7D32"
-        />
-      </Appbar.Header>
-      <ScrollView>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>Aqua Credit</Text>
+              <Text style={styles.headerSubtitle}>Digital Khata</Text>
+            </View>
 
-        <View style={styles.verifyBanner}>
-          <View
-            style={[
-              styles.verifyIcon,
-              { backgroundColor: isVerified ? "#4CAF50" : "#FF6F00" }
-            ]}
-          >
-            <Text style={styles.verifyIconText}>
-              {isVerified ? "✓" : "✕"}
-            </Text>
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={() => {
+                if (activeTab === 'Customer') {
+                  exportDataAsPDF(customersList, `${activeTab}`);
+                } else {
+                  exportDataAsPDF(suppliersList, `${activeTab}`);
+                }
+              }}
+            >
+              <Download size={20} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
+        </SafeAreaView>
+      </LinearGradient>
 
-          {isVerified === null ? (
-            <Text style={styles.verifyText}>Checking verification...</Text>
-          ) : isVerified ? (
-            <Text style={styles.verifyText}>Verified Business</Text>
-          ) : (
-            <Text style={styles.unverifyText}>Business not verified / KYC pending</Text>
-          )}
-
-          <TouchableOpacity onPress={() => router.push('/profile')}>
-            <Text style={styles.verifyArrow}>›</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Subscription Info Banner - Show only if subscribed */}
-        {isSubscribed && subscription && (
-          <View style={styles.subscriptionBanner}>
-            <View style={styles.subscriptionInfo}>
-              <Text style={styles.subscriptionPlanText}>
-                {subscription?.plan?.name} Plan
-              </Text>
-              <Text style={styles.subscriptionUsersText}>
-                {subscription?.members?.length || 1}/{subscription?.purchased_user_count} Users
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Welcome Section */}
+        <View style={styles.welcomeContainer}>
+          <View style={styles.welcomeRow}>
+            <Text style={styles.welcomeText}>
+              Welcome, {userData?.name?.split(' ')[0] || 'User'}!
+            </Text>
+            <View style={styles.dateBadge}>
+              <Clock size={14} color="#0A4D3C" />
+              <Text style={styles.dateText}>
+                {new Date().toLocaleDateString('en-US', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric'
+                })}
               </Text>
             </View>
-            <TouchableOpacity
-              style={styles.manageButton}
-              onPress={handleEmployeesPress}
-            >
-              <UserPlus size={16} color="#fff" />
-              <Text style={styles.manageButtonText}>Manage</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <Text style={{ margin: 10, fontWeight: 'bold', fontSize: 18, color: "green", textTransform: 'capitalize', letterSpacing: 1 }}>
-          {t('welcome', { name: userData?.name })}
-        </Text>
-
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'Customer' && styles.activeTab]}
-            onPress={() => {
-              setActiveTab('Customer');
-              setSelectedCategory('Sort By');
-              setSelectedOption('Default');
-            }}
-          >
-            <Text style={[styles.tabText, activeTab === 'Customer' && styles.activeTabText]}>
-              Customer
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'Supplier' && styles.activeTab]}
-            onPress={() => {
-              setActiveTab('Supplier');
-              setSelectedCategory('Sort By');
-              setSelectedOption('Default');
-            }}
-          >
-            <Text style={[styles.tabText, activeTab === 'Supplier' && styles.activeTabText]}>
-              Supplier
-            </Text>
-          </TouchableOpacity>
-          <View style={styles.tabActions}>
-            <TouchableOpacity style={[styles.iconButton, styles.activeTab]} onPress={toggleModal}>
-              <Filter size={20} color="#666" />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.iconButton, styles.activeTab]} onPress={() => router.navigate({
-              pathname: '/search',
-              params: { addTo: activeTab }
-            })}>
-              <Search size={20} color="#666" />
-            </TouchableOpacity>
           </View>
         </View>
 
-        {activeTab === 'Customer' && (
-          <View style={styles.balanceCard}>
-            <Text style={styles.balanceLabel}>Net Balance</Text>
-            <Text style={selectedOption === 'Advance' ? styles.balanceAmount_advance : styles.balanceAmount_due}>
-              ₹ {parseFloat(netBalance).toFixed(2)}
+        {/* Verification Banner - Orange for Pending, Green for Verified */}
+        <View style={styles.bannerContainer}>
+          <View style={[styles.verifyBanner, isVerified ? styles.verifiedBanner : styles.pendingBanner]}>
+            <View style={styles.verifyIcon}>
+              <CheckCircle size={18} color="#FFFFFF" />
+            </View>
+            <Text style={styles.verifyText}>
+              {isVerified === null
+                ? 'Checking verification...'
+                : isVerified
+                  ? 'Verified Business Account'
+                  : 'KYC Pending - Complete verification'}
             </Text>
-            <Text style={styles.balanceSubtext}>{currentData.length} Accounts</Text>
-            <Text style={styles.balanceType}>You Pay</Text>
+            <ChevronRight size={18} color="#FFFFFF" />
+          </View>
+        </View>
+
+        {/* Subscription Banner - Single Color */}
+        {isSubscribed && subscription && (
+          <View style={styles.subscriptionContainer}>
+            <View style={styles.subscriptionBanner}>
+              <View style={styles.subscriptionInfo}>
+                <Award size={20} color="#0A4D3C" />
+                <View style={styles.subscriptionTextContainer}>
+                  <Text style={styles.subscriptionPlan}>
+                    {subscription?.plan?.name || 'Premium'} Plan
+                  </Text>
+                  <Text style={styles.subscriptionUsers}>
+                    {subscription?.members?.length || 1}/{subscription?.purchased_user_count} Users
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.manageButton}
+                onPress={handleEmployeesPress}
+              >
+                <UserPlus size={14} color="#FFFFFF" />
+                <Text style={styles.manageButtonText}>Manage</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
-        <ScrollView style={styles.listContainer}>
+        {/* Tabs Section */}
+        <View style={styles.tabsWrapper}>
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'Customer' && styles.activeTabCustomer]}
+              onPress={() => {
+                setActiveTab('Customer');
+                setSelectedCategory('Sort By');
+                setSelectedOption('Default');
+              }}
+            >
+              <Users size={16} color={activeTab === 'Customer' ? '#FFFFFF' : '#64748B'} />
+              <Text style={[styles.tabText, activeTab === 'Customer' && styles.activeTabText]}>
+                Customers
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'Supplier' && styles.activeTabSupplier]}
+              onPress={() => {
+                setActiveTab('Supplier');
+                setSelectedCategory('Sort By');
+                setSelectedOption('Default');
+              }}
+            >
+              <TrendingUp size={16} color={activeTab === 'Supplier' ? '#FFFFFF' : '#64748B'} />
+              <Text style={[styles.tabText, activeTab === 'Supplier' && styles.activeTabText]}>
+                Suppliers
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.tabActions}>
+              <TouchableOpacity style={styles.iconButton} onPress={toggleModal}>
+                <Filter size={18} color="#0A4D3C" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => router.navigate({
+                  pathname: '/search',
+                  params: { addTo: activeTab }
+                })}
+              >
+                <Search size={18} color="#0A4D3C" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* Balance Card - Only for Customers */}
+        {activeTab === 'Customer' && (
+          <View style={styles.balanceCardWrapper}>
+            <View style={styles.balanceCard}>
+              <View style={styles.balanceHeader}>
+                <Text style={styles.balanceLabel}>Net Balance</Text>
+                <View style={styles.balanceBadge}>
+                  <Text style={styles.balanceCount}>{currentData.length} Accounts</Text>
+                </View>
+              </View>
+
+              <Text style={[
+                styles.balanceAmount,
+                netBalance >= 0 ? styles.balancePositive : styles.balanceNegative
+              ]}>
+                ₹ {parseFloat(netBalance).toFixed(2)}
+              </Text>
+
+              <View style={styles.balanceFooter}>
+                <Text style={styles.balanceType}>You Pay</Text>
+                <TrendingUp size={16} color={netBalance >= 0 ? '#0A4D3C' : '#EF4444'} />
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* List Container */}
+        <View style={styles.listContainer}>
           {Array.isArray(currentData) && currentData.length > 0 ? (
-            <>
-              {currentData.map((person) => (
-                <TouchableOpacity
-                  key={person.id}
-                  style={styles.personCard}
-                  onPress={() => handlePersonClick(person)}
-                >
-                  <View style={[styles.avatar, { backgroundColor: getStageColor(person.defaulter_stage) }]}>
-                    <Text style={styles.avatarText}>{person.initial}</Text>
-                  </View>
-                  <View style={styles.personInfo}>
-                    <Text style={styles.personName}>{person.name}</Text>
-                    <View style={styles.paymentInfo}>
-                      <Text style={styles.checkMark}>✓</Text>
-                      <Text style={styles.paymentText}>
-                        ₹{person.amount} {person.type === 'Advance' ? 'Payment Added' : 'Credit Added'} {person.date}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.amountContainer}>
-                    <Text style={[styles.amount, person.type === 'Due' ? styles.dueAmount : styles.advanceAmount]}>
-                      ₹{person.amount}
+            currentData.map((person, index) => (
+              <TouchableOpacity
+                key={person.id}
+                style={styles.personCard}
+                onPress={() => handlePersonClick(person)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.personAvatar, { backgroundColor: getStageColor(person.defaulter_stage) + '30' }]}>
+                  <Text style={[styles.personAvatarText, { color: person.color }]}>
+                    {person.initial}
+                  </Text>
+                </View>
+
+                <View style={styles.personInfo}>
+                  <Text style={styles.personName}>{person.name}</Text>
+                  <View style={styles.paymentInfo}>
+                    <CheckCircle size={10} color="#0A4D3C" />
+                    <Text style={styles.paymentText}>
+                      {person.type === 'Advance' ? 'Payment Added' : 'Credit Added'} • {person.date}
                     </Text>
-                    <Text style={styles.amountType}>{person.type}</Text>
                   </View>
-                </TouchableOpacity>
-              ))}
-            </>
+                </View>
+
+                <View style={styles.amountContainer}>
+                  <Text style={[
+                    styles.amount,
+                    person.type === 'Due' ? styles.dueAmount : styles.advanceAmount
+                  ]}>
+                    ₹{person.amount}
+                  </Text>
+                  <View style={[
+                    styles.typeBadge,
+                    { backgroundColor: person.type === 'Due' ? '#FEE2E2' : '#D1FAE5' }
+                  ]}>
+                    <Text style={[
+                      styles.typeText,
+                      { color: person.type === 'Due' ? '#EF4444' : '#0A4D3C' }
+                    ]}>
+                      {person.type}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
           ) : (
             <View style={styles.emptyContainer}>
               <LottieView
                 source={require('../assets/animations/noData.json')}
                 autoPlay
                 loop
-                style={{ width: 200, height: 150, alignSelf: 'center' }}
+                style={styles.lottieAnimation}
               />
-              <Text style={styles.emptyText}>No data found</Text>
+              <Text style={styles.emptyText}>No {activeTab.toLowerCase()}s found</Text>
+              <Text style={styles.emptySubtext}>
+                Tap the + button to add your first {activeTab.toLowerCase()}
+              </Text>
             </View>
           )}
-        </ScrollView>
+        </View>
 
+        {/* Extra bottom padding for floating button */}
+        <View style={styles.bottomPadding} />
+      </ScrollView>
 
+      {/* Add Button */}
+      <TouchableOpacity
+        style={[styles.addButton, { backgroundColor: '#0A4D3C' }]}
+        onPress={activeTab === 'Customer' ? handleAddCustomer : handleAddSupplier}
+        activeOpacity={0.8}
+      >
+        <Plus size={20} color="#FFFFFF" />
+        <Text style={styles.addButtonText}>Add {activeTab}</Text>
+      </TouchableOpacity>
 
-        <Modal
-          isVisible={isModalVisible}
-          animationIn="slideInLeft"
-          animationOut="slideOutLeft"
-          style={styles.modal}
-          onBackdropPress={toggleModal}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.header}>
-              <Text style={styles.headerTitle}>Filter Bills</Text>
-              <TouchableOpacity onPress={toggleModal}>
-                <X size={24} />
+      {/* Filter Modal */}
+      <Modal
+        isVisible={isModalVisible}
+        animationIn="slideInLeft"
+        animationOut="slideOutLeft"
+        style={styles.modal}
+        onBackdropPress={toggleModal}
+      >
+        <View style={styles.modalContent}>
+          <View style={styles.modalSolid}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filter & Sort</Text>
+              <TouchableOpacity onPress={toggleModal} style={styles.modalCloseButton}>
+                <X size={20} color="#64748B" />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.body}>
-              <View style={styles.sidebar}>
+            <View style={styles.modalBody}>
+              <View style={styles.filterSidebar}>
                 {FILTER_CATEGORIES.map((category) => (
                   <TouchableOpacity
                     key={category}
                     onPress={() => setSelectedCategory(category)}
                     style={[
-                      styles.tabButton,
-                      selectedCategory === category && styles.tabButtonActive,
+                      styles.filterTab,
+                      selectedCategory === category && styles.filterTabActive,
                     ]}
                   >
                     <Text
                       style={[
-                        styles.tabText,
-                        selectedCategory === category && styles.tabTextActive,
+                        styles.filterTabText,
+                        selectedCategory === category && styles.filterTabTextActive,
                       ]}
                     >
                       {category}
@@ -547,441 +586,631 @@ export default function DashboardScreen() {
                 ))}
               </View>
 
-              <View style={styles.optionsContainer}>{renderOptions()}</View>
+              <View style={styles.filterOptions}>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {renderOptions()}
+                </ScrollView>
+              </View>
             </View>
 
-            <View style={styles.footer}>
+            <View style={styles.modalFooter}>
               <TouchableOpacity
-                style={[styles.footerButton, { backgroundColor: '#E6F0E6' }]}
+                style={[styles.footerButton, styles.clearButton]}
                 onPress={() => {
                   setSelectedOption('Default');
                   setSelectedCategory('Sort By');
                 }}
               >
-                <Text style={{ color: '#2F4F2F' }}>Clear All</Text>
+                <Text style={styles.clearButtonText}>Clear All</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.footerButton, { backgroundColor: '#228B22' }]} onPress={toggleModal}>
-                <Text style={{ color: '#fff' }}>Apply</Text>
+
+              <TouchableOpacity
+                style={[styles.footerButton, styles.applyButton]}
+                onPress={toggleModal}
+              >
+                <Text style={styles.applyButtonText}>Apply</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </Modal>
-      </ScrollView>
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={activeTab === 'Customer' ? handleAddCustomer : handleAddSupplier}
-      >
-        <Users size={20} color="white" />
-        <Text style={styles.addButtonText}>Add {activeTab}</Text>
-      </TouchableOpacity>
+        </View>
+      </Modal>
 
+      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem}>
-          <TrendingUp size={24} color="#4CAF50" />
-          <Text style={styles.navText}>Ledger</Text>
+          <View style={[styles.navIcon, activeTab === 'Home' && styles.navIconActive]}>
+            <Home size={18} color={activeTab === 'Home' ? '#FFFFFF' : '#64748B'} />
+          </View>
+          <Text style={[styles.navText, activeTab === 'Home' && styles.navTextActive]}>Home</Text>
         </TouchableOpacity>
 
-        {/* Employee Button - Only show if subscribed */}
         {isSubscribed && (
           <TouchableOpacity style={styles.navItem} onPress={handleEmployeesPress}>
-            <UserPlus size={24} color="#4CAF50" />
+            <View style={styles.navIcon}>
+              <UserPlus size={18} color="#64748B" />
+            </View>
             <Text style={styles.navText}>Employees</Text>
           </TouchableOpacity>
         )}
+
         {!isSubscribed && (
           <TouchableOpacity style={styles.navItem} onPress={handleMyPlanPress}>
-            <Settings size={24} color="#666" />
+            <View style={styles.navIcon}>
+              <Award size={18} color="#64748B" />
+            </View>
             <Text style={styles.navText}>My Plan</Text>
           </TouchableOpacity>
         )}
 
         <TouchableOpacity style={styles.navItem} onPress={handleMorePress}>
-          <MoreHorizontal size={24} color="#666" />
+          <View style={styles.navIcon}>
+            <MoreHorizontal size={18} color="#64748B" />
+          </View>
           <Text style={styles.navText}>More</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#F8FAFC',
+  },
+  headerGradient: {
+    paddingTop: 20,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    paddingVertical: 8,
   },
-  backButton: {
-    padding: 8,
+  profileButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  avatarSolid: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
   },
-  image: {
-    width: 250,
-    height: 250,
-    alignSelf: 'center'
-  },
-  emptyText: {
+  avatarText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#666',
-    textAlign: 'center',
+    color: '#0A4D3C',
+  },
+  headerTitleContainer: {
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
   },
   shareButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#E3F2FD',
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
-  shareText: {
-    color: '#1976D2',
-    fontSize: 14,
-    fontWeight: '500',
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  welcomeContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  welcomeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  welcomeText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0A4D3C',
+  },
+  dateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    gap: 4,
+  },
+  dateText: {
+    fontSize: 11,
+    color: '#0A4D3C',
+    fontWeight: '600',
+  },
+  bannerContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   verifyBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
-    marginHorizontal: 16,
-    marginTop: 12,
     borderRadius: 8,
+    gap: 8,
+  },
+  verifiedBanner: {
+    backgroundColor: '#0A4D3C', // Green for verified
+  },
+  pendingBanner: {
+    backgroundColor: '#F97316', // Orange for pending
   },
   verifyIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
-  },
-  verifyIconText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: 'bold',
   },
   verifyText: {
     flex: 1,
-    fontSize: 14,
-    color: '#4CAF50',
+    fontSize: 12,
+    color: '#FFFFFF',
     fontWeight: '500',
   },
-  unverifyText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#FF6F00',
-    fontWeight: '500',
-  },
-  verifyArrow: {
-    fontSize: 18,
-    color: '#FF6F00',
+  subscriptionContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   subscriptionBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
-    marginHorizontal: 16,
-    marginTop: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#4CAF50',
+    borderColor: '#0A4D3C',
+    backgroundColor: '#FFFFFF',
   },
   subscriptionInfo: {
-    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  subscriptionPlanText: {
-    fontSize: 14,
+  subscriptionTextContainer: {
+    gap: 2,
+  },
+  subscriptionPlan: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#2E7D32',
+    color: '#0A4D3C',
   },
-  subscriptionUsersText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
+  subscriptionUsers: {
+    fontSize: 11,
+    color: '#64748B',
   },
   manageButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    backgroundColor: '#0A4D3C',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 16,
     gap: 4,
   },
   manageButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  tabsWrapper: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 25,
     padding: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
     alignItems: 'center',
   },
   tab: {
     flex: 1,
-    paddingVertical: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    gap: 6,
+    borderRadius: 25,
+    backgroundColor: 'transparent',
   },
-  activeTab: {
-    backgroundColor: '#F1F8E9',
-    borderRadius: 6,
-    elevation: 3,
-    shadowColor: '#2E7D32',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+  activeTabCustomer: {
+    backgroundColor: '#0A4D3C',
+  },
+  activeTabSupplier: {
+    backgroundColor: '#0A4D3C',
   },
   tabText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
   },
   activeTabText: {
-    color: '#2E7D32',
-    fontWeight: '600',
+    color: '#FFFFFF',
   },
   tabActions: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginLeft: 4,
   },
   iconButton: {
-    padding: 8,
-    marginLeft: 8,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  balanceCardWrapper: {
+    paddingHorizontal: 16,
+    marginBottom: 20,
   },
   balanceCard: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginTop: 16,
     padding: 16,
     borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
   },
   balanceLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
   },
-  balanceAmount_advance: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-    marginBottom: 4,
+  balanceBadge: {
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
   },
-  balanceAmount_due: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FF6F00',
-    marginBottom: 4,
+  balanceCount: {
+    fontSize: 11,
+    color: '#0A4D3C',
+    fontWeight: '600',
   },
-  balanceSubtext: {
-    fontSize: 12,
-    color: '#999',
+  balanceAmount: {
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  balancePositive: {
+    color: '#0A4D3C',
+  },
+  balanceNegative: {
+    color: '#EF4444',
+  },
+  balanceFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   balanceType: {
     fontSize: 12,
-    color: '#666',
-    position: 'absolute',
-    right: 16,
-    top: 16,
+    color: '#64748B',
   },
   listContainer: {
-    flex: 1,
-    marginTop: 26,
+    paddingHorizontal: 16,
+    gap: 10,
   },
   personCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginBottom: 8,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    padding: 12,
     borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  personAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  avatarText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
+  personAvatarText: {
+    fontSize: 16,
+    fontWeight: '700',
   },
   personInfo: {
     flex: 1,
   },
   personName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
+    color: '#0A4D3C',
+    marginBottom: 3,
+    textTransform: 'capitalize',
   },
   paymentInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  checkMark: {
-    color: '#4CAF50',
-    marginRight: 4,
-    fontSize: 12,
+    gap: 4,
   },
   paymentText: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 11,
+    color: '#64748B',
   },
   amountContainer: {
     alignItems: 'flex-end',
+    gap: 4,
   },
   amount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 2,
+    fontSize: 15,
+    fontWeight: '700',
   },
   dueAmount: {
-    color: '#F44336',
+    color: '#EF4444',
   },
   advanceAmount: {
-    color: '#4CAF50',
+    color: '#0A4D3C',
   },
-  amountType: {
+  typeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  typeText: {
+    fontSize: 9,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  lottieAnimation: {
+    width: 150,
+    height: 120,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0A4D3C',
+    marginTop: 12,
+  },
+  emptySubtext: {
     fontSize: 12,
-    color: '#666',
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 4,
+    paddingHorizontal: 30,
+  },
+  bottomPadding: {
+    height: 80,
   },
   addButton: {
+    position: 'absolute',
+    bottom: 70,
+    right: 16,
+    borderRadius: 25,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4CAF50',
-    marginHorizontal: 16,
-    marginVertical: 16,
-    paddingVertical: 16,
-    borderRadius: 8,
-    elevation: 5
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    gap: 6,
+    shadowColor: '#0A4D3C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   addButtonText: {
-    color: 'white',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    marginLeft: 8,
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-  },
-  navItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  navText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-  },
-  filterButton: {
-    backgroundColor: '#228B22',
-    padding: 12,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  filterText: {
-    color: '#fff',
-    marginLeft: 8,
+    color: '#FFFFFF',
   },
   modal: {
     margin: 0,
-    justifyContent: 'flex-start',
   },
   modalContent: {
     flex: 1,
-    backgroundColor: 'white',
-    width: '90%',
-    paddingTop: 40,
+    width: '85%',
+    backgroundColor: 'transparent',
+  },
+  modalSolid: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingTop: 50,
     paddingHorizontal: 16,
   },
-  body: {
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0A4D3C',
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBody: {
     flexDirection: 'row',
     flex: 1,
+    gap: 12,
   },
-  sidebar: {
+  filterSidebar: {
     width: '35%',
-    backgroundColor: '#F8F8F8',
-    paddingRight: 8,
-    borderRightWidth: 1,
-    borderRightColor: '#DDD',
+    gap: 6,
   },
-  tabButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 8,
+  filterTab: {
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 4,
+    backgroundColor: '#F8FAFC',
   },
-  tabButtonActive: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#228B22',
-    backgroundColor: '#E6F0E6',
+  filterTabActive: {
+    backgroundColor: '#0A4D3C',
   },
-  optionsContainer: {
+  filterTabText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  filterTabTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  filterOptions: {
     flex: 1,
-    padding: 12,
   },
   optionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    alignItems: 'center',
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: '#E2E8F0',
   },
   optionText: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 14,
+    color: '#64748B',
   },
-  radioSelected: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#228B22',
+  optionTextSelected: {
+    color: '#0A4D3C',
+    fontWeight: '600',
   },
-  footer: {
+  modalFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    gap: 10,
+    paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: '#DDD',
+    borderTopColor: '#E2E8F0',
   },
   footerButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 6,
+    flex: 1,
+    borderRadius: 4,
+    overflow: 'hidden',
   },
-  placeholder: {
-    paddingVertical: 20,
+  clearButton: {
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  clearButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  applyButton: {
+    backgroundColor: '#0A4D3C',
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  applyButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  bottomNav: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  navItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  navIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navIconActive: {
+    backgroundColor: '#0A4D3C',
+  },
+  navText: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  navTextActive: {
+    color: '#0A4D3C',
+    fontWeight: '600',
   },
 });

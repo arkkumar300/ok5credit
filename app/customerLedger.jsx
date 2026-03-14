@@ -1,17 +1,18 @@
 // CustomerStatementScreen.js
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, ScrollView, } from 'react-native';
-import { Appbar, DataTable, FAB } from 'react-native-paper';
-import {
-    ArrowDown, ArrowLeft, ArrowUp, Download, Share2
-} from 'lucide-react-native';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, ScrollView, StatusBar, Dimensions } from 'react-native';
+import { Appbar, DataTable, FAB, ActivityIndicator, Divider } from 'react-native-paper';
+import { ArrowDown, ArrowLeft, ArrowUp, Download, Share2, Calendar, Filter, User, IndianRupee, TrendingUp, TrendingDown} from 'lucide-react-native';
 import handleCustomerLedgerPDF from './components/customerLedgerPDF';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
 import moment from 'moment';
 import LottieView from 'lottie-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
 
 const transactions = [
     {
@@ -35,11 +36,12 @@ export default function CustomerLedger() {
     const [result, setResult] = useState("NO-DUE");
     const [totalPayment, setTotalPayment] = useState(0);
     const [totalPaymentCount, setTotalPaymentCount] = useState(0);
-    const [totalCraditCount, setTotalCraditCount] = useState(0);
-    const [totalCradit, setTotalCradit] = useState(0);
+    const [totalCreditCount, setTotalCreditCount] = useState(0);
+    const [totalCredit, setTotalCredit] = useState(0);
     const [fromDateRange, setFromDateRange] = useState(moment().subtract(1, 'days').format('DD MMM, YYYY'));
     const [toDateRange, setToDateRange] = useState(moment().format('DD MMM, YYYY'));
-
+    const [loading, setLoading] = useState(true);
+    const [activeFilter, setActiveFilter] = useState('overall');
 
     const { personId, personName, roleType } = useLocalSearchParams();
 
@@ -58,9 +60,11 @@ export default function CustomerLedger() {
 
     const fetchData = async () => {
         const userDetails = await AsyncStorage.getItem("userData");
-  
+        setLoading(true);
+
         if (!userDetails) {
           Alert.alert("Error", "User data not found");
+          setLoading(false);
           return;
         }
     
@@ -94,8 +98,8 @@ export default function CustomerLedger() {
             setCustomer(Details);
             setTotalPayment(totalYouGot)
             setTotalPaymentCount(countYouGot)
-            setTotalCradit(totalYouGave)
-            setTotalCraditCount(countYouGave)
+            setTotalCredit(totalYouGave);
+            setTotalCreditCount(countYouGave);
             setFilteredData(parsedTransactions);
             setAllTransactions(parsedTransactions);
             if (totalYouGot <= totalYouGave) {
@@ -105,38 +109,47 @@ export default function CustomerLedger() {
             }
         } catch (error) {
             console.error('Failed to fetch customer data:', error);
+        }finally{
+            setLoading(false);
         }
     };
     const router = useRouter();
     const renderItem = ({ item }) => (
-        <DataTable.Row style={{ backgroundColor: item.type === 'debit' ? '#E8F5E9' : "#f3e6e7", paddingVertical: 15 }}>
-            {/* Date */}
-            <DataTable.Cell style={{}}>
-                <Text style={{ color: 'green', padding: 5, flexDirection: 'row', borderColor: '#007B83', borderWidth: 1 }}> {item.date}</Text>
-            </DataTable.Cell>
+        <View style={styles.transactionRow}>
+            <View style={styles.dateCell}>
+                <View style={styles.dateBadge}>
+                    <Text style={styles.dateText}>{item.date}</Text>
+                </View>
+            </View>
 
-            {/* Payment (↓ green) */}
-            <DataTable.Cell>
+            <View style={styles.amountCell}>
                 {item.type === 'debit' && (
-                    <Text style={{ color: 'green', fontSize: 16, flexDirection: 'row' }}>
-                        <ArrowDown size={16} color="green" /> ₹{item.amount}
-                    </Text>
+                    <View style={styles.paymentContainer}>
+                        <View style={[styles.iconBadge, { backgroundColor: '#E8F5E9' }]}>
+                            <ArrowDown size={14} color="#0A4D3C" />
+                        </View>
+                        <Text style={styles.paymentAmount}>₹{item.amount}</Text>
+                    </View>
                 )}
-            </DataTable.Cell>
+            </View>
 
-            {/* Credit (↑ red) */}
-            <DataTable.Cell>
+            <View style={styles.amountCell}>
                 {item.type === 'credit' && (
-                    <Text style={{ color: 'red', fontSize: 16, flexDirection: 'row' }}>
-                        <ArrowUp size={16} color="red" /> ₹{item.amount}
-                    </Text>
+                    <View style={styles.creditContainer}>
+                        <View style={[styles.iconBadge, { backgroundColor: '#FEE2E2' }]}>
+                            <ArrowUp size={14} color="#EF4444" />
+                        </View>
+                        <Text style={styles.creditAmount}>₹{item.amount}</Text>
+                    </View>
                 )}
-            </DataTable.Cell>
-        </DataTable.Row>
+            </View>
+        </View>
     );
 
 
     const filterThisMonth = () => {
+        setActiveFilter('thismonth');
+
         const startOfMonth = moment().startOf('month');
         const endOfMonth = moment();
 
@@ -151,6 +164,8 @@ export default function CustomerLedger() {
     };
 
     const filterLastMonth = () => {
+        setActiveFilter('lastmonth');
+
         const startOfLastMonth = moment().subtract(1, 'month').startOf('month');
         const endOfLastMonth = moment().subtract(1, 'month').endOf('month');
 
@@ -165,247 +180,516 @@ export default function CustomerLedger() {
     };
 
     const filterOverall = () => {
+        setActiveFilter('overall');
         fetchData()
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            {/* Header */}
-            <Appbar.Header style={{ backgroundColor: "#ffffff", borderBottomWidth: 2, borderColor: '#f2f7f6' }}>
-                <ArrowLeft size={24} color={'#2E7D32'} style={{ marginStart: 10 }} onPress={() => router.back()} />
-                <Appbar.Content title={`${personName} Statement ${roleType === "CUSTOMER"? "(C)":"(S)"}`} titleStyle={{ color: '#333333', fontWeight: 'bold', marginLeft: 20,textTransform:'capitalize' }} />
-            </Appbar.Header>
-            <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-                <Text style={[styles.subText, { marginTop: 20 }]}>Current Balance <Text style={{ color: result === "NO-DUE" ? "green" : 'red' }}>₹ {Math.abs(Number(customer?.current_balance))}</Text>{result === "DUE" && <Text style={{ color: 'red' }}>  {`(due)`}</Text>}</Text>
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
 
-                {/* Filters */}
-                <View style={[styles.filterRow]}>
-                    <TouchableOpacity onPress={filterOverall}>
-                        <Text style={styles.filterSelected}>Overall</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={filterThisMonth}>
-                        <Text style={styles.filter}>This Month</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={filterLastMonth}>
-                        <Text style={styles.filter}>Last Month</Text>
-                    </TouchableOpacity>
+            {/* Premium Header with Gradient */}
+            <LinearGradient
+                colors={['#0A4D3C', '#1B6B50']}
+                style={styles.headerGradient}
+            >
+                <SafeAreaView>
+                    <View style={styles.header}>
+                        <TouchableOpacity
+                            onPress={() => router.back()}
+                            style={styles.backButton}
+                        >
+                            <ArrowLeft size={24} color="#FFFFFF" />
+                        </TouchableOpacity>
+
+                        <View style={styles.headerTitleContainer}>
+                            <Text style={styles.headerTitle} numberOfLines={1}>
+                                {personName}
+                            </Text>
+                            <Text style={styles.headerSubtitle}>
+                                {roleType === "CUSTOMER" ? 'Customer Statement' : 'Supplier Statement'}
+                            </Text>
+                        </View>
+
+                        <View style={styles.headerRightPlaceholder}>
+                            <User size={20} color="rgba(255,255,255,0.8)" />
+                        </View>
+                    </View>
+                </SafeAreaView>
+            </LinearGradient>
+
+            {/* Balance Card */}
+            <View style={styles.balanceCard}>
+                <View style={styles.balanceHeader}>
+                    <Text style={styles.balanceLabel}>Current Balance</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: result === "NO-DUE" ? '#E8F5E9' : '#FEE2E2' }]}>
+                        <Text style={[styles.statusText, { color: result === "NO-DUE" ? '#0A4D3C' : '#EF4444' }]}>
+                            {result === "NO-DUE" ? 'NO DUE' : 'DUE'}
+                        </Text>
+                    </View>
                 </View>
 
-                {/* Summary */}
-                <View style={styles.balanceBlock}>
-                    <Text style={[styles.balanceAmount, { color: result === "NO-DUE" ? "green" : 'red' }]}>₹ {Math.abs(Number(customer?.current_balance))}</Text>
-                    <Text style={styles.balanceDate}>Balance | {fromDateRange}- {toDateRange}</Text>
+                <Text style={[styles.balanceAmount, { color: result === "NO-DUE" ? '#0A4D3C' : '#EF4444' }]}>
+                    ₹ {Math.abs(Number(customer?.current_balance || 0)).toFixed(2)}
+                </Text>
+
+                <View style={styles.dateRangeContainer}>
+                    <Calendar size={14} color="#64748B" />
+                    <Text style={styles.dateRangeText}>
+                        {fromDateRange} - {toDateRange}
+                    </Text>
                 </View>
-
-                {/* Summary Table Header */}
-                <DataTable>
-                    {/* Header */}
-                    <DataTable.Header style={{ paddingVertical: 10, backgroundColor: '#f3f3f3', elevation: 1 }}>
-                        <DataTable.Title textStyle={{ fontSize: 18 }}>Date</DataTable.Title>
-                        <DataTable.Title>
-                            <View>
-                                <Text style={{ color: 'green', fontSize: 16 }}>Payment ({totalPaymentCount})</Text>
-                                <Text style={{ color: 'green', fontSize: 14 }}>₹ {totalPayment}</Text>
-                            </View>
-                        </DataTable.Title>
-                        <DataTable.Title>
-                            <View>
-                                <Text style={{ color: 'red', fontSize: 16 }}>Credit ({totalCraditCount})</Text>
-                                <Text style={{ color: 'red', fontSize: 14 }}>₹ {totalCradit}</Text>
-                            </View>
-
-                        </DataTable.Title>
-                    </DataTable.Header>
-
-                    {/* Rows via FlatList */}
-                    <FlatList
-                        data={filteredData}
-                        keyExtractor={(item) => item.id}
-                        renderItem={renderItem}
-                        ListEmptyComponent={() => {
-                            return (
-                                <View style={styles.emptyContainer}>
-                                    <LottieView
-                                        source={require('../assets/animations/noData.json')} // 👈 local JSON file
-                                        autoPlay
-                                        loop
-                                        style={{ width: 200, height: 150, alignSelf: 'center' }}
-                                    />
-                                    <Text style={styles.emptyText}>No data found</Text>
-        
-                                </View>
-                            )
-                        }}
-                    />
-                </DataTable>
-            </ScrollView>
-
-            {/* Bottom Buttons */}
-            <View style={styles.bottomButtons}>
-                <FAB
-                    icon={({ size, color }) => (
-                        <Download size={size} color={color} />
-                    )}
-                    onPress={() => handleCustomerLedgerPDF(filteredData,personName,personId,roleType)} 
-                    style={styles.fab}
-                    color="#007B83" // Icon color
-                    customSize={60} // optional, for resizing FAB
-                />
             </View>
-        </SafeAreaView>
+
+            {/* Filters */}
+            <View style={styles.filterSection}>
+                <Text style={styles.filterTitle}>Filter by Period</Text>
+                <View style={styles.filterRow}>
+                    <TouchableOpacity
+                        onPress={filterOverall}
+                        style={[
+                            styles.filterChip,
+                            activeFilter === 'overall' && styles.filterChipActive
+                        ]}
+                    >
+                        <Text style={[
+                            styles.filterChipText,
+                            activeFilter === 'overall' && styles.filterChipTextActive
+                        ]}>Overall</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={filterThisMonth}
+                        style={[
+                            styles.filterChip,
+                            activeFilter === 'thismonth' && styles.filterChipActive
+                        ]}
+                    >
+                        <Text style={[
+                            styles.filterChipText,
+                            activeFilter === 'thismonth' && styles.filterChipTextActive
+                        ]}>This Month</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={filterLastMonth}
+                        style={[
+                            styles.filterChip,
+                            activeFilter === 'lastmonth' && styles.filterChipActive
+                        ]}
+                    >
+                        <Text style={[
+                            styles.filterChipText,
+                            activeFilter === 'lastmonth' && styles.filterChipTextActive
+                        ]}>Last Month</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {/* Summary Stats */}
+            <View style={styles.statsContainer}>
+                <View style={styles.statCard}>
+                    <View style={[styles.statIcon, { backgroundColor: '#E8F5E9' }]}>
+                        <TrendingDown size={20} color="#0A4D3C" />
+                    </View>
+                    <View>
+                        <Text style={styles.statLabel}>Payment</Text>
+                        <Text style={styles.statValue}>₹ {totalPayment}</Text>
+                        <Text style={styles.statCount}>{totalPaymentCount} transactions</Text>
+                    </View>
+                </View>
+
+                <View style={styles.statDivider} />
+
+                <View style={styles.statCard}>
+                    <View style={[styles.statIcon, { backgroundColor: '#FEE2E2' }]}>
+                        <TrendingUp size={20} color="#EF4444" />
+                    </View>
+                    <View>
+                        <Text style={styles.statLabel}>Credit</Text>
+                        <Text style={[styles.statValue, { color: '#EF4444' }]}>₹ {totalCredit}</Text>
+                        <Text style={styles.statCount}>{totalCreditCount} transactions</Text>
+                    </View>
+                </View>
+            </View>
+
+            {/* Transactions Header */}
+            <View style={styles.transactionsHeader}>
+                <Text style={styles.transactionsTitle}>Transaction History</Text>
+            </View>
+
+            {/* Table Header */}
+            <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, styles.dateHeader]}>Date</Text>
+                <Text style={[styles.tableHeaderCell, styles.amountHeader]}>Payment (↓)</Text>
+                <Text style={[styles.tableHeaderCell, styles.amountHeader]}>Credit (↑)</Text>
+            </View>
+
+            <Divider style={styles.tableDivider} />
+
+            {/* Transactions List */}
+            {loading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#0A4D3C" />
+                    <Text style={styles.loadingText}>Loading transactions...</Text>
+                </View>
+            ) : (
+                <FlatList
+                    data={filteredData}
+                    keyExtractor={(item) => item.id}
+                    renderItem={renderItem}
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
+                    ListEmptyComponent={() => (
+                        <View style={styles.emptyContainer}>
+                            <LottieView
+                                source={require('../assets/animations/noData.json')}
+                                autoPlay
+                                loop
+                                style={styles.lottieAnimation}
+                            />
+                            <Text style={styles.emptyTitle}>No Transactions Found</Text>
+                            <Text style={styles.emptySubtext}>
+                                No transactions recorded for this period
+                            </Text>
+                        </View>
+                    )}
+                />
+            )}
+
+            {/* Download FAB */}
+            <TouchableOpacity
+                style={styles.fab}
+                onPress={() => handleCustomerLedgerPDF(filteredData, personName, personId, roleType)}
+                activeOpacity={0.8}
+            >
+                <LinearGradient
+                    colors={['#0A4D3C', '#1B6B50']}
+                    style={styles.fabGradient}
+                >
+                    <Download size={24} color="#FFFFFF" />
+                </LinearGradient>
+            </TouchableOpacity>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        // backgroundColor: '#f2f7f6',
-        backgroundColor: '#ffffff', elevation: 5
+        backgroundColor: '#F8FAFC',
+    },
+    headerGradient: {
+        paddingTop: 20,
+        paddingBottom: 20,
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
     },
-    backArrow: {
-        fontSize: 20,
-        marginRight: 8,
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
     },
-    title: {
-        fontSize: 18,
-        fontWeight: '600',
+    headerTitleContainer: {
+        alignItems: 'center',
+        flex: 1,
+        paddingHorizontal: 12,
     },
-    subText: {
-        marginHorizontal: 16,
-        color: '#555',
+    headerTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#FFFFFF',
+        letterSpacing: 0.5,
+        textTransform: 'capitalize',
+    },
+    headerSubtitle: {
+        fontSize: 11,
+        color: 'rgba(255,255,255,0.8)',
+        marginTop: 2,
+    },
+    headerRightPlaceholder: {
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    balanceCard: {
+        backgroundColor: '#FFFFFF',
+        margin: 16,
+        padding: 20,
+        borderRadius: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    balanceHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    balanceLabel: {
         fontSize: 14,
+        color: '#64748B',
+        fontWeight: '500',
+    },
+    statusBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    statusText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    balanceAmount: {
+        fontSize: 32,
+        fontWeight: '800',
+        marginBottom: 8,
+    },
+    dateRangeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    dateRangeText: {
+        fontSize: 12,
+        color: '#64748B',
+    },
+    filterSection: {
+        paddingHorizontal: 16,
+        marginBottom: 16,
+    },
+    filterTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#0A4D3C',
         marginBottom: 10,
     },
     filterRow: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
-        marginHorizontal: 10,
+        gap: 8,
+    },
+    filterChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    filterChipActive: {
+        backgroundColor: '#0A4D3C',
+        borderColor: '#0A4D3C',
+    },
+    filterChipText: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#64748B',
+    },
+    filterChipTextActive: {
+        color: '#FFFFFF',
+    },
+    statsContainer: {
+        flexDirection: 'row',
+        backgroundColor: '#FFFFFF',
+        marginHorizontal: 16,
+        marginBottom: 20,
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    statCard: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    statIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    statLabel: {
+        fontSize: 12,
+        color: '#64748B',
+    },
+    statValue: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#0A4D3C',
+    },
+    statCount: {
+        fontSize: 10,
+        color: '#94A3B8',
+    },
+    statDivider: {
+        width: 1,
+        backgroundColor: '#E2E8F0',
+        marginHorizontal: 16,
+    },
+    transactionsHeader: {
+        paddingHorizontal: 16,
         marginBottom: 12,
     },
-    filter: {
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 20,
-        backgroundColor: '#eee',
-        fontSize: 13,
-    },
-    filterSelected: {
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 20,
-        backgroundColor: '#e0f2ef',
-        color: '#007B83',
-        fontSize: 13,
-    },
-    balanceBlock: {
-        alignItems: 'center',
-        marginVertical: 8,
-    },
-    balanceAmount: {
-        fontSize: 24,
-        color: 'red',
-        fontWeight: 'bold',
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-      },
-      image: {
-        width: 250, justifyContent: 'center',
-        height: 250, alignSelf: 'center'
-      },
-      emptyText: {
-        fontSize: 16, fontWeight: '700',
-        color: '#666',
-        textAlign: 'center',
-      },
-    
-    balanceDate: {
-        fontSize: 12,
-        color: '#555',
+    transactionsTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#0A4D3C',
     },
     tableHeader: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         paddingHorizontal: 16,
         paddingVertical: 10,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: '#F8FAFC',
     },
-    tableHeaderText: {
-        fontSize: 13,
-        fontWeight: 'bold',
+    tableHeaderCell: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#64748B',
     },
-    transactionItem: {
+    dateHeader: {
+        width: 80,
+    },
+    amountHeader: {
+        flex: 1,
+        textAlign: 'right',
+    },
+    tableDivider: {
+        backgroundColor: '#E2E8F0',
+        height: 1,
+        marginHorizontal: 16,
+    },
+    transactionRow: {
         flexDirection: 'row',
         paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomColor: '#ddd',
+        paddingVertical: 14,
         borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
         alignItems: 'center',
     },
-    dateBox: {
-        backgroundColor: '#eee',
-        paddingVertical: 6,
-        paddingHorizontal: 10,
-        borderRadius: 8,
-        marginRight: 16,
+    dateCell: {
+        width: 80,
+    },
+    dateBadge: {
+        backgroundColor: '#F1F5F9',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        alignSelf: 'flex-start',
     },
     dateText: {
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    transactionAmount: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    amountText: {
-        fontSize: 16,
-        marginLeft: 8,
+        fontSize: 11,
         fontWeight: '600',
+        color: '#0A4D3C',
     },
-    bottomButtons: {
-        position: 'absolute',
-        bottom: 16,
-        left: 16,
-        right: 16,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    amountCell: {
+        flex: 1,
+        alignItems: 'flex-end',
     },
-    downloadButton: {
+    paymentContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderWidth: 1,
-        borderColor: '#007B83',
-        borderRadius: 25,
-        backgroundColor: '#fff',
+        gap: 6,
+    },
+    creditContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    iconBadge: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    paymentAmount: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#0A4D3C',
+    },
+    creditAmount: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#EF4444',
+    },
+    loadingContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 40,
+    },
+    loadingText: {
+        marginTop: 12,
+        fontSize: 14,
+        color: '#64748B',
+        fontWeight: '500',
+    },
+    listContent: {
+        paddingBottom: 100,
+    },
+    emptyContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+        paddingHorizontal: 30,
+    },
+    lottieAnimation: {
+        width: 200,
+        height: 150,
+        alignSelf: 'center',
+    },
+    emptyTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#0A4D3C',
+        marginTop: 16,
+        textAlign: 'center',
+    },
+    emptySubtext: {
+        fontSize: 13,
+        color: '#64748B',
+        textAlign: 'center',
+        marginTop: 4,
     },
     fab: {
         position: 'absolute',
-        margin: 16,
-        right: 16,
-        bottom: 16, // change as needed
-        backgroundColor: '#fff', // or any background color
-        elevation: 4, // shadow for Android
+        bottom: 20,
+        right: 20,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        overflow: 'hidden',
+        shadowColor: '#0A4D3C',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
     },
-    shareButton: {
-        flexDirection: 'row',
+    fabGradient: {
+        width: '100%',
+        height: '100%',
         alignItems: 'center',
-        backgroundColor: '#007B83',
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 25,
-    },
-    buttonText: {
-        marginLeft: 8,
-        fontSize: 14,
-        fontWeight: '500',
+        justifyContent: 'center',
     },
 });

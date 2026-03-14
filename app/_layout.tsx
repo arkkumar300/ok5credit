@@ -6,7 +6,7 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { I18nextProvider } from 'react-i18next';
 import i18n from './i18n/i18n.js'; // import your i18n config
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import  AuthProvider  from './components/AuthContext.js'; // Import AuthProvider
+import  AuthProvider  from './components/AuthContext'; // Import AuthProvider
 
 export default function RootLayout() {
   useFrameworkReady();

@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from "@react-navigation/native";
-import { View, Text, FlatList, SafeAreaView, TouchableOpacity, StyleSheet } from 'react-native';
+import {View,Text,FlatList,SafeAreaView,TouchableOpacity,StyleSheet,StatusBar,Platform,ActivityIndicator} from 'react-native';
 import { Appbar, FAB } from 'react-native-paper';
-import { BookOpenText, Truck, User2, Download, ArrowLeft } from 'lucide-react-native';
+import { BookOpenText, Truck, User2, Download, ArrowLeft, Users, TrendingUp, CheckCircle, ChevronRight } from 'lucide-react-native';
 import handleDownloadPDF from './components/ledgerPDF';
 import { useRouter } from 'expo-router';
 import ApiService from './components/ApiServices';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const Account = () => {
     const [khataData, setKhataData] = useState([]);
@@ -98,57 +99,152 @@ const Account = () => {
     );
 
     const renderItem = ({ item }) => (
-        <TouchableOpacity style={styles.card} onPress={() => router.push({
-            pathname: '/customerOverview', params: { transaction_for: item.id }
-        })}>
-            <View style={styles.cardHeader}>
-                <item.icon size={20} color={item.iconColor} />
-                <Text style={styles.netBalanceText}> Net Balance</Text>
-            </View>
-            <View style={styles.cardBody}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={[styles.balance, { color: item.balanceColor }]}>{item.balance}</Text>
-            </View>
-            <View style={styles.cardFooter}>
-                <View style={styles.row}>
-                    <User2 size={16} color="#555" />
-                    <Text style={styles.info}>{item.info}</Text>
+        <TouchableOpacity
+            style={styles.card}
+            onPress={() => router.push({
+                pathname: '/customerOverview',
+                params: { transaction_for: item.id }
+            })}
+            activeOpacity={0.7}
+        >
+            <View style={styles.cardContent}>
+                <View style={styles.cardHeader}>
+                    <View style={[styles.iconContainer, { backgroundColor: 'rgba(10,77,60,0.1)' }]}>
+                        <item.icon size={22} color={item.iconColor} />
+                    </View>
+
+                    <View style={styles.netBalanceContainer}>
+                        <Text style={styles.netBalanceLabel}>Net Balance</Text>
+                        <CheckCircle size={14} color="#0A4D3C" />
+                    </View>
                 </View>
-                <Text style={styles.subtitle}>{item.subtitle}</Text>
+
+                <View style={styles.cardBody}>
+                    <Text style={styles.title}>{item.title}</Text>
+                    <Text style={[styles.balance, { color: item.balanceColor }]}>{item.balance}</Text>
+                </View>
+
+                <View style={styles.cardFooter}>
+                    <View style={styles.statsContainer}>
+                        <Users size={16} color="#64748B" />
+                        <Text style={styles.info}>{item.info}</Text>
+                    </View>
+
+                    <View style={styles.rightFooter}>
+                        <View style={styles.subtitleBadge}>
+                            <TrendingUp size={12} color="#64748B" />
+                            <Text style={styles.subtitle}>{item.subtitle}</Text>
+                        </View>
+                        <ChevronRight size={18} color="#CBD5E1" />
+                    </View>
+                </View>
             </View>
         </TouchableOpacity>
     );
 
+    if (loading) {
+        return (
+            <View style={styles.container}>
+                <LinearGradient
+                    colors={['#0A4D3C', '#1B6B50']}
+                    style={styles.headerGradient}
+                >
+                    <SafeAreaView>
+                        <View style={styles.header}>
+                            <TouchableOpacity
+                                style={styles.backButton}
+                                onPress={() => router.back()}
+                                activeOpacity={0.7}
+                            >
+                                <ArrowLeft size={20} color="#FFFFFF" />
+                            </TouchableOpacity>
+
+                            <View style={styles.headerTitleContainer}>
+                                <Text style={styles.headerTitle}>Khata Overview</Text>
+                                <Text style={styles.headerSubtitle}>{businessName || 'Your Business'}</Text>
+                            </View>
+
+                            <View style={styles.headerRight} />
+                        </View>
+                    </SafeAreaView>
+                </LinearGradient>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#0A4D3C" />
+                    <Text style={styles.loadingText}>Loading Khata...</Text>
+                </View>
+            </View>
+        );
+    }
+
     return (
-        <SafeAreaView style={styles.container}>
-            <Appbar.Header style={styles.header}>
-                <Appbar.BackAction onPress={() => router.back()} icon={() => <ArrowLeft size={22} />} />
-                <Appbar.Content title={businessName} />
-            </Appbar.Header>
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
 
-            <FlatList
-                data={khataData}
-                keyExtractor={(item) => item.id}
-                renderItem={renderItem}
-                contentContainerStyle={styles.listContainer}
-            />
+            {/* Premium Header with Gradient */}
+            <LinearGradient
+                colors={['#0A4D3C', '#1B6B50']}
+                style={styles.headerGradient}
+            >
+                <SafeAreaView>
+                    <View style={styles.header}>
+                        <TouchableOpacity
+                            style={styles.backButton}
+                            onPress={() => router.back()}
+                            activeOpacity={0.7}
+                        >
+                            <ArrowLeft size={20} color="#FFFFFF" />
+                        </TouchableOpacity>
 
-            {/* Download Backup */}
-            <FAB
-                icon={({ size, color }) => <Download size={size} color={color} />}
-                onPress={() =>
-                    handleDownloadPDF({
-                        businessName,
-                        customers,
-                        suppliers,
-                    })
-                }
-                style={styles.fab}
-                color="#007B83"
-                customSize={60}
-            />
+                        <View style={styles.headerTitleContainer}>
+                            <Text style={styles.headerTitle}>Khata Overview</Text>
+                            <Text style={styles.headerSubtitle}>{businessName || 'Your Business'}</Text>
+                        </View>
 
-        </SafeAreaView>
+                        <View style={styles.headerRight} />
+                    </View>
+                </SafeAreaView>
+            </LinearGradient>
+
+            {khataData.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                    <BookOpenText size={70} color="#E2E8F0" />
+                    <Text style={styles.emptyText}>No Khata Data Available</Text>
+                    <Text style={styles.emptySubtext}>Add customers and suppliers to see your khata</Text>
+                </View>
+            ) : (
+                <FlatList
+                    data={khataData}
+                    keyExtractor={(item) => item.id}
+                    renderItem={renderItem}
+                    contentContainerStyle={styles.listContainer}
+                    showsVerticalScrollIndicator={false}
+                />
+            )}
+
+            {/* Premium Download FAB */}
+            {(customers.length > 0 || suppliers.length > 0) && (
+                <TouchableOpacity
+                    style={styles.downloadFab}
+                    onPress={() =>
+                        handleDownloadPDF({
+                            businessName,
+                            customers,
+                            suppliers,
+                        })
+                    }
+                    activeOpacity={0.8}
+                >
+                    <LinearGradient
+                        colors={['#0A4D3C', '#1B6B50']}
+                        style={styles.fabGradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                    >
+                        <Download size={24} color="#FFFFFF" />
+                    </LinearGradient>
+                </TouchableOpacity>
+            )}
+        </View>
     );
 };
 
@@ -156,90 +252,204 @@ const Account = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#eef6f7',
+        backgroundColor: '#F8FAFC',
     },
-    fab: {
-        position: 'absolute',
-        margin: 16,
-        right: 16,
-        bottom: 16, // change as needed
-        backgroundColor: '#fff', // or any background color
-        elevation: 4, // shadow for Android
+    headerGradient: {
+        paddingTop: Platform.OS === 'android' ? 20 : 0,
+        paddingBottom: 20,
+        borderBottomLeftRadius: 24,
+        borderBottomRightRadius: 24,
+        shadowColor: '#0A4D3C',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
     },
     header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
+    },
+    headerTitleContainer: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    headerTitle: {
         fontSize: 18,
-        fontWeight: 'bold',
-        elevation: 3,
-        color: '#000',
+        fontWeight: '700',
+        color: '#FFFFFF',
+        letterSpacing: 0.5,
+        marginBottom: 2,
+    },
+    headerSubtitle: {
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.8)',
+    },
+    headerRight: {
+        width: 40,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 12,
+        fontSize: 14,
+        color: '#64748B',
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 40,
+    },
+    emptyText: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#1E293B',
+        marginTop: 16,
+        marginBottom: 8,
+    },
+    emptySubtext: {
+        fontSize: 14,
+        color: '#64748B',
+        textAlign: 'center',
     },
     listContainer: {
-        padding: 12,
+        padding: 16,
+        paddingBottom: 100,
     },
     card: {
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 14,
-        marginBottom: 12,
-        elevation: 2,
+        marginBottom: 16,
+        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        elevation: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(10,77,60,0.08)',
+    },
+    cardContent: {
+        padding: 20,
     },
     cardHeader: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 16,
     },
-    netBalanceText: {
-        fontSize: 12,
-        color: '#555',
-        marginLeft: 6,
+    iconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    netBalanceContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#F8FAFC',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(10,77,60,0.1)',
+    },
+    netBalanceLabel: {
+        fontSize: 11,
+        color: '#475569',
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
     },
     cardBody: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 12,
+        alignItems: 'center',
+        marginBottom: 16,
     },
     title: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#222',
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#1E293B',
     },
     balance: {
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontSize: 24,
+        fontWeight: '700',
     },
     cardFooter: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(10,77,60,0.1)',
     },
-    row: {
+    statsContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 8,
     },
     info: {
-        fontSize: 13,
-        marginLeft: 5,
-        color: '#555',
-    },
-    subtitle: {
-        fontSize: 13,
-        color: '#888',
-    },
-    downloadCard: {
-        marginTop: 8,
-        marginHorizontal: 12,
-        marginBottom: 16,
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-        elevation: 2,
-    },
-    downloadText: {
-        fontSize: 15,
-        marginLeft: 10,
-        color: '#007B83',
+        fontSize: 14,
+        color: '#475569',
         fontWeight: '500',
     },
+    rightFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    subtitleBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(10,77,60,0.08)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 16,
+    },
+    subtitle: {
+        fontSize: 12,
+        color: '#0A4D3C',
+        fontWeight: '600',
+    },
+    downloadFab: {
+        position: 'absolute',
+        bottom: 24,
+        right: 24,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        overflow: 'hidden',
+        shadowColor: '#0A4D3C',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    fabGradient: {
+        width: '100%',
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
 });
+
 export default Account;

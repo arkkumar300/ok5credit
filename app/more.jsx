@@ -1,13 +1,14 @@
 import React, { useState, useCallback, useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Alert, ActivityIndicator, Modal } from 'react-native';
+import {View,Text,StyleSheet,TouchableOpacity,SafeAreaView,ScrollView,StatusBar,Platform,Modal} from 'react-native';
 import { useRouter } from 'expo-router';
-import { TrendingUp, User, FileText, MoreHorizontal, Package, Settings, UserPlus, CreditCard, Star, CircleHelp as HelpCircle, Share2, LogOut, RefreshCw, X } from 'lucide-react-native';
+import {TrendingUp,User,FileText,MoreHorizontal,Package,Settings,CreditCard,Star,CircleHelp as HelpCircle,Share2,Share,LogOut,Award,Home,ChevronRight,CheckCircle,X,RefreshCw} from 'lucide-react-native';
 import { Appbar, Avatar } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthContext } from './components/AuthContext';
 import ApiService from './components/ApiServices';
 import RazorpayCheckout from 'react-native-razorpay';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const YOUR_RAZORPAY_KEY_ID = "rzp_test_RfcfxfJ2sIZdao"; // Move to env variable
 
@@ -251,13 +252,75 @@ export default function MoreScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Appbar.Header>
-        <Avatar.Text label={initialsLetter} size={34} color='#ffffff' style={{ backgroundColor: '#2E7D32', marginStart: 8, padding: 0 }} />
-        <Appbar.Content title="More Details" titleStyle={{ textAlign: 'center', fontWeight: 'bold' }} />
-      </Appbar.Header>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      {/* Premium Header with Gradient */}
+      <LinearGradient
+        colors={['#0A4D3C', '#1B6B50']}
+        style={styles.headerGradient}
+      >
+        <SafeAreaView>
+          <View style={styles.header}>
+            <View style={styles.avatarContainer}>
+              <Avatar.Text
+                label={initialsLetter}
+                size={40}
+                color="#FFFFFF"
+                style={styles.avatar}
+                theme={{ colors: { primary: '#0A4D3C' } }}
+              />
+            </View>
+
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>Aqua Credit</Text>
+              <Text style={styles.headerSubtitle}>Digital Khata</Text>
+            </View>
+
+            <View style={styles.headerRight} />
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Welcome Section */}
+        <View style={styles.welcomeContainer}>
+          <View style={styles.welcomeRow}>
+            <Text style={styles.welcomeText}>
+              Welcome, {userData?.name?.split(' ')[0] || 'User'}!
+            </Text>
+            <View style={styles.dateBadge}>
+              <CheckCircle size={12} color="#0A4D3C" />
+              <Text style={styles.dateText}>
+                {new Date().toLocaleDateString('en-US', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric'
+                })}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Profile Summary Card */}
+        <View style={styles.profileCard}>
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>{userData?.name || 'User'}</Text>
+            <Text style={styles.profilePhone}>{userData?.mobile || 'Add phone number'}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.profileEditButton}
+            onPress={() => router.push('/profile')}
+          >
+            <Text style={styles.profileEditText}>Edit Profile</Text>
+            <ChevronRight size={16} color="#0A4D3C" />
+          </TouchableOpacity>
+        </View>
+
         {menuItems.map((section, sectionIndex) => (
           <View key={sectionIndex} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.section}</Text>
@@ -270,6 +333,7 @@ export default function MoreScreen() {
                     itemIndex !== section.items.length - 1 && styles.menuItemBorder
                   ]}
                   onPress={() => handleItemPress(item)}
+                  activeOpacity={0.7}
                 >
                   <View style={styles.menuIcon}>
                     {item.icon}
@@ -279,7 +343,7 @@ export default function MoreScreen() {
                     <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
                   </View>
                   <View style={styles.menuArrow}>
-                    <Text style={styles.arrowText}>›</Text>
+                    <ChevronRight size={18} color="#CBD5E1" />
                   </View>
                 </TouchableOpacity>
               ))}
@@ -292,29 +356,6 @@ export default function MoreScreen() {
           <Text style={styles.footerText}>© 2025 Aqua Credit. All rights reserved.</Text>
         </View>
       </ScrollView>
-
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => router.push('/dashboard')}>
-          <TrendingUp size={24} color="#4CAF50" />
-          <Text style={styles.navText}>Ledger</Text>
-        </TouchableOpacity>
-        {isSubscribed && (
-          <TouchableOpacity style={styles.navItem} onPress={handleEmployeesPress}>
-            <UserPlus size={24} color="#4CAF50" />
-            <Text style={styles.navText}>Employees</Text>
-          </TouchableOpacity>
-        )}
-        {!isSubscribed && (
-          <TouchableOpacity style={styles.navItem} onPress={handleMyPlanPress}>
-            <CreditCard size={24} color="#666" />
-            <Text style={styles.navText}>My Plan</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity style={styles.navItem}>
-          <MoreHorizontal size={24} color="#666" />
-          <Text style={styles.navText}>More</Text>
-        </TouchableOpacity>
-      </View>
 
       {/* Renewal Confirmation Modal - Normal Modal */}
       <Modal
@@ -381,70 +422,247 @@ export default function MoreScreen() {
         </View>
       </Modal>
 
-      {/* Logout Modal */}
+      {/* Logout Modal - Fixed */}
       <Modal
         visible={showLogoutModal}
-        transparent
+        transparent={true}
         animationType="fade"
         onRequestClose={() => setShowLogoutModal(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Confirm Logout</Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Confirm Logout</Text>
+              <TouchableOpacity
+                onPress={() => setShowLogoutModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <X size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalIconContainer}>
+              <LogOut size={40} color="#DC2626" />
+            </View>
+
             <Text style={styles.modalMessage}>
-              Are you sure you want to logout?
+              Are you sure you want to logout from your account?
             </Text>
 
             <View style={styles.buttonRow}>
               <TouchableOpacity
-                style={[styles.button, { backgroundColor: '#cccccc' }]}
+                style={[styles.button, styles.cancelButton]}
                 onPress={() => setShowLogoutModal(false)}
+                activeOpacity={0.7}
               >
-                <Text style={[styles.buttonText, { color: '#333' }]}>
-                  Cancel
-                </Text>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.button, { backgroundColor: '#E53935' }]}
+                style={[styles.button, styles.logoutButton]}
                 onPress={() => {
                   setShowLogoutModal(false);
                   router.replace('/login');
                 }}
+                activeOpacity={0.7}
               >
-                <Text style={styles.buttonText}>Logout</Text>
+                <Text style={styles.logoutButtonText}>Logout</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+
+      {/* Bottom Navigation - Exactly like dashboard */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity style={styles.navItem} onPress={() => router.push('/dashboard')}>
+          <View style={[styles.navIcon, styles.navIconInactive]}>
+            <Home size={18} color="#64748B" />
+          </View>
+          <Text style={styles.navText}>Home</Text>
+        </TouchableOpacity>
+        {isSubscribed && (
+        <TouchableOpacity style={styles.navItem} onPress={handleEmployeesPress}>
+          <View style={[styles.navIcon, styles.navIconInactive]}>
+            <Award size={18} color="#64748B" />
+          </View>
+          <Text style={styles.navText}>Employees</Text>
+        </TouchableOpacity>
+        )}
+        
+        {!isSubscribed && (
+        <TouchableOpacity style={styles.navItem} onPress={handleMyPlanPress}>
+          <View style={[styles.navIcon, styles.navIconInactive]}>
+            <Award size={18} color="#64748B" />
+          </View>
+          <Text style={styles.navText}>My Plan</Text>
+        </TouchableOpacity>
+        )}
+
+        <TouchableOpacity style={styles.navItem}>
+          <View style={[styles.navIcon, styles.navIconActive]}>
+            <MoreHorizontal size={18} color="#FFFFFF" />
+          </View>
+          <Text style={[styles.navText, styles.navTextActive]}>More</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#F8FAFC',
   },
-  content: {
-    flex: 1,
+  headerGradient: {
+    paddingTop: Platform.OS === 'android' ? 20 : 0,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#0A4D3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  section: {
-    marginTop: 24,
+  avatarContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
-  sectionTitle: {
+  avatar: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  headerTitleContainer: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  headerRight: {
+    width: 40,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 100,
+  },
+  welcomeContainer: {
+    marginBottom: 16,
+  },
+  welcomeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  welcomeText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0A4D3C',
+  },
+  dateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    gap: 4,
+  },
+  dateText: {
+    fontSize: 11,
+    color: '#0A4D3C',
+    fontWeight: '600',
+  },
+  profileCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'rgba(10,77,60,0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  profilePhone: {
+    fontSize: 13,
+    color: '#64748B',
+  },
+  profileEditButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(10,77,60,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  profileEditText: {
+    fontSize: 12,
+    color: '#0A4D3C',
+    fontWeight: '600',
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 8,
     paddingHorizontal: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   sectionCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(10,77,60,0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   menuItem: {
     flexDirection: 'row',
@@ -454,13 +672,13 @@ const styles = StyleSheet.create({
   },
   menuItemBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: 'rgba(10,77,60,0.1)',
   },
   menuIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(10,77,60,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -469,173 +687,152 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   menuTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1E293B',
     marginBottom: 2,
   },
   menuSubtitle: {
     fontSize: 12,
-    color: '#666',
+    color: '#64748B',
   },
   menuArrow: {
     padding: 4,
   },
-  arrowText: {
-    fontSize: 18,
-    color: '#CCC',
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-  },
-  navItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  navText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-  },
   footer: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: 24,
     paddingHorizontal: 16,
   },
   versionText: {
-    fontSize: 14,
-    color: '#999',
+    fontSize: 13,
+    color: '#94A3B8',
     marginBottom: 4,
   },
   footerText: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: 11,
+    color: '#94A3B8',
     textAlign: 'center',
   },
-  // Modal Styles
+
+  // Fixed Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContainer: {
-    width: '80%',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    elevation: 5,
+    width: '85%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#333',
-    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalIconContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
   },
   modalMessage: {
-    fontSize: 14,
-    color: '#555',
+    fontSize: 15,
+    color: '#475569',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
+    lineHeight: 22,
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 12,
   },
   button: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 6,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
-    marginHorizontal: 5,
+    justifyContent: 'center',
   },
-  buttonText: {
+  cancelButton: {
+    backgroundColor: '#F1F5F9',
+  },
+  logoutButton: {
+    backgroundColor: '#DC2626',
+  },
+  cancelButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#fff',
+    color: '#475569',
   },
-  // Renewal Modal Specific Styles
-  renewalModalContainer: {
-    width: '85%',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    overflow: 'hidden',
-    elevation: 5,
-  },
-  renewalModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    backgroundColor: '#F5F5F5',
-  },
-  renewalModalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  renewalModalContent: {
-    padding: 20,
-  },
-  renewalModalText: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  renewalDetailsContainer: {
-    backgroundColor: '#F5F5F5',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-  renewalDetailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  renewalDetailLabel: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  renewalDetailValue: {
-    fontSize: 14,
-    color: '#333',
+  logoutButtonText: {
+    fontSize: 15,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
-  renewalButtonRow: {
+  bottomNav: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(10,77,60,0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  renewalButton: {
+  navItem: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
     alignItems: 'center',
-    marginHorizontal: 6,
+    gap: 2,
   },
-  renewalCancelButton: {
-    backgroundColor: '#E0E0E0',
+  navIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  renewalCancelButtonText: {
-    color: '#333',
-    fontSize: 16,
+  navIconActive: {
+    backgroundColor: '#0A4D3C',
+  },
+  navIconInactive: {
+    backgroundColor: '#F8FAFC',
+  },
+  navText: {
+    fontSize: 10,
+    color: '#64748B',
     fontWeight: '500',
   },
-  renewalConfirmButton: {
-    backgroundColor: '#4CAF50',
-  },
-  renewalConfirmButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '500',
+  navTextActive: {
+    color: '#0A4D3C',
+    fontWeight: '600',
   },
 });
