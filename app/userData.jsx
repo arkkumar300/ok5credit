@@ -47,7 +47,7 @@ export default function UserInfo() {
 
     try {
       setSubmitting(true);
-      const response = await ApiService.put(`user/${USER_ID}`, { name: nameInput.trim(),businessName:businessNameInput });
+      const response = await ApiService.put(`user/${USER_ID}`, { name: nameInput.trim(),businessName:businessNameInput,nickName:nickNameInput.trim() });
 
       // Update local state without refetching
       setUserData(prev => ({ ...prev, name: response.data.name }));
@@ -198,6 +198,21 @@ export default function UserInfo() {
           </View>
 
           <View style={styles.inputWrapper}>
+            <User size={20} color="#0A4D3C" style={styles.inputIcon} />
+            <TextInput
+              label=""
+              placeholder="Enter your nick name"
+              mode="flat"
+              value={nickNameInput}
+              onChangeText={setNickNameInput}
+              style={styles.input}
+              theme={{ colors: { primary: '#0A4D3C', underlineColor: 'transparent' } }}
+              underlineColor="transparent"
+              activeUnderlineColor="transparent"
+            />
+          </View>
+
+          <View style={styles.inputWrapper}>
             <Store size={20} color="#0A4D3C" style={styles.inputIcon} />
             <TextInput
               label=""
@@ -280,7 +295,7 @@ export default function UserInfo() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {userData?.name ? renderUserInfoCard() : renderNameInputForm()}
+        {userData?.nickName ? renderUserInfoCard() : renderNameInputForm()}
 
         {userData?.name && (
           <Animatable.View animation="fadeInUp" delay={300} style={styles.continueWrapper}>

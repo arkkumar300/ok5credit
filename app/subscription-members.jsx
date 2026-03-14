@@ -365,6 +365,7 @@ export default function SubscriptionMembersScreen() {
         name,
         email: email || `${mobile}@temp.com`, // Create temporary email if not provided
         mobile,
+        businessName:user.businessName,
         role: "employee",
         owner_user_id: user.id,
         password

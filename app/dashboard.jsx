@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView, ScrollView, BackHandler, Alert, Dimensions, StatusBar} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView, ScrollView, BackHandler, Alert, Dimensions, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MoreHorizontal, Users, Search, Filter, TrendingUp, Settings, X, Share, UserPlus, ChevronRight, CheckCircle, Award, Clock, Download, Plus, Home, BarChart3, User, LogOut} from 'lucide-react-native';
+import { MoreHorizontal, Users, Search, Filter, TrendingUp, Settings, X, Share, UserPlus, ChevronRight, CheckCircle, Award, Clock, Download, Plus, Home, BarChart3, User, LogOut } from 'lucide-react-native';
 import Modal from 'react-native-modal';
 import { Appbar, Avatar } from 'react-native-paper';
 import ApiService from './components/ApiServices';
@@ -104,7 +104,7 @@ export default function DashboardScreen() {
           initial: c.name?.charAt(0).toUpperCase(),
           color: "#4CAF50",
           created_by: c.created_user,
-          defaulter_stage:c.defaulter_stage
+          defaulter_stage: c.defaulter_stage
         }));
 
         const fetchedSuppliers = (response.data.Suppliers || []).map((s) => ({
@@ -116,7 +116,7 @@ export default function DashboardScreen() {
           initial: s.name?.charAt(0).toUpperCase(),
           color: "#2196F3",
           created_by: s.created_user,
-          defaulter_stage:s.defaulter_stage
+          defaulter_stage: s.defaulter_stage
         }));
 
         setCustomers(fetchedCustomers);
@@ -242,7 +242,7 @@ export default function DashboardScreen() {
           personType: activeTab.toLowerCase(),
           personId: person.id,
           created_by: person.created_user,
-          defaulter_stage:person.defaulter_stage
+          defaulter_stage: person.defaulter_stage
         }
       });
     } else {
@@ -253,7 +253,7 @@ export default function DashboardScreen() {
           personType: activeTab.toLowerCase(),
           personId: person.id,
           created_by: person.created_user,
-          defaulter_stage:person.defaulter_stage
+          defaulter_stage: person.defaulter_stage
         }
       });
     }
@@ -362,7 +362,7 @@ export default function DashboardScreen() {
               {isVerified === null
                 ? 'Checking verification...'
                 : isVerified
-                  ? 'Verified Business Account'
+                  ? `${userData?.businessName?.toUpperCase()}`
                   : 'KYC Pending - Complete verification'}
             </Text>
             <ChevronRight size={18} color="#FFFFFF" />
