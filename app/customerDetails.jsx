@@ -557,7 +557,7 @@ Your current balance is ₹${balance} ${balanceType}`;
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
       <Image
-        source={require('../assets/images/DataCaution.png')}
+        source={require('../assets/images/no.png')}
         style={styles.emptyImage}
         resizeMode="contain"
       />
@@ -1073,8 +1073,8 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   emptyImage: {
-    width: '90%',
-    height: 150,
+    width: '150',
+    height: 300,
   },
   emptyText: {
     fontSize: 14,

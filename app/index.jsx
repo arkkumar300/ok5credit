@@ -92,7 +92,7 @@ if (isLogin) {
           <View style={styles.logoContainer}>
             <View style={styles.logoBackground}>
               <Image
-                source={require('../assets/images/icon.png')}
+                source={require('../assets/images/aqualogo.png')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />

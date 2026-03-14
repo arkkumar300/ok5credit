@@ -20,65 +20,111 @@ export default function Search() {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
     const {addTo} = useLocalSearchParams();
+
     /* ---------------- LOAD CONTACTS ---------------- */
     useEffect(() => {
         (async () => {
-            const { status } = await Contacts.requestPermissionsAsync();
-            if (status !== "granted") {
-                Alert.alert("Permission denied", "Contacts permission is required");
-                return;
+            try {
+                const { status } = await Contacts.requestPermissionsAsync();
+                if (status !== "granted") {
+                    Alert.alert("Permission denied", "Contacts permission is required");
+                    setLoading(false);
+                    return;
+                }
+
+                const { data } = await Contacts.getContactsAsync({
+                    fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Image],
+                });
+
+                const validContacts = data.filter(
+                    c => c.phoneNumbers && c.phoneNumbers.length > 0
+                );
+
+                setContacts(validContacts);
+                setFilteredContacts(validContacts); // Initialize filtered contacts with all contacts
+                setLoading(false);
+            } catch (error) {
+                console.error("Error loading contacts:", error);
+                Alert.alert("Error", "Failed to load contacts");
+                setLoading(false);
             }
-
-            const { data } = await Contacts.getContactsAsync({
-                fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Image],
-            });
-
-            const validContacts = data.filter(
-                c => c.phoneNumbers && c.phoneNumbers.length > 0
-            );
-
-            setContacts(validContacts);
-            setLoading(false);
         })();
     }, []);
 
-        /* ---------------- SEARCH FUNCTION ---------------- */
-        const handleSearch = (query) => {
-            setSearchQuery(query);
-            if (query.trim() === '') {
-                setFilteredContacts(contacts);
-            } else {
-                const filtered = contacts.filter(contact =>
-                    contact.name?.toLowerCase().includes(query.toLowerCase()) ||
-                    contact.phoneNumbers?.[0]?.number?.includes(query)
-                );
-                setFilteredContacts(filtered);
-            }
-        };
-        
-    /* ---------------- ADD CUSTOMER ---------------- */
+    /* ---------------- SEARCH FUNCTION ---------------- */
+    const handleSearch = (query) => {
+        setSearchQuery(query);
+        if (query.trim() === '') {
+            setFilteredContacts(contacts);
+        } else {
+            const filtered = contacts.filter(contact =>
+                contact.name?.toLowerCase().includes(query.toLowerCase()) ||
+                (contact.phoneNumbers?.[0]?.number &&
+                 contact.phoneNumbers[0].number.includes(query))
+            );
+            setFilteredContacts(filtered);
+        }
+    };
+
+    /* ---------------- ADD CUSTOMER/SUPPLIER ---------------- */
     const handleContactSelect = async (contact) => {
         try {
             setAddingContact(contact.id);
 
             const userData = await AsyncStorage.getItem("userData");
-            const userId = JSON.parse(userData).id;
+            if (!userData) {
+                Alert.alert("Error", "User data not found");
+                setAddingContact(null);
+                return;
+            }
+
+            const parsedUserData = JSON.parse(userData);
+            const userId = parsedUserData.id;
+            const ownerId = parsedUserData.owner_user_id;
 
             const rawNumber = contact.phoneNumbers[0]?.number || "";
             const mobile = cleanMobileNumber(rawNumber);
 
             if (!mobile) {
                 Alert.alert("Invalid number", "Selected contact has no valid number");
+                setAddingContact(null);
                 return;
             }
-            const url = addTo === 'Customer' ? "/customers" : "/supplier"
+
+            // Check if customer/supplier already exists
+            const checkEndpoint = addTo === 'Customer' ? "/customers/getCustomersByMobile/WithUserID" : "/supplier/getSupplierByMobile/WithUserID";
+
+            try {
+                const checkResponse = await ApiService.post(checkEndpoint, {
+                    ownerId: Number(ownerId),
+                    userId: Number(userId),
+                    mobile: mobile
+                });
+
+                if (checkResponse.data?.success) {
+                    Alert.alert(
+                        "Already Exists",
+                        `${addTo} with this mobile number already exists`,
+                        [{ text: "OK", onPress: () => setAddingContact(null) }]
+                    );
+                    return;
+                }
+            } catch (checkError) {
+                // Continue with adding if check fails (assuming it doesn't exist)
+                console.log("Check failed, proceeding with add:", checkError);
+            }
+
+            // Add new customer/supplier
+            const url = addTo === 'Customer' ? "/customers" : "/supplier";
             const response = await ApiService.post(url, {
+                ownerId: Number(ownerId),
                 userId: Number(userId),
                 name: contact.name || "Unknown",
-                mobile,
+                mobile: mobile,
+                created_user: Number(userId)
             });
 
-            if (response.status === 200 || response.status === 201) {
+            if (response.status === 200 || response.status === 201 || response.data?.success) {
                 Alert.alert(
                     "Success",
                     `${addTo} added successfully`,
@@ -89,59 +135,59 @@ export default function Search() {
                 setAddingContact(null);
             }
         } catch (error) {
-            console.error(error);
-            Alert.alert("Error", "Customer may already exist or server error");
+            console.error("Error adding contact:", error);
+            Alert.alert("Error", error.response?.data?.message || "Failed to add contact. It may already exist.");
             setAddingContact(null);
         }
     };
 
-        /* ---------------- RENDER CONTACT ITEM ---------------- */
-        const renderContactItem = ({ item }) => (
-            <TouchableOpacity
-                style={styles.contactItem}
-                onPress={() => handleContactSelect(item)}
-                disabled={addingContact === item.id}
-                activeOpacity={0.7}
-            >
-                <View style={styles.contactItemInner}>
-                    <View style={styles.contactLeftSection}>
-                        {item.imageAvailable && item.image?.uri ? (
-                            <Image
-                                source={{ uri: item.image.uri }}
-                                style={styles.avatar}
-                            />
-                        ) : (
-                            <LinearGradient
-                                colors={['#0A4D3C', '#1B6B50']}
-                                style={[styles.avatar, styles.avatarGradient]}
-                            >
-                                <Text style={styles.initial}>
-                                    {item.name?.[0]?.toUpperCase() || "?"}
-                                </Text>
-                            </LinearGradient>
-                        )}
-    
-                        <View style={styles.contactInfo}>
-                            <Text style={styles.name}>{item.name}</Text>
-                            <View style={styles.phoneContainer}>
-                                <Phone size={12} color="#64748B" />
-                                <Text style={styles.number} numberOfLines={1}>
-                                    {item.phoneNumbers[0]?.number}
-                                </Text>
-                            </View>
+    /* ---------------- RENDER CONTACT ITEM ---------------- */
+    const renderContactItem = ({ item }) => (
+        <TouchableOpacity
+            style={styles.contactItem}
+            onPress={() => handleContactSelect(item)}
+            disabled={addingContact === item.id}
+            activeOpacity={0.7}
+        >
+            <View style={styles.contactItemInner}>
+                <View style={styles.contactLeftSection}>
+                    {item.imageAvailable && item.image?.uri ? (
+                        <Image
+                            source={{ uri: item.image.uri }}
+                            style={styles.avatar}
+                        />
+                    ) : (
+                        <LinearGradient
+                            colors={['#0A4D3C', '#1B6B50']}
+                            style={[styles.avatar, styles.avatarGradient]}
+                        >
+                            <Text style={styles.initial}>
+                                {item.name?.[0]?.toUpperCase() || "?"}
+                            </Text>
+                        </LinearGradient>
+                    )}
+
+                    <View style={styles.contactInfo}>
+                        <Text style={styles.name}>{item.name}</Text>
+                        <View style={styles.phoneContainer}>
+                            <Phone size={12} color="#64748B" />
+                            <Text style={styles.number} numberOfLines={1}>
+                                {item.phoneNumbers[0]?.number}
+                            </Text>
                         </View>
                     </View>
-    
-                    {addingContact === item.id ? (
-                        <ActivityIndicator size="small" color="#0A4D3C" />
-                    ) : (
-                        <View style={styles.addButton}>
-                            <UserPlus size={18} color="#0A4D3C" />
-                        </View>
-                    )}
                 </View>
-            </TouchableOpacity>
-        );
+
+                {addingContact === item.id ? (
+                    <ActivityIndicator size="small" color="#0A4D3C" />
+                ) : (
+                    <View style={styles.addButton}>
+                        <UserPlus size={18} color="#0A4D3C" />
+                    </View>
+                )}
+            </View>
+        </TouchableOpacity>
+    );
     
     /* ---------------- RENDER ---------------- */
     return (

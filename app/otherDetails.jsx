@@ -1,14 +1,57 @@
 // ProfileScreen.js
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet,SafeAreaView, ScrollView, TouchableOpacity, Modal, Pressable, Platform, KeyboardAvoidingViewBase } from 'react-native';
-import { X, Pencil, UserRound, Share2, Store, Phone, FileText, Hash, Building2, MapPin, Mail, User, Delete, ChevronRight, ArrowLeft } from 'lucide-react-native';
-import { useRouter, useLocalSearchParams, router } from 'expo-router';
-import { Appbar, Avatar, TextInput } from 'react-native-paper';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  TouchableOpacity,
+  Modal,
+  Pressable,
+  Platform,
+  KeyboardAvoidingView,
+  StatusBar,
+  Dimensions
+} from 'react-native';
+import {
+  X,
+  Pencil,
+  UserRound,
+  Share2,
+  Store,
+  Phone,
+  FileText,
+  Hash,
+  Building2,
+  MapPin,
+  Mail,
+  User,
+  Delete,
+  ChevronRight,
+  ArrowLeft,
+  Check,
+  Calendar,
+  File,
+  Home,
+  Map,
+  FileEdit,
+  CreditCard,
+  Briefcase,
+  Tag,
+  Clock
+} from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Appbar, Avatar, TextInput, Card, Divider } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Animatable from 'react-native-animatable';
+
+const { width } = Dimensions.get('window');
 
 const OtherDetails = () => {
   // State to handle modals
@@ -52,7 +95,7 @@ const OtherDetails = () => {
 
         const billStoresStr = await AsyncStorage.getItem("billStore");
         const billStores = billStoresStr ? JSON.parse(billStoresStr) : {};
-        
+
         setBillStore(billStores);
 
       } catch (error) {
@@ -61,9 +104,7 @@ const OtherDetails = () => {
     };
 
     customeData();
-  }, [billLable, billCreateDate,billNote]); // reactively update when props change
-
-
+  }, [billLable, billCreateDate, billNote]); // reactively update when props change
 
   const handleSaveBillNo = async (value) => {
     await AsyncStorage.setItem("billNo", value) || "";
@@ -100,57 +141,161 @@ const OtherDetails = () => {
     setActiveModal(key);
   };
   const closeModal = () => setActiveModal(null);
+
   return (
-    <SafeAreaView style={styles.container}>
-      <Appbar.Header style={{ elevation: 3, backgroundColor: "#f4f8f8", borderBottomWidth: 2, borderColor: '#f2f7f6' }}>
-        <ArrowLeft size={24} color={'#2E7D32'} style={{ marginStart: 10 }} onPress={() => {
-          router.replace({ pathname: '/billGenaration', params: { customerId:billCustomer?.id || "",mode:"add",billNo: billLable||"", bill_date: billCreateDate,bill_type:billTypes} });
-        }} />
-        <Appbar.Content title="Other Details" titleStyle={{ color: '#333333', fontWeight: 'bold', marginLeft: 20 }} />
-      </Appbar.Header>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0A4D3C" />
 
+      {/* Premium Header with Gradient */}
+      <LinearGradient
+        colors={['#0A4D3C', '#1B6B50']}
+        style={styles.headerGradient}
+      >
+        <SafeAreaView>
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => {
+                router.replace({
+                  pathname: '/billGenaration',
+                  params: {
+                    customerId: billCustomer?.id || "",
+                    mode: "add",
+                    billNo: billLable || "",
+                    bill_date: billCreateDate,
+                    bill_type: billTypes
+                  }
+                });
+              }}
+            >
+              <ArrowLeft size={22} color="#FFFFFF" />
+            </TouchableOpacity>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Avatar.Image
-            source={{ uri: 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=400&h=300' }}
-            size={80} color="#ccc" />
-          {/* <TouchableOpacity style={styles.editIcon}>
-            <Text style={styles.editText}>✎</Text>
-          </TouchableOpacity> */}
-        </View>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>Other Details</Text>
+              <Text style={styles.headerSubtitle}>Additional information</Text>
+            </View>
 
-        {/* Business Info List */}
-        <View style={styles.card}>
-          <ProfileItem label="Customer Details" subtitle={`${billCustomer?.name || "Name"},${billCustomer?.mobile || "PhoneNumber,GST,Address"}`} onPress={() => router.replace({ pathname: "add-bill-customer", params: { billNo: billNo, billDate: billDate } })} />
-          <ProfileItem label="Bill Number" subtitle={billNos || 'BILL-No'} onPress={() => openModal('bill')} />
-          <ProfileItem label="Bill Date" subtitle={billDates || '05 sep 2025'} onPress={() => openModal('billDate')} />
-          <ProfileItem label="Add" subtitle={billNote||'Notes'} onPress={() => openModal('notes')} />
-          <ProfileItem label="Business Details" subtitle={`${billStore?.name ||"Business name"},${billStore?.GST||"GST"},${billStore?.address||"address"}`} onPress={() => openModal('BusinessDetails')} />
-        </View>
+            <View style={styles.headerRight}>
+              <View style={styles.headerBadge} />
+            </View>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
 
-        {/* Modals (You can customize each one separately below) */}
-        <CustomerModal visible={activeModal === 'CustomerDetails'} onClose={closeModal} />
-        <BillNumberModal visible={activeModal === 'bill'} onClose={closeModal} title="Phone Number" onSave={handleSaveBillNo} />
-        <BillDateModal visible={activeModal === 'billDate'} onClose={closeModal} onSave={handleSaveBillData} />
-        <NotesModal visible={activeModal === 'notes'} onClose={closeModal} onSave={handleSaveNote}/>
-        <BusinessDetailsModal visible={activeModal === 'BusinessDetails'} onClose={closeModal} onSave={handleSaveStore}/>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile Header */}
+        <Animatable.View animation="fadeInDown" duration={600} style={styles.profileHeader}>
+          <LinearGradient
+            colors={['#0A4D3C', '#1B6B50']}
+            style={styles.profileGradient}
+          >
+            <View style={styles.profileContent}>
+              <View style={styles.avatarContainer}>
+                <Avatar.Image
+                  source={{ uri: 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=400&h=300' }}
+                  size={80}
+                  style={styles.avatar}
+                />
+                <View style={styles.avatarBadge}>
+                  <Pencil size={12} color="#FFFFFF" />
+                </View>
+              </View>
+
+              <View style={styles.profileInfo}>
+                <Text style={styles.profileName}>{billCustomer?.name || "Customer Name"}</Text>
+                <View style={styles.profilePhoneContainer}>
+                  <Phone size={12} color="rgba(255,255,255,0.8)" />
+                  <Text style={styles.profilePhone}>{billCustomer?.mobile || "Phone Number"}</Text>
+                </View>
+              </View>
+            </View>
+          </LinearGradient>
+        </Animatable.View>
+
+        {/* Details Card */}
+        <Animatable.View animation="fadeInUp" duration={600} delay={200} style={styles.detailsCard}>
+          <View style={styles.cardHeader}>
+            <Briefcase size={18} color="#0A4D3C" />
+            <Text style={styles.cardHeaderTitle}>Bill Information</Text>
+          </View>
+
+          <View style={styles.cardContent}>
+            <ProfileItem
+              icon={<User size={18} color="#0A4D3C" />}
+              label="Customer Details"
+              value={`${billCustomer?.name || "Name"}, ${billCustomer?.mobile || "Phone"}`}
+              onPress={() => router.replace({
+                pathname: "add-bill-customer",
+                params: { billNo: billNo, billDate: billDate }
+              })}
+            />
+
+            <Divider style={styles.divider} />
+
+            <ProfileItem
+              icon={<Tag size={18} color="#0A4D3C" />}
+              label="Bill Number"
+              value={billNos || 'BILL-001'}
+              onPress={() => openModal('bill')}
+            />
+
+            <Divider style={styles.divider} />
+
+            <ProfileItem
+              icon={<Calendar size={18} color="#0A4D3C" />}
+              label="Bill Date"
+              value={billDates || '05 Sep 2025'}
+              onPress={() => openModal('billDate')}
+            />
+
+            <Divider style={styles.divider} />
+
+            <ProfileItem
+              icon={<FileEdit size={18} color="#0A4D3C" />}
+              label="Notes"
+              value={billNote || 'Add notes'}
+              onPress={() => openModal('notes')}
+            />
+
+            <Divider style={styles.divider} />
+
+            <ProfileItem
+              icon={<Store size={18} color="#0A4D3C" />}
+              label="Business Details"
+              value={`${billStore?.name || "Business name"}, ${billStore?.GST || "GST"}`}
+              onPress={() => openModal('BusinessDetails')}
+            />
+          </View>
+        </Animatable.View>
+
+        {/* Bottom Padding */}
+        <View style={styles.bottomPadding} />
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Modals */}
+      <CustomerModal visible={activeModal === 'CustomerDetails'} onClose={closeModal} />
+      <BillNumberModal visible={activeModal === 'bill'} onClose={closeModal} onSave={handleSaveBillNo} />
+      <BillDateModal visible={activeModal === 'billDate'} onClose={closeModal} onSave={handleSaveBillData} />
+      <NotesModal visible={activeModal === 'notes'} onClose={closeModal} onSave={handleSaveNote} />
+      <BusinessDetailsModal visible={activeModal === 'BusinessDetails'} onClose={closeModal} onSave={handleSaveStore} />
+    </View>
   );
 };
 
-const ProfileItem = ({ label, subtitle, onPress }) => (
-  <TouchableOpacity style={styles.item} onPress={onPress}>
-
-    <View style={styles.textContainer}>
-      <Text style={styles.label}>{label}</Text>
-      {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+const ProfileItem = ({ icon, label, value, onPress }) => (
+  <TouchableOpacity style={styles.profileItem} onPress={onPress} activeOpacity={0.7}>
+    <View style={styles.profileItemLeft}>
+      <View style={styles.profileItemIcon}>{icon}</View>
+      <View style={styles.profileItemTextContainer}>
+        <Text style={styles.profileItemLabel}>{label}</Text>
+        <Text style={styles.profileItemValue} numberOfLines={1}>{value}</Text>
+      </View>
     </View>
-    <View style={styles.iconContainer}>
-      <ChevronRight size={24} color="#007B83" />
-    </View>
+    <ChevronRight size={18} color="#0A4D3C" />
   </TouchableOpacity>
 );
 
@@ -161,19 +306,15 @@ const CustomerModal = ({ visible, onClose }) => {
   const [address, setAddress] = useState('');
   const [state, setState] = useState('');
 
-
   useEffect(() => {
     const customeData = async () => {
-
       const billCustomerName = await AsyncStorage.getItem("billCustomerName");
-      setName(billCustomerName);
+      setCustomerName(billCustomerName);
       const billCustomerMobile = await AsyncStorage.getItem("billCustomerMobile");
       setPhone(billCustomerMobile);
-
     }
     customeData();
-  }, []); // reactively update when props change
-
+  }, []);
 
   const handleConfirm = () => {
     const customerData = {
@@ -183,10 +324,7 @@ const CustomerModal = ({ visible, onClose }) => {
       address,
       state,
     };
-
-    // TODO: Handle saving logic here (API call, state update, etc.)
-
-    onClose(); // Close modal after submission
+    onClose();
   };
 
   return (
@@ -196,91 +334,121 @@ const CustomerModal = ({ visible, onClose }) => {
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.modalBackground}>
-        <View style={styles.bottomSheet}>
-          <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
+      <View style={styles.modalOverlay}>
+        <Animatable.View animation="slideInUp" duration={400} style={styles.modalContent}>
+          <LinearGradient
+            colors={['#0A4D3C', '#1B6B50']}
+            style={styles.modalHeader}
+          >
             <Text style={styles.modalTitle}>Add Customer</Text>
-            <Text style={styles.subtitleText}>Please fill out customer details</Text>
+            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+              <X size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </LinearGradient>
 
+          <ScrollView contentContainerStyle={styles.modalBody} showsVerticalScrollIndicator={false}>
+            <Text style={styles.modalSubtitle}>Please fill out customer details</Text>
 
-            <TextInput
-              label="Customer Name"
-              mode="outlined"
-              value={customerName}
-              onChangeText={setCustomerName}
-              placeholder="Enter customer name"
-              left={<TextInput.Icon icon="account" />}
-              style={styles.input}
-            />
+            <View style={styles.modalInputWrapper}>
+              <User size={18} color="#0A4D3C" style={styles.modalInputIcon} />
+              <TextInput
+                label="Customer Name"
+                mode="outlined"
+                value={customerName}
+                onChangeText={setCustomerName}
+                placeholder="Enter customer name"
+                style={styles.modalInput}
+                theme={{ colors: { primary: '#0A4D3C' } }}
+              />
+            </View>
 
-            <TextInput
-              label="Phone Number"
-              mode="outlined"
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="Enter phone number"
-              keyboardType="phone-pad"
-              left={<TextInput.Icon icon="phone" />}
-              style={styles.input}
-            />
+            <View style={styles.modalInputWrapper}>
+              <Phone size={18} color="#0A4D3C" style={styles.modalInputIcon} />
+              <TextInput
+                label="Phone Number"
+                mode="outlined"
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="Enter phone number"
+                keyboardType="phone-pad"
+                style={styles.modalInput}
+                theme={{ colors: { primary: '#0A4D3C' } }}
+              />
+            </View>
 
-            <TextInput
-              label="GST Number"
-              mode="outlined"
-              value={GST}
-              onChangeText={setGST}
-              placeholder="Enter GST number"
-              left={<TextInput.Icon icon="file-document-outline" />}
-              style={styles.input}
-            />
+            <View style={styles.modalInputWrapper}>
+              <FileText size={18} color="#0A4D3C" style={styles.modalInputIcon} />
+              <TextInput
+                label="GST Number"
+                mode="outlined"
+                value={GST}
+                onChangeText={setGST}
+                placeholder="Enter GST number"
+                style={styles.modalInput}
+                theme={{ colors: { primary: '#0A4D3C' } }}
+              />
+            </View>
 
-            <TextInput
-              label="Address"
-              mode="outlined"
-              value={address}
-              onChangeText={setAddress}
-              placeholder="Enter address"
-              multiline
-              numberOfLines={3}
-              left={<TextInput.Icon icon="home" />}
-              style={styles.input}
-            />
+            <View style={styles.modalInputWrapper}>
+              <MapPin size={18} color="#0A4D3C" style={styles.modalInputIcon} />
+              <TextInput
+                label="Address"
+                mode="outlined"
+                value={address}
+                onChangeText={setAddress}
+                placeholder="Enter address"
+                multiline
+                numberOfLines={3}
+                style={styles.modalInput}
+                theme={{ colors: { primary: '#0A4D3C' } }}
+              />
+            </View>
 
-            <TextInput
-              label="State"
-              mode="outlined"
-              value={state}
-              onChangeText={setState}
-              placeholder="Enter state"
-              left={<TextInput.Icon icon="map-marker" />}
-              style={styles.input}
-            />
+            <View style={styles.modalInputWrapper}>
+              <Map size={18} color="#0A4D3C" style={styles.modalInputIcon} />
+              <TextInput
+                label="State"
+                mode="outlined"
+                value={state}
+                onChangeText={setState}
+                placeholder="Enter state"
+                style={styles.modalInput}
+                theme={{ colors: { primary: '#0A4D3C' } }}
+              />
+            </View>
 
-            <TouchableOpacity onPress={handleConfirm} style={styles.submitButton}>
-              <Text style={styles.submitText}>Submit</Text>
+            <TouchableOpacity onPress={handleConfirm} style={styles.modalSubmitButton}>
+              <LinearGradient
+                colors={['#0A4D3C', '#1B6B50']}
+                style={styles.modalSubmitGradient}
+              >
+                <Check size={18} color="#FFFFFF" />
+                <Text style={styles.modalSubmitText}>Submit</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </ScrollView>
-        </View>
+        </Animatable.View>
       </View>
-    </Modal>)
+    </Modal>
+  )
 };
 
 const BillNumberModal = ({ visible, onClose, onSave }) => {
   const [billNo, setBillNo] = useState('');
+
   useEffect(() => {
     const loadBillNo = async () => {
       const storedBillNo = await AsyncStorage.getItem("billNo");
       if (storedBillNo) setBillNo(storedBillNo);
     };
-
-    if (visible) loadBillNo(); // only fetch if modal opens
+    if (visible) loadBillNo();
   }, [visible]);
 
   const handleConfirm = async () => {
     if (onSave) {
-      await onSave(billNo); // Save to parent
+      await onSave(billNo);
     }
-    onClose(); // Close the modal
+    onClose();
   };
 
   return (
@@ -290,25 +458,41 @@ const BillNumberModal = ({ visible, onClose, onSave }) => {
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.modalBackground}>
-        <View style={styles.bottomSheet}>
-          <Text style={styles.modalTitle}>Bill Number</Text>
-          <Text style={styles.subtitleText}>Please update Bill Number</Text>
+      <View style={styles.modalOverlay}>
+        <Animatable.View animation="slideInUp" duration={400} style={styles.modalContentSmall}>
+          <LinearGradient
+            colors={['#0A4D3C', '#1B6B50']}
+            style={styles.modalHeader}
+          >
+            <Text style={styles.modalTitle}>Bill Number</Text>
+            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+              <X size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </LinearGradient>
 
-          <TextInput
-            style={styles.input}
-            value={billNo}
-            mode="outlined"
-            label={'Bill No.'}
-            outlineColor='#aaaaaa'
-            activeOutlineColor='#333333'
-            left={<TextInput.Icon icon="file" />}
-            right={<TextInput.Icon icon="check" color="green" onPress={handleConfirm} />}
-            onChangeText={setBillNo}
-            placeholder="Bill No."
-          />
-        </View>
-        {/* WhatsApp Share Button */}
+          <View style={styles.modalBody}>
+            <Text style={styles.modalSubtitle}>Please update Bill Number</Text>
+
+            <View style={styles.modalInputWrapper}>
+              <File size={18} color="#0A4D3C" style={styles.modalInputIcon} />
+              <TextInput
+                mode="outlined"
+                label="Bill No."
+                value={billNo}
+                onChangeText={setBillNo}
+                placeholder="Enter bill number"
+                style={styles.modalInput}
+                theme={{ colors: { primary: '#0A4D3C' } }}
+                right={
+                  <TextInput.Icon
+                    icon={() => <Check size={20} color="#0A4D3C" />}
+                    onPress={handleConfirm}
+                  />
+                }
+              />
+            </View>
+          </View>
+        </Animatable.View>
       </View>
     </Modal>
   )
@@ -318,13 +502,12 @@ const BillDateModal = ({ visible, onClose, onSave }) => {
   const [billDate, setBillDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Load date from storage when modal is shown
   useEffect(() => {
     const loadBillDate = async () => {
       const storedDate = await AsyncStorage.getItem("billDate");
       if (storedDate) {
-      const rrr=moment(storedDate, 'DD MMM YYYY').toDate()
-        setBillDate(new Date(rrr)); // Convert from string to Date object
+        const rrr = moment(storedDate, 'DD MMM YYYY').toDate()
+        setBillDate(new Date(rrr));
       } else {
         setBillDate(new Date());
       }
@@ -335,18 +518,16 @@ const BillDateModal = ({ visible, onClose, onSave }) => {
     }
   }, [visible]);
 
-  // Format date for display
   const formatDateForDisplay = (date) => {
     return moment(date).format('DD MMM YYYY');
   };
 
-  // Save and close modal
   const handleConfirm = async () => {
     if (onSave) {
-      await onSave(billDate); // Pass Date object to parent
+      await onSave(billDate);
     }
     if (onClose) {
-      onClose(); // Close modal
+      onClose();
     }
   };
 
@@ -357,38 +538,56 @@ const BillDateModal = ({ visible, onClose, onSave }) => {
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.modalBackground}>
-        <View style={styles.bottomSheet}>
-          <Text style={styles.modalTitle}>Bill Date</Text>
-          <Text style={styles.subtitleText}>Update Bill Date</Text>
-
-          <TouchableOpacity
-            onPress={() => setShowDatePicker(true)}
-            style={styles.textInput}
+      <View style={styles.modalOverlay}>
+        <Animatable.View animation="slideInUp" duration={400} style={styles.modalContentSmall}>
+          <LinearGradient
+            colors={['#0A4D3C', '#1B6B50']}
+            style={styles.modalHeader}
           >
-            <Text style={{ color: '#000' }}>
-              {formatDateForDisplay(billDate)}
-            </Text>
-          </TouchableOpacity>
+            <Text style={styles.modalTitle}>Bill Date</Text>
+            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+              <X size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </LinearGradient>
 
-          {showDatePicker && (
-            <DateTimePicker
-              value={billDate}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={(event, selectedDate) => {
-                setShowDatePicker(false);
-                if (selectedDate) {
-                  setBillDate(selectedDate);
-                }
-              }}
-            />
-          )}
+          <View style={styles.modalBody}>
+            <Text style={styles.modalSubtitle}>Update Bill Date</Text>
 
-          <TouchableOpacity onPress={handleConfirm} style={styles.submitButton}>
-            <Text style={styles.submitText}>Submit</Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              onPress={() => setShowDatePicker(true)}
+              style={styles.datePickerButton}
+            >
+              <Calendar size={18} color="#0A4D3C" style={styles.datePickerIcon} />
+              <Text style={styles.datePickerText}>
+                {formatDateForDisplay(billDate)}
+              </Text>
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={billDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(event, selectedDate) => {
+                  setShowDatePicker(false);
+                  if (selectedDate) {
+                    setBillDate(selectedDate);
+                  }
+                }}
+              />
+            )}
+
+            <TouchableOpacity onPress={handleConfirm} style={styles.modalSubmitButton}>
+              <LinearGradient
+                colors={['#0A4D3C', '#1B6B50']}
+                style={styles.modalSubmitGradient}
+              >
+                <Check size={18} color="#FFFFFF" />
+                <Text style={styles.modalSubmitText}>Submit</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </Animatable.View>
       </View>
     </Modal>
   );
@@ -397,13 +596,12 @@ const BillDateModal = ({ visible, onClose, onSave }) => {
 const NotesModal = ({ visible, onClose, onSave }) => {
   const [note, setNote] = useState('');
 
-  // Save and close modal
   const handleConfirm = async () => {
     if (onSave) {
-      await onSave(note); // Pass Date object to parent
+      await onSave(note);
     }
     if (onClose) {
-      onClose(); // Close modal
+      onClose();
     }
   };
 
@@ -414,61 +612,75 @@ const NotesModal = ({ visible, onClose, onSave }) => {
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.modalBackground}>
-        <View style={styles.bottomSheet}>
-          <Text style={styles.modalTitle}>Add Note</Text>
-          <Text style={styles.subtitleText}>Please add Bill Note</Text>
+      <View style={styles.modalOverlay}>
+        <Animatable.View animation="slideInUp" duration={400} style={styles.modalContentSmall}>
+          <LinearGradient
+            colors={['#0A4D3C', '#1B6B50']}
+            style={styles.modalHeader}
+          >
+            <Text style={styles.modalTitle}>Add Note</Text>
+            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+              <X size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </LinearGradient>
 
-          <TextInput
-            style={[styles.input, { height: 100, }]}
-            label="Bill Note"
-            mode="outlined"
-            outlineColor='#aaaaaa'
-            activeOutlineColor='#333333'
-            left={<TextInput.Icon icon="map" />}
-            right={<TextInput.Icon icon="check" color={'green'} onPress={handleConfirm} />}
-            value={note}
-            maxLength={200} multiline={true}
-            onChangeText={setNote}
-            placeholder="Bill Note"
-          />
-        </View>
-        {/* WhatsApp Share Button */}
+          <View style={styles.modalBody}>
+            <Text style={styles.modalSubtitle}>Please add Bill Note</Text>
+
+            <View style={styles.modalInputWrapper}>
+              <FileEdit size={18} color="#0A4D3C" style={styles.modalInputIcon} />
+              <TextInput
+                mode="outlined"
+                label="Bill Note"
+                value={note}
+                onChangeText={setNote}
+                placeholder="Enter note"
+                multiline
+                numberOfLines={4}
+                style={[styles.modalInput, styles.notesInput]}
+                theme={{ colors: { primary: '#0A4D3C' } }}
+                right={
+                  <TextInput.Icon
+                    icon={() => <Check size={20} color="#0A4D3C" />}
+                    onPress={handleConfirm}
+                  />
+                }
+              />
+            </View>
+          </View>
+        </Animatable.View>
       </View>
     </Modal>
   )
 };
 
-const BusinessDetailsModal = ({ visible, onClose,onSave }) => {
+const BusinessDetailsModal = ({ visible, onClose, onSave }) => {
   const [storeName, setStoreName] = useState('');
   const [userID, setUserID] = useState('');
   const [GST, setGST] = useState('');
   const [businessAddress, setBusinessAddress] = useState('');
-  // const [state, setState] = useState('');
 
-  useEffect(()=>{
-const getUserDetails=async ()=>{
-  const userData=await AsyncStorage.getItem("userData");
-  const parsedUserData=JSON.parse(userData);
-  setUserID(parsedUserData.id);
-  setStoreName(parsedUserData.name);
-  setGST(parsedUserData.GST);
-  setBusinessAddress(parsedUserData.address);
-}
-getUserDetails()
-  },[])
+  useEffect(() => {
+    const getUserDetails = async () => {
+      const userData = await AsyncStorage.getItem("userData");
+      const parsedUserData = JSON.parse(userData);
+      setUserID(parsedUserData.id);
+      setStoreName(parsedUserData.name);
+      setGST(parsedUserData.GST);
+      setBusinessAddress(parsedUserData.address);
+    }
+    getUserDetails()
+  }, [])
 
   const handleConfirm = async () => {
     const StoreData = {
-      name:storeName,
+      name: storeName,
       GST,
-      address:businessAddress,
-      // state,
+      address: businessAddress,
     };
-if (onSave) {
-  onSave(StoreData);
-}
-    // TODO: Handle saving logic here (API call, state update, etc.)
+    if (onSave) {
+      onSave(StoreData);
+    }
     try {
       const response = await ApiService.put(`/user/${userID}`, StoreData);
 
@@ -480,9 +692,9 @@ if (onSave) {
     } catch (error) {
       console.error(error);
       alert('API request failed. Check your server.');
-    } finally{
-      onClose(); // Close modal after submission
-    }   
+    } finally {
+      onClose();
+    }
   };
 
   return (
@@ -492,322 +704,360 @@ if (onSave) {
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.modalBackground}>
-        <View style={styles.bottomSheet}>
-          <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
-            <Text style={styles.modalTitle}>Add Store</Text>
-            <Text style={styles.subtitleText}>Please fill out Store details</Text>
+      <View style={styles.modalOverlay}>
+        <Animatable.View animation="slideInUp" duration={400} style={styles.modalContent}>
+          <LinearGradient
+            colors={['#0A4D3C', '#1B6B50']}
+            style={styles.modalHeader}
+          >
+            <Text style={styles.modalTitle}>Business Details</Text>
+            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+              <X size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </LinearGradient>
 
-            <TextInput
-              label="store Name"
-              mode="outlined"
-              value={storeName}
-              onChangeText={setStoreName}
-              placeholder="Enter customer name"
-              left={<TextInput.Icon icon="store" />}
-              style={styles.input}
-            />
+          <ScrollView contentContainerStyle={styles.modalBody} showsVerticalScrollIndicator={false}>
+            <Text style={styles.modalSubtitle}>Please fill out business details</Text>
 
-            <TextInput
-              label="GST Number"
-              mode="outlined"
-              value={GST}
-              onChangeText={setGST}
-              placeholder="Enter GST number"
-              left={<TextInput.Icon icon="file-document-outline" />}
-              style={styles.input}
-            />
+            <View style={styles.modalInputWrapper}>
+              <Store size={18} color="#0A4D3C" style={styles.modalInputIcon} />
+              <TextInput
+                label="Store Name"
+                mode="outlined"
+                value={storeName}
+                onChangeText={setStoreName}
+                placeholder="Enter store name"
+                style={styles.modalInput}
+                theme={{ colors: { primary: '#0A4D3C' } }}
+              />
+            </View>
 
-            <TextInput
-              label="Business Address"
-              mode="outlined"
-              value={businessAddress}
-              onChangeText={setBusinessAddress}
-              placeholder="Enter business address"
-              multiline
-              numberOfLines={3}
-              left={<TextInput.Icon icon="home-map-marker" />}
-              style={styles.input}
-            />
+            <View style={styles.modalInputWrapper}>
+              <FileText size={18} color="#0A4D3C" style={styles.modalInputIcon} />
+              <TextInput
+                label="GST Number"
+                mode="outlined"
+                value={GST}
+                onChangeText={setGST}
+                placeholder="Enter GST number"
+                style={styles.modalInput}
+                theme={{ colors: { primary: '#0A4D3C' } }}
+              />
+            </View>
 
-            {/* <TextInput
-              label="State"
-              mode="outlined"
-              value={state}
-              onChangeText={setState}
-              placeholder="Enter state"
-              left={<TextInput.Icon icon="map-marker" />}
-              style={styles.input}
-            /> */}
+            <View style={styles.modalInputWrapper}>
+              <Building2 size={18} color="#0A4D3C" style={styles.modalInputIcon} />
+              <TextInput
+                label="Business Address"
+                mode="outlined"
+                value={businessAddress}
+                onChangeText={setBusinessAddress}
+                placeholder="Enter business address"
+                multiline
+                numberOfLines={3}
+                style={styles.modalInput}
+                theme={{ colors: { primary: '#0A4D3C' } }}
+              />
+            </View>
 
-            <TouchableOpacity onPress={handleConfirm} style={styles.submitButton}>
-              <Text style={styles.submitText}>Submit</Text>
+            <TouchableOpacity onPress={handleConfirm} style={styles.modalSubmitButton}>
+              <LinearGradient
+                colors={['#0A4D3C', '#1B6B50']}
+                style={styles.modalSubmitGradient}
+              >
+                <Check size={18} color="#FFFFFF" />
+                <Text style={styles.modalSubmitText}>Submit</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </ScrollView>
-        </View>
+        </Animatable.View>
       </View>
-    </Modal>)
+    </Modal>
+  )
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f4f8f8',
+    backgroundColor: '#F8FAFC',
   },
-  scrollContent: {
-    padding: 16,
+  headerGradient: {
+    paddingTop: 20,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   header: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  editIcon: {
-    position: 'relative',
-    right: -20,
-    top: -20,
-    backgroundColor: '#fff',
-    borderRadius: 50,
-    padding: 8, zIndex: 99,
-    borderWidth: 1,
-    borderColor: '#ccc',
-  },
-  editText: {
-    fontSize: 12,
-  },
-  input: {
-    marginBottom: 15,
-    backgroundColor: '#fff',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    paddingVertical: 8,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  item: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f1f1',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
-  iconContainer: {
-    width: 30,
-    marginRight: 12,
-    marginTop: 4,
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
-  textContainer: {
+  headerTitleContainer: {
+    alignItems: 'center',
     flex: 1,
   },
-  bottomSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 40,
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  headerRight: {
+    width: 44,
+  },
+  headerBadge: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.5,
+  },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  profileHeader: {
+    marginHorizontal: 16,
+    marginTop: 20,
+    marginBottom: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#0A4D3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  profileGradient: {
+    padding: 20,
+  },
+  profileContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 16,
+  },
+  avatar: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+  },
+  avatarBadge: {
     position: 'absolute',
     bottom: 0,
-    left: 0,
     right: 0,
-  },
-
-  optionItem: {
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-
-  optionText: {
-    fontSize: 16,
-    color: '#333',
-  },
-
-  label: {
-    fontSize: 15,
-    color: '#333',
-  },
-  subtitle: {
-    fontSize: 14, fontWeight: '700',
-    color: '#777',
-  },
-  editSymbol: {
-    fontSize: 16,
-    color: '#007B83',
-  },
-
-  // Modal Styles
-  modalBackground: {
-    flex: 1,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#0A4D3C',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    padding: 20,
   },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 24,
-    elevation: 5,
+  profileInfo: {
+    flex: 1,
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 16,
+  profileName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
   },
-  closeButton: {
-    marginTop: 20,
-    backgroundColor: '#007B83',
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  businessModal: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
-  businessHeader: {
+  profilePhoneContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 6,
   },
-  businessTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  profilePhone: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.9)',
   },
-  businessSubtitle: {
-    fontSize: 14,
-    color: '#555',
-    marginVertical: 10,
+  detailsCard: {
+    marginHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  cardPreview: {
-    backgroundColor: '#0c1e4d',
-    borderRadius: 12, justifyContent: 'center',
-    padding: 20, height: 200,
-    marginVertical: 16,
-  },
-  cardNumber: {
-    color: '#fff',
-    fontSize: 18,
-    marginBottom: 6,
-  },
-  cardName: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  aquaCreditBadge: {
-    position: 'absolute',
-    bottom: 10,
-    right: 10,
-    backgroundColor: '#fff',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-  },
-  aquaCreditText: {
-    fontSize: 10,
-    color: '#666',
-  },
-  verifyButton: {
-    paddingVertical: 16,
-    borderRadius: 8,
+  cardHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    gap: 8,
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
   },
-  verifyButtonActive: {
-    backgroundColor: '#4CAF50',
-  },
-  verifyButtonDisabled: {
-    backgroundColor: '#CCCCCC',
-  },
-  verifyButtonText: {
+  cardHeaderTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'white',
+    color: '#0A4D3C',
   },
-  aquaCreditBrand: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#2a9d8f',
+  cardContent: {
+    padding: 8,
   },
-  otpContainer: {
+  profileItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  profileItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  profileItemIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  profileItemTextContainer: {
+    flex: 1,
+  },
+  profileItemLabel: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 2,
+  },
+  profileItemValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  divider: {
+    backgroundColor: '#E2E8F0',
+    height: 1,
+    marginHorizontal: 8,
+  },
+  bottomPadding: {
+    height: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+  },
+  modalContentSmall: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 32,
+    alignItems: 'center',
+    padding: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 5,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
-  subtitleText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 15,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 15,
-    fontSize: 16,
-    backgroundColor: '#f9f9f9',
-  },
-  submitButton: {
-    backgroundColor: 'green',
-    paddingVertical: 12,
-    borderRadius: 10, alignSelf: 'center',
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
-    marginTop: 10, width: '50%'
+    justifyContent: 'center',
   },
-  submitText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  }, whatsappButton: {
-    backgroundColor: '#25D366',
+  modalBody: {
+    padding: 20,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    marginBottom: 16,
+  },
+  modalInputWrapper: {
+    marginBottom: 16,
+    position: 'relative',
+  },
+  modalInputIcon: {
+    position: 'absolute',
+    left: 12,
+    top: 18,
+    zIndex: 1,
+  },
+  modalInput: {
+    backgroundColor: '#F8FAFC',
+    paddingLeft: 40,
+  },
+  notesInput: {
+    minHeight: 100,
+  },
+  modalSubmitButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  modalSubmitGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
+    gap: 8,
   },
-  whatsappButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
+  modalSubmitText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
-  subtitleText: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 10,
-  },
-
-  inputRow: {
+  datePickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 10,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 14,
+    backgroundColor: '#F8FAFC',
+    marginBottom: 20,
   },
-  iconButton: {
-    padding: 10,
+  datePickerIcon: {
+    marginRight: 10,
   },
-
-  cancelIcon: {
-    fontSize: 18,
-    color: 'red',
+  datePickerText: {
+    fontSize: 15,
+    color: '#1E293B',
+    flex: 1,
   },
-
-  confirmIcon: {
-    fontSize: 20,
-    color: 'green',
-  },
-
 });
 
 export default OtherDetails;

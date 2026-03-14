@@ -1,16 +1,53 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl, ActivityIndicator, Modal, TextInput, ScrollView, KeyboardAvoidingView, Platform, StatusBar } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Alert,
+  RefreshControl,
+  ActivityIndicator,
+  Modal,
+  TextInput,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+  Dimensions
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Appbar, Avatar, Divider, Card } from 'react-native-paper';
-import { UserPlus, Minus, Plus, Users, Mail, Phone, Calendar, ChevronRight, X, Award, Shield, CheckCircle, Clock } from 'lucide-react-native';
+import {
+  UserPlus,
+  Minus,
+  Plus,
+  Users,
+  Mail,
+  Phone,
+  Calendar,
+  ChevronRight,
+  X,
+  Award,
+  Shield,
+  CheckCircle,
+  Clock,
+  ArrowLeft,
+  CreditCard,
+  User,
+  DollarSign,
+  Info
+} from 'lucide-react-native';
 import { AuthContext } from './components/AuthContext';
 import ApiService from './components/ApiServices';
 import moment from 'moment';
 import RazorpayCheckout from 'react-native-razorpay';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Animatable from 'react-native-animatable';
 
+const { width } = Dimensions.get('window');
 const YOUR_RAZORPAY_KEY_ID = "rzp_test_RfcfxfJ2sIZdao"; // Move to env variable
 
 export default function SubscriptionMembersScreen() {
@@ -21,7 +58,6 @@ export default function SubscriptionMembersScreen() {
   const [isAddModalVisible, setAddModalVisible] = useState(false);
   const [addingMember, setAddingMember] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
-  // const [showAddMoreUsersModal, setShowAddMoreUsersModal] = useState(false);
   const [selectedPlanData, setSelectedPlanData] = useState(null);
   const [userCount, setUserCount] = useState(1);
   const [additionalUserCount, setAdditionalUserCount] = useState(1);
@@ -178,12 +214,10 @@ export default function SubscriptionMembersScreen() {
     return true;
   };
 
-
   const handleProceedToAdditionalPayment = () => {
     setShowUserModal(false);
     startAdditionalUsersPayment();
   };
-
 
   const startAdditionalUsersPayment = async () => {
     try {
@@ -244,7 +278,7 @@ export default function SubscriptionMembersScreen() {
           email: userDetails.email,
           contact: userDetails.mobile
         },
-        theme: { color: "#0C8CE9" },
+        theme: { color: "#0A4D3C" },
         method: {
           netbanking: true,
           card: true,
@@ -414,7 +448,7 @@ export default function SubscriptionMembersScreen() {
   };
 
   const getRandomColor = (id) => {
-    const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336', '#009688'];
+    const colors = ['#0A4D3C', '#1B6B50', '#2E8B57', '#3CB371', '#66CDAA', '#90EE90'];
     return colors[id % colors.length];
   };
 
@@ -428,7 +462,7 @@ export default function SubscriptionMembersScreen() {
         >
           <SafeAreaView>
             <View style={styles.loadingHeaderContent}>
-              <Text style={styles.loadingHeaderTitle}>Subscription Members</Text>
+              <Text style={styles.loadingHeaderTitle}>Team Members</Text>
             </View>
           </SafeAreaView>
         </LinearGradient>
@@ -455,7 +489,7 @@ export default function SubscriptionMembersScreen() {
               onPress={() => router.back()}
               style={styles.backButton}
             >
-              <ChevronRight size={24} color="#FFFFFF" style={{ transform: [{ rotate: '180deg' }] }} />
+              <ArrowLeft size={22} color="#FFFFFF" />
             </TouchableOpacity>
 
             <View style={styles.headerTitleContainer}>
@@ -479,81 +513,91 @@ export default function SubscriptionMembersScreen() {
 
       {/* Subscription Info Card */}
       {subscriptionDetails && (
-        <Card style={styles.infoCard}>
-          <Card.Content>
-            <View style={styles.infoHeader}>
-              <View style={styles.infoTitleContainer}>
-                <Award size={20} color="#0A4D3C" />
-                <Text style={styles.infoTitle}>Subscription Status</Text>
-              </View>
-              <View style={[
-                styles.slotsBadge,
-                { backgroundColor: subscriptionDetails.availableSlots > 0 ? '#E8F5E9' : '#FEE2E2' }
-              ]}>
-                <Text style={[
-                  styles.slotsBadgeText,
-                  { color: subscriptionDetails.availableSlots > 0 ? '#0A4D3C' : '#DC2626' }
+        <Animatable.View animation="fadeInDown" duration={600}>
+          <Card style={styles.infoCard}>
+            <Card.Content>
+              <View style={styles.infoHeader}>
+                <View style={styles.infoTitleContainer}>
+                  <Award size={20} color="#0A4D3C" />
+                  <Text style={styles.infoTitle}>Subscription Status</Text>
+                </View>
+                <View style={[
+                  styles.slotsBadge,
+                  { backgroundColor: subscriptionDetails.availableSlots > 0 ? '#E8F5E9' : '#FEE2E2' }
                 ]}>
-                  {subscriptionDetails.availableSlots > 0
-                    ? `${subscriptionDetails.availableSlots} slots left`
-                    : 'Full'}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Users size={16} color="#64748B" />
-                <Text style={styles.statLabel}>Total</Text>
-                <Text style={styles.statValue}>{subscriptionDetails.totalMembers}</Text>
+                  <Text style={[
+                    styles.slotsBadgeText,
+                    { color: subscriptionDetails.availableSlots > 0 ? '#0A4D3C' : '#DC2626' }
+                  ]}>
+                    {subscriptionDetails.availableSlots > 0
+                      ? `${subscriptionDetails.availableSlots} slots left`
+                      : 'Full'}
+                  </Text>
+                </View>
               </View>
 
-              <View style={styles.statDivider} />
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Users size={16} color="#64748B" />
+                  <Text style={styles.statLabel}>Total</Text>
+                  <Text style={styles.statValue}>{subscriptionDetails.totalMembers}</Text>
+                </View>
 
-              <View style={styles.statItem}>
-                <Shield size={16} color="#64748B" />
-                <Text style={styles.statLabel}>Purchased</Text>
-                <Text style={styles.statValue}>{subscriptionDetails.purchasedCount}</Text>
+                <View style={styles.statDivider} />
+
+                <View style={styles.statItem}>
+                  <Shield size={16} color="#64748B" />
+                  <Text style={styles.statLabel}>Purchased</Text>
+                  <Text style={styles.statValue}>{subscriptionDetails.purchasedCount}</Text>
+                </View>
+
+                <View style={styles.statDivider} />
+
+                <View style={styles.statItem}>
+                  <CheckCircle size={16} color="#64748B" />
+                  <Text style={styles.statLabel}>Available</Text>
+                  <Text style={styles.statValue}>{subscriptionDetails.availableSlots}</Text>
+                </View>
               </View>
 
-              <View style={styles.statDivider} />
-
-              <View style={styles.statItem}>
-                <CheckCircle size={16} color="#64748B" />
-                <Text style={styles.statLabel}>Available</Text>
-                <Text style={styles.statValue}>{subscriptionDetails.availableSlots}</Text>
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBar}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${(subscriptionDetails.totalMembers / subscriptionDetails.purchasedCount) * 100}%`,
+                      }
+                    ]}
+                  />
+                </View>
               </View>
-            </View>
 
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    {
-                      width: `${(subscriptionDetails.totalMembers / subscriptionDetails.purchasedCount) * 100}%`,
-                    }
-                  ]}
-                />
-              </View>
-            </View>
-
-            {/* New plan limit info section */}
-            {selectedPlanData && (
-              <View style={styles.planLimitInfo}>
-                <Text style={styles.planLimitText}>
-                  Plan Limit: {subscriptionDetails.purchasedCount} / {selectedPlanData.NOU} users
-                </Text>
-                {subscriptionDetails.purchasedCount < selectedPlanData.NOU && (
-                  <TouchableOpacity onPress={handleAddMoreUsers}>
-                    <Text style={styles.addMoreLink}>Add More Users</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-          </Card.Content>
-        </Card>
+              {/* New plan limit info section */}
+              {selectedPlanData && (
+                <View style={styles.planLimitInfo}>
+                  <View style={styles.planLimitLeft}>
+                    <Info size={14} color="#0A4D3C" />
+                    <Text style={styles.planLimitText}>
+                      Plan Limit: {subscriptionDetails.purchasedCount} / {selectedPlanData.NOU} users
+                    </Text>
+                  </View>
+                  {subscriptionDetails.purchasedCount < selectedPlanData.NOU && (
+                    <TouchableOpacity
+                      style={styles.addMoreButton}
+                      onPress={handleAddMoreUsers}
+                    >
+                      <Text style={styles.addMoreLink}>Add More</Text>
+                      <Plus size={12} color="#0A4D3C" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </Card.Content>
+          </Card>
+        </Animatable.View>
       )}
+
       <FlatList
         data={members}
         keyExtractor={(item) => item.id.toString()}
@@ -570,13 +614,17 @@ export default function SubscriptionMembersScreen() {
           members.length > 0 ? (
             <View style={styles.listHeader}>
               <Text style={styles.listHeaderTitle}>Team Members</Text>
-              <Text style={styles.listHeaderCount}>{members.length} member(s)</Text>
+              <View style={styles.listHeaderBadge}>
+                <Text style={styles.listHeaderCount}>{members.length} member(s)</Text>
+              </View>
             </View>
           ) : null
         }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Users size={60} color="#E2E8F0" />
+          <Animatable.View animation="fadeIn" duration={800} style={styles.emptyContainer}>
+            <View style={styles.emptyIconContainer}>
+              <Users size={50} color="#0A4D3C" />
+            </View>
             <Text style={styles.emptyTitle}>No Members Found</Text>
             <Text style={styles.emptySubtext}>
               {subscriptionDetails?.availableSlots > 0
@@ -597,52 +645,58 @@ export default function SubscriptionMembersScreen() {
                 </LinearGradient>
               </TouchableOpacity>
             )}
-          </View>
+          </Animatable.View>
         }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.memberCard}
-            onPress={() => handleMemberPress(item)}
-            activeOpacity={0.7}
+        renderItem={({ item, index }) => (
+          <Animatable.View
+            animation="fadeInUp"
+            duration={500}
+            delay={index * 100}
           >
-            <LinearGradient
-              colors={[getRandomColor(item.user.id), getRandomColor(item.user.id + 1)]}
-              style={styles.avatarGradient}
+            <TouchableOpacity
+              style={styles.memberCard}
+              onPress={() => handleMemberPress(item)}
+              activeOpacity={0.7}
             >
-              <Text style={styles.avatarText}>
-                {getInitials(item.user.name)}
-              </Text>
-            </LinearGradient>
-
-            <View style={styles.memberInfo}>
-              <Text style={styles.memberName}>{item.user.name || item.user.mobile}</Text>
-
-              {item.user.email && (
-                <View style={styles.detailRow}>
-                  <Mail size={12} color="#64748B" />
-                  <Text style={styles.detailText}>{item.user.email}</Text>
-                </View>
-              )}
-
-              {item.user.mobile && (
-                <View style={styles.detailRow}>
-                  <Phone size={12} color="#64748B" />
-                  <Text style={styles.detailText}>{item.user.mobile}</Text>
-                </View>
-              )}
-
-              <View style={styles.detailRow}>
-                <Clock size={12} color="#64748B" />
-                <Text style={styles.detailText}>
-                  Member since {moment(item.createdAt).format('DD MMM YYYY')}
+              <LinearGradient
+                colors={[getRandomColor(item.user.id), getRandomColor(item.user.id + 1)]}
+                style={styles.avatarGradient}
+              >
+                <Text style={styles.avatarText}>
+                  {getInitials(item.user.name)}
                 </Text>
-              </View>
-            </View>
+              </LinearGradient>
 
-            <View style={styles.chevronContainer}>
-              <ChevronRight size={18} color="#0A4D3C" />
-            </View>
-          </TouchableOpacity>
+              <View style={styles.memberInfo}>
+                <Text style={styles.memberName}>{item.user.name || item.user.mobile}</Text>
+
+                {item.user.email && (
+                  <View style={styles.detailRow}>
+                    <Mail size={12} color="#64748B" />
+                    <Text style={styles.detailText}>{item.user.email}</Text>
+                  </View>
+                )}
+
+                {item.user.mobile && (
+                  <View style={styles.detailRow}>
+                    <Phone size={12} color="#64748B" />
+                    <Text style={styles.detailText}>{item.user.mobile}</Text>
+                  </View>
+                )}
+
+                <View style={styles.detailRow}>
+                  <Clock size={12} color="#64748B" />
+                  <Text style={styles.detailText}>
+                    Member since {moment(item.createdAt).format('DD MMM YYYY')}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.chevronContainer}>
+                <ChevronRight size={18} color="#0A4D3C" />
+              </View>
+            </TouchableOpacity>
+          </Animatable.View>
         )}
       />
 
@@ -677,62 +731,82 @@ export default function SubscriptionMembersScreen() {
             >
               <View style={styles.formContainer}>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Full Name <Text style={styles.required}>*</Text></Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter member's full name"
-                    placeholderTextColor="#94A3B8"
-                    value={name}
-                    onChangeText={setName}
-                    editable={!addingMember}
-                  />
+                  <Text style={styles.label}>
+                    Full Name <Text style={styles.required}>*</Text>
+                  </Text>
+                  <View style={styles.inputWrapper}>
+                    <User size={18} color="#0A4D3C" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter member's full name"
+                      placeholderTextColor="#94A3B8"
+                      value={name}
+                      onChangeText={setName}
+                      editable={!addingMember}
+                    />
+                  </View>
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Mobile Number <Text style={styles.required}>*</Text></Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter 10-digit mobile number"
-                    placeholderTextColor="#94A3B8"
-                    value={mobile}
-                    onChangeText={setMobile}
-                    keyboardType="phone-pad"
-                    maxLength={10}
-                    editable={!addingMember}
-                  />
+                  <Text style={styles.label}>
+                    Mobile Number <Text style={styles.required}>*</Text>
+                  </Text>
+                  <View style={styles.inputWrapper}>
+                    <Phone size={18} color="#0A4D3C" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter 10-digit mobile number"
+                      placeholderTextColor="#94A3B8"
+                      value={mobile}
+                      onChangeText={setMobile}
+                      keyboardType="phone-pad"
+                      maxLength={10}
+                      editable={!addingMember}
+                    />
+                  </View>
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Email Address <Text style={styles.optional}>(Optional)</Text></Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter email address"
-                    placeholderTextColor="#94A3B8"
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    editable={!addingMember}
-                  />
+                  <Text style={styles.label}>
+                    Email Address <Text style={styles.optional}>(Optional)</Text>
+                  </Text>
+                  <View style={styles.inputWrapper}>
+                    <Mail size={18} color="#0A4D3C" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter email address"
+                      placeholderTextColor="#94A3B8"
+                      value={email}
+                      onChangeText={setEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      editable={!addingMember}
+                    />
+                  </View>
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Password <Text style={styles.required}>*</Text></Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter password (min. 6 characters)"
-                    placeholderTextColor="#94A3B8"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    editable={!addingMember}
-                  />
+                  <Text style={styles.label}>
+                    Password <Text style={styles.required}>*</Text>
+                  </Text>
+                  <View style={styles.inputWrapper}>
+                    <Shield size={18} color="#0A4D3C" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter password (min. 6 characters)"
+                      placeholderTextColor="#94A3B8"
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry
+                      editable={!addingMember}
+                    />
+                  </View>
                 </View>
 
                 <View style={styles.slotsInfo}>
-                  <Users size={16} color="#0A4D3C" />
+                  <Users size={18} color="#0A4D3C" />
                   <Text style={styles.slotsInfoText}>
-                    Available slots: {subscriptionDetails?.availableSlots || 0}
+                    Available slots: <Text style={styles.slotsInfoBold}>{subscriptionDetails?.availableSlots || 0}</Text>
                   </Text>
                 </View>
 
@@ -761,6 +835,7 @@ export default function SubscriptionMembersScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Add More Users Modal */}
       <Modal
         visible={showUserModal}
         transparent={true}
@@ -768,36 +843,64 @@ export default function SubscriptionMembersScreen() {
         onRequestClose={() => setShowUserModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Number of Users</Text>
-              <TouchableOpacity onPress={() => setShowUserModal(false)}>
-                <X size={24} color="#666" />
+          <Animatable.View animation="slideInUp" duration={400} style={styles.addUserModalContent}>
+            <LinearGradient
+              colors={['#0A4D3C', '#1B6B50']}
+              style={styles.addUserModalHeader}
+            >
+              <Text style={styles.addUserModalTitle}>Add More Users</Text>
+              <TouchableOpacity
+                onPress={() => setShowUserModal(false)}
+                style={styles.addUserModalCloseButton}
+              >
+                <X size={20} color="#FFFFFF" />
               </TouchableOpacity>
-            </View>
+            </LinearGradient>
 
             {selectedPlanData && (
-              <>
+              <View style={styles.addUserModalBody}>
+                <View style={styles.planInfoBox}>
+                  <Award size={20} color="#0A4D3C" />
+                  <View style={styles.planInfoText}>
+                    <Text style={styles.planInfoTitle}>{selectedPlanData.planName} Plan</Text>
+                    <Text style={styles.planInfoSubtitle}>
+                      {subscriptionDetails?.purchasedCount}/{selectedPlanData.NOU} users used
+                    </Text>
+                  </View>
+                </View>
+
                 <View style={styles.userCountContainer}>
                   <TouchableOpacity
-                    style={styles.userCountButton}
-                    onPress={decrementUserCount}
-                    disabled={userCount <= 1}
+                    style={[styles.userCountButton, additionalUserCount <= 1 && styles.userCountButtonDisabled]}
+                    onPress={decrementAdditionalUserCount}
+                    disabled={additionalUserCount <= 1}
                   >
-                    <Minus size={20} color={userCount <= 1 ? "#ccc" : "#4CAF50"} />
+                    <Minus size={20} color={additionalUserCount <= 1 ? "#CBD5E1" : "#0A4D3C"} />
                   </TouchableOpacity>
 
                   <View style={styles.userCountDisplay}>
-                    <Text style={styles.userCountText}>{userCount}</Text>
-                    <Text style={styles.userCountLabel}>Users</Text>
+                    <Text style={styles.userCountText}>{additionalUserCount}</Text>
+                    <Text style={styles.userCountLabel}>
+                      User{additionalUserCount > 1 ? 's' : ''}
+                    </Text>
                   </View>
 
                   <TouchableOpacity
-                    style={styles.userCountButton}
-                    onPress={incrementUserCount}
-                    disabled={userCount >= selectedPlanData.NOU}
+                    style={[
+                      styles.userCountButton,
+                      additionalUserCount >= (selectedPlanData.NOU - subscriptionDetails?.purchasedCount) &&
+                      styles.userCountButtonDisabled
+                    ]}
+                    onPress={incrementAdditionalUserCount}
+                    disabled={additionalUserCount >= (selectedPlanData.NOU - subscriptionDetails?.purchasedCount)}
                   >
-                    <Plus size={20} color={userCount >= selectedPlanData.NOU ? "#ccc" : "#4CAF50"} />
+                    <Plus
+                      size={20}
+                      color={additionalUserCount >= (selectedPlanData.NOU - subscriptionDetails?.purchasedCount)
+                        ? "#CBD5E1"
+                        : "#0A4D3C"
+                      }
+                    />
                   </TouchableOpacity>
                 </View>
 
@@ -805,31 +908,41 @@ export default function SubscriptionMembersScreen() {
                   <Text style={styles.breakdownTitle}>Price Breakdown</Text>
                   <View style={styles.breakdownRow}>
                     <Text style={styles.breakdownLabel}>Plan Price:</Text>
-                    <Text style={styles.breakdownValue}>₹{selectedPlanData.price} × {userCount} user{userCount > 1 ? 's' : ''}</Text>
+                    <Text style={styles.breakdownValue}>
+                      ₹{selectedPlanData.price} × {additionalUserCount} user{additionalUserCount > 1 ? 's' : ''}
+                    </Text>
                   </View>
+                  <View style={styles.breakdownDivider} />
                   <View style={styles.breakdownRow}>
-                    <Text style={styles.breakdownLabel}>Total Amount:</Text>
-                    <Text style={styles.breakdownTotal}>₹{calculateTotalPrice()}</Text>
+                    <Text style={styles.breakdownTotalLabel}>Total Amount:</Text>
+                    <Text style={styles.breakdownTotal}>₹{calculateAdditionalPrice()}</Text>
                   </View>
                 </View>
 
                 <TouchableOpacity
-                  style={styles.proceedButton}
+                  style={[styles.proceedButton, processingPayment && styles.disabledButton]}
                   onPress={handleProceedToAdditionalPayment}
                   disabled={processingPayment}
                 >
-                  {processingPayment ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.proceedButtonText}>Proceed to Payment</Text>
-                  )}
+                  <LinearGradient
+                    colors={['#0A4D3C', '#1B6B50']}
+                    style={styles.proceedButtonGradient}
+                  >
+                    {processingPayment ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <>
+                        <CreditCard size={18} color="#FFFFFF" />
+                        <Text style={styles.proceedButtonText}>Proceed to Payment</Text>
+                      </>
+                    )}
+                  </LinearGradient>
                 </TouchableOpacity>
-              </>
+              </View>
             )}
-          </View>
+          </Animatable.View>
         </View>
       </Modal>
-
     </View>
   );
 }
@@ -870,20 +983,20 @@ const styles = StyleSheet.create({
   headerGradient: {
     paddingTop: 20,
     paddingBottom: 20,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -896,7 +1009,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
@@ -906,9 +1019,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   headerAddButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -984,6 +1097,38 @@ const styles = StyleSheet.create({
     backgroundColor: '#0A4D3C',
     borderRadius: 4,
   },
+  planLimitInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  planLimitLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  planLimitText: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  addMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
+  addMoreLink: {
+    fontSize: 12,
+    color: '#0A4D3C',
+    fontWeight: '600',
+  },
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 20,
@@ -1000,15 +1145,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1E293B',
   },
+  listHeaderBadge: {
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
   listHeaderCount: {
-    fontSize: 13,
-    color: '#64748B',
+    fontSize: 12,
+    color: '#0A4D3C',
+    fontWeight: '600',
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
     paddingHorizontal: 30,
+  },
+  emptyIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 18,
@@ -1031,8 +1192,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
     gap: 8,
   },
   emptyAddButtonText: {
@@ -1050,9 +1211,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 2,
   },
   avatarGradient: {
@@ -1149,30 +1310,43 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontWeight: '400',
   },
-  input: {
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 12,
-    padding: 14,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 12,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 14,
     fontSize: 14,
     color: '#1E293B',
-    backgroundColor: '#F8FAFC',
   },
   slotsInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E8F5E9',
-    padding: 14,
+    padding: 16,
     borderRadius: 12,
-    gap: 8,
+    gap: 10,
     marginTop: 8,
     borderWidth: 1,
     borderColor: '#0A4D3C',
   },
   slotsInfoText: {
     fontSize: 14,
+    color: '#64748B',
+  },
+  slotsInfoBold: {
+    fontSize: 16,
+    fontWeight: '700',
     color: '#0A4D3C',
-    fontWeight: '600',
   },
   submitButton: {
     borderRadius: 12,
@@ -1194,89 +1368,80 @@ const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.6,
   },
-  planLimitInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-  },
-  planLimitText: {
-    fontSize: 14,
-    color: '#64748B',
-  },
-  addMoreLink: {
-    fontSize: 14,
-    color: '#0A4D3C',
-    fontWeight: '500',
-  },
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+  addUserModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
-  formContainer: {
-    paddingBottom: 20,
+  addUserModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-    marginTop: 12,
+  addUserModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#fff',
+  addUserModalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  slotsInfo: {
+  addUserModalBody: {
+    padding: 20,
+  },
+  planInfoBox: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E8F5E9',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 20,
-    marginBottom: 10,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#0A4D3C',
   },
-  slotsInfoText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#2E7D32',
-    fontWeight: '500',
+  planInfoText: {
+    flex: 1,
   },
-  disabledButton: {
-    backgroundColor: '#ccc',
-  },
-  submitButtonText: {
-    color: '#fff',
+  planInfoTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#0A4D3C',
+  },
+  planInfoSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
   },
   userCountContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
     padding: 20,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   userCountButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'white',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 2,
@@ -1284,30 +1449,38 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  userCountButtonDisabled: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#E2E8F0',
   },
   userCountDisplay: {
     alignItems: 'center',
   },
   userCountText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#0A4D3C',
   },
   userCountLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
   },
   priceBreakdown: {
-    backgroundColor: '#F8F8F8',
-    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
     padding: 16,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   breakdownTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#333',
+    color: '#1E293B',
     marginBottom: 12,
   },
   breakdownRow: {
@@ -1316,33 +1489,43 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   breakdownLabel: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 13,
+    color: '#64748B',
   },
   breakdownValue: {
-    fontSize: 14,
-    color: '#333',
+    fontSize: 13,
+    color: '#1E293B',
+    fontWeight: '500',
+  },
+  breakdownDivider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 10,
+  },
+  breakdownTotalLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1E293B',
   },
   breakdownTotal: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#4CAF50',
+    fontWeight: '800',
+    color: '#0A4D3C',
   },
   proceedButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 16,
-    borderRadius: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  proceedButtonGradient: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
   },
   proceedButtonText: {
-    color: 'white',
     fontSize: 16,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
-  infoContainer: {
-    backgroundColor: '#E3F2FD',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  }
 });

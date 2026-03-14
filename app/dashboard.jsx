@@ -1021,6 +1021,7 @@ const styles = StyleSheet.create({
   lottieAnimation: {
     width: 150,
     height: 120,
+
   },
   emptyText: {
     fontSize: 16,

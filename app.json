@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "owner": "pentapillisuresh",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/aqualogo.png",
     "scheme": "aquacredit",
     "userInterfaceStyle": "automatic",
     "useNextNotificationsApi": true,
@@ -25,7 +25,7 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/aqualogo.png"
     },
     "experiments": {
       "typedRoutes": true
