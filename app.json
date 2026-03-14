@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "owner": "pentapillisuresh",
     "orientation": "portrait",
-    "icon": "./assets/images/aqualogo.png",
+    "icon": "./assets/images/icon.png",
     "scheme": "aquacredit",
     "userInterfaceStyle": "automatic",
     "useNextNotificationsApi": true,
