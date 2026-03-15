@@ -65,6 +65,7 @@ export default function SubscriptionMembersScreen() {
 
   // Form state
   const [name, setName] = useState('');
+  const [nickName, setNickName] = useState('');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
@@ -117,20 +118,6 @@ export default function SubscriptionMembersScreen() {
     }, [isSubscribed])
   );
 
-  const incrementUserCount = () => {
-    if (selectedPlanData && userCount < selectedPlanData.NOU) {
-      setUserCount(userCount + 1);
-    } else {
-      Alert.alert("Limit Reached", `Maximum ${selectedPlanData?.NOU} users allowed for this plan`);
-    }
-  };
-
-  const decrementUserCount = () => {
-    if (userCount > 1) {
-      setUserCount(userCount - 1);
-    }
-  };
-
   const incrementAdditionalUserCount = () => {
     if (selectedPlanData && additionalUserCount < (selectedPlanData.NOU - subscriptionDetails?.purchasedCount)) {
       setAdditionalUserCount(additionalUserCount + 1);
@@ -143,11 +130,6 @@ export default function SubscriptionMembersScreen() {
     if (additionalUserCount > 1) {
       setAdditionalUserCount(additionalUserCount - 1);
     }
-  };
-
-  const calculateTotalPrice = () => {
-    if (!selectedPlanData) return 0;
-    return selectedPlanData.price * userCount;
   };
 
   const calculateAdditionalPrice = () => {
@@ -163,6 +145,7 @@ export default function SubscriptionMembersScreen() {
   const resetForm = () => {
     setName('');
     setEmail('');
+    setNickName('');
     setMobile('');
     setPassword('');
   };
@@ -357,12 +340,14 @@ export default function SubscriptionMembersScreen() {
   };
 
   const handleSubmit = async () => {
+    const userData = await AsyncStorage.getItem("userData");
     if (!validateForm()) return;
     setAddingMember(true);
     try {
       // Step 1: Register the user
       const registerResponse = await ApiService.post('/auth/register', {
         name,
+        nickName,
         email: email || `${mobile}@temp.com`, // Create temporary email if not provided
         mobile,
         businessName:user.businessName,
@@ -743,6 +728,23 @@ export default function SubscriptionMembersScreen() {
                       placeholderTextColor="#94A3B8"
                       value={name}
                       onChangeText={setName}
+                      editable={!addingMember}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>
+                    Nick Name <Text style={styles.required}>*</Text>
+                  </Text>
+                  <View style={styles.inputWrapper}>
+                    <User size={18} color="#0A4D3C" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter member's nick name"
+                      placeholderTextColor="#94A3B8"
+                      value={nickName}
+                      onChangeText={setNickName}
                       editable={!addingMember}
                     />
                   </View>

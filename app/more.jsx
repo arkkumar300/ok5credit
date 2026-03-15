@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useContext } from 'react';
 import {View,Text,StyleSheet,TouchableOpacity,SafeAreaView,ScrollView,StatusBar,Platform,Modal} from 'react-native';
 import { useRouter } from 'expo-router';
-import {TrendingUp,User,FileText,MoreHorizontal,Package,Settings,CreditCard,Star,CircleHelp as HelpCircle,Share2,Share,LogOut,Award,Home,ChevronRight,CheckCircle,X,RefreshCw} from 'lucide-react-native';
+import {UserPlus,User,FileText,MoreHorizontal,Package,Settings,CreditCard,Star,CircleHelp as HelpCircle,Share2,Share,LogOut,Award,Home,ChevronRight,CheckCircle,X,RefreshCw} from 'lucide-react-native';
 import { Appbar, Avatar } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -207,24 +207,23 @@ export default function MoreScreen() {
     ];
 
     // Show either Plan or Renewal based on subscription status
-    if (isSubscribed) {
-      businessItems.push({ 
-        icon: <RefreshCw size={20} color="#666" />, 
-        title: 'Renew Subscription', 
-        subtitle: subscriptionDetails ? 
-          `Renew plan (Expires: ${new Date(subscriptionDetails.end_date).toLocaleDateString()})` : 
-          'Renew your current plan',
-        onPress: handleRenewalPress 
-      });
-    } else {
-      businessItems.push({ 
-        icon: <CreditCard size={20} color="#666" />, 
-        title: 'My Plan', 
-        subtitle: 'Subscribe to a plan and manage billing', 
-        onPress: handleMyPlanPress 
+    if (user.role !== "employee") {
+      businessItems.push({
+        icon: isSubscribed
+          ? <RefreshCw size={20} color="#666" />
+          : <CreditCard size={20} color="#666" />,
+    
+        title: isSubscribed ? "Renew Subscription" : "My Plan",
+    
+        subtitle: isSubscribed
+          ? subscriptionDetails?.end_date
+            ? `Renew plan (Expires: ${new Date(subscriptionDetails.end_date).toLocaleDateString()})`
+            : "Renew your current plan"
+          : "Subscribe to a plan and manage billing",
+    
+        onPress: isSubscribed ? handleRenewalPress : handleMyPlanPress
       });
     }
-
     return businessItems;
   };
 
@@ -481,24 +480,25 @@ export default function MoreScreen() {
           </View>
           <Text style={styles.navText}>Home</Text>
         </TouchableOpacity>
-        {isSubscribed && (
-        <TouchableOpacity style={styles.navItem} onPress={handleEmployeesPress}>
-          <View style={[styles.navIcon, styles.navIconInactive]}>
-            <Award size={18} color="#64748B" />
-          </View>
-          <Text style={styles.navText}>Employees</Text>
-        </TouchableOpacity>
-        )}
-        
-        {!isSubscribed && (
-        <TouchableOpacity style={styles.navItem} onPress={handleMyPlanPress}>
-          <View style={[styles.navIcon, styles.navIconInactive]}>
-            <Award size={18} color="#64748B" />
-          </View>
-          <Text style={styles.navText}>My Plan</Text>
-        </TouchableOpacity>
-        )}
-
+        {user?.role !== "employee" && (
+          <>
+            {isSubscribed ? (
+              <TouchableOpacity style={styles.navItem} onPress={handleEmployeesPress}>
+                <View style={styles.navIcon}>
+                  <UserPlus size={18} color="#64748B" />
+                </View>
+                <Text style={styles.navText}>Employees</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.navItem} onPress={handleMyPlanPress}>
+                <View style={styles.navIcon}>
+                  <Award size={18} color="#64748B" />
+                </View>
+                <Text style={styles.navText}>My Plan</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}        
         <TouchableOpacity style={styles.navItem}>
           <View style={[styles.navIcon, styles.navIconActive]}>
             <MoreHorizontal size={18} color="#FFFFFF" />

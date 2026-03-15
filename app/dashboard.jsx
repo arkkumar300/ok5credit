@@ -48,7 +48,7 @@ export default function DashboardScreen() {
     isAuthenticated,
     isSubscribed,
     subscription,
-    logout,
+    logout, loadStoredUser,
     refreshSubscription,
     getPurchasedUserCount,
     getCurrentPlan
@@ -98,6 +98,7 @@ export default function DashboardScreen() {
         const fetchedCustomers = (response.data.Customers || []).map((c) => ({
           id: c.id,
           name: c.name,
+          nickName: c.nickName,
           amount: parseFloat(c.current_balance),
           type: parseFloat(c.current_balance) <= 0 ? "Due" : "Advance",
           date: new Date(c.created_at).toDateString(),
@@ -110,6 +111,7 @@ export default function DashboardScreen() {
         const fetchedSuppliers = (response.data.Suppliers || []).map((s) => ({
           id: s.id,
           name: s.name,
+          nickName: s.nickName,
           amount: parseFloat(s.current_balance),
           type: parseFloat(s.current_balance) >= 0 ? "Due" : "Advance",
           date: new Date(s.created_at).toDateString(),
@@ -156,6 +158,8 @@ export default function DashboardScreen() {
       const response = await ApiService.get(`/user/${userId}`);
       if (!response.data) return setIsVerified(false);
       const { is_verified } = response.data;
+      await AsyncStorage.setItem("userData", JSON.stringify(response.data));
+      loadStoredUser();
       setIsVerified(is_verified);
     } catch (error) {
       console.log("Error checking eligibility:", error);
@@ -486,7 +490,7 @@ export default function DashboardScreen() {
                 </View>
 
                 <View style={styles.personInfo}>
-                  <Text style={styles.personName}>{person.name}</Text>
+                  <Text style={styles.personName}>{person.nickName}</Text>
                   <View style={styles.paymentInfo}>
                     <CheckCircle size={10} color="#0A4D3C" />
                     <Text style={styles.paymentText}>
@@ -624,24 +628,25 @@ export default function DashboardScreen() {
           <Text style={[styles.navText, activeTab === 'Home' && styles.navTextActive]}>Home</Text>
         </TouchableOpacity>
 
-        {isSubscribed && (
-          <TouchableOpacity style={styles.navItem} onPress={handleEmployeesPress}>
-            <View style={styles.navIcon}>
-              <UserPlus size={18} color="#64748B" />
-            </View>
-            <Text style={styles.navText}>Employees</Text>
-          </TouchableOpacity>
-        )}
-
-        {!isSubscribed && (
-          <TouchableOpacity style={styles.navItem} onPress={handleMyPlanPress}>
-            <View style={styles.navIcon}>
-              <Award size={18} color="#64748B" />
-            </View>
-            <Text style={styles.navText}>My Plan</Text>
-          </TouchableOpacity>
-        )}
-
+        {user?.role !== "employee" && (
+          <>
+            {isSubscribed ? (
+              <TouchableOpacity style={styles.navItem} onPress={handleEmployeesPress}>
+                <View style={styles.navIcon}>
+                  <UserPlus size={18} color="#64748B" />
+                </View>
+                <Text style={styles.navText}>Employees</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.navItem} onPress={handleMyPlanPress}>
+                <View style={styles.navIcon}>
+                  <Award size={18} color="#64748B" />
+                </View>
+                <Text style={styles.navText}>My Plan</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}        
         <TouchableOpacity style={styles.navItem} onPress={handleMorePress}>
           <View style={styles.navIcon}>
             <MoreHorizontal size={18} color="#64748B" />

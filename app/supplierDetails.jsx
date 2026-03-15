@@ -531,7 +531,7 @@ Your current balance is ₹${balance} ${balanceType}`;
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
       <Image
-        source={require('../assets/images/no.png')}
+        source={require('../assets/images/NoTransaction.png')}
         style={styles.emptyImage}
         resizeMode="contain"
       />

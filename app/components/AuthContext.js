@@ -148,6 +148,7 @@ export const AuthContext = createContext();
       setUser,
       login,
       logout,
+      loadStoredUser,
       isLoading,
       isAuthenticated,
       

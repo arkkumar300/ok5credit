@@ -44,13 +44,14 @@ export default function CustomerOverview() {
       try {
         const userData = await AsyncStorage.getItem("userData");
         const userId = JSON.parse(userData)?.id;
+        const ownerId = JSON.parse(userData)?.owner_user_id;
         const rrr = JSON.parse(userData)
         setUserDetails(rrr)
         if (!userId) {
-          return Alert.alert("Error", "User ID not found");
+          return Alert.alert("Error", "User ID not found"); 
         }
 
-        const response = await ApiService.post(`/transactions/userLedger`, { userId, transaction_for });
+        const response = await ApiService.post(`/transactions/userLedger`, { userId,ownerId, transaction_for });
         const json = response.data;
 
         if (json.transactions && json.summary) {

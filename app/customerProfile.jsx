@@ -299,6 +299,13 @@ const ProfileScreen = () => {
           />
 
           <ProfileItem
+            icon={User}
+            label="Full Nick Name"
+            value={profile?.nickName || 'Not provided'}
+            onPress={() => setActiveModal('nickName')}
+          />
+
+          <ProfileItem
             icon={Phone}
             label="Phone Number"
             value={profile?.mobile || 'Not provided'}
@@ -344,6 +351,16 @@ const ProfileScreen = () => {
         field="name"
         onSave={updateProfile}
         placeholder="Enter full name"
+      />
+
+      <EditModal
+        visible={activeModal === 'nickName'}
+        onClose={() => setActiveModal(null)}
+        title="Edit Nick Name"
+        value={profile?.nickName}
+        field="nickName"
+        onSave={updateProfile}
+        placeholder="Enter Nick Name"
       />
 
       <EditModal

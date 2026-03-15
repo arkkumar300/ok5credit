@@ -76,7 +76,8 @@ export default function TransactionDetails() {
 
       const payload = {
         ...idPayload,
-        userId: transaction.business_owner_id,
+        userId: transaction.created_user,
+        ownerId: transaction.business_owner_id,
         transaction_type: transactionType,
         transaction_for: transaction.transaction_for,
         amount: Number(newAmount),
@@ -248,7 +249,8 @@ export default function TransactionDetails() {
 
       const payload = {
         ...idPayload,
-        userId: transaction.business_owner_id,
+        userId: transaction.created_user,
+        ownerId: transaction.business_owner_id,
         transaction_type: transactionType,
         transaction_for: transaction.transaction_for,
         amount: Number(newAmount),
