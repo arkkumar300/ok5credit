@@ -49,6 +49,37 @@ export default function EmployeeDashboardScreen() {
 
   const [activeTab, setActiveTab] = useState('Customers');
 
+  const handleAmountCollected = async () => {
+    try {
+      const groupId = transaction?.transaction_group_id;
+  console.log("groupId::",groupId)
+      if (!groupId) {
+        Alert.alert("Error", "Transaction group ID not found");
+        return;
+      }
+  
+      const response = await ApiService.put(
+        `/transactions/${groupId}/transaction_group_id`,{ status: "collected"},
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+  
+      const result = await response.data;
+  console.log("collected::",result)
+      if (response) {
+        Alert.alert("Success", "Amount collected successfully");
+      } else {
+        Alert.alert("Error", result?.message || "Failed to update status");
+      }
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Error", "Something went wrong");
+    }
+  };
+
   const calculateTotals = () => {
     const customerTotal = customers.reduce((sum, c) => sum + parseFloat(c.current_balance || 0), 0);
     const supplierTotal = suppliers.reduce((sum, s) => sum + parseFloat(s.current_balance || 0), 0);
@@ -66,21 +97,24 @@ export default function EmployeeDashboardScreen() {
       .slice(0, 2);
   };
 
-  const renderCustomerItem = ({ item, index }) => (
+  const renderCustomerItem = ({ item, index }) => {
+    console.log("customerItems::",item)
+    return(
     <Animatable.View
       animation="fadeInUp"
       duration={500}
       delay={index * 100}
+      key={item.id}
     >
       <TouchableOpacity
         style={styles.itemCard}
         onPress={() => router.push({
-          pathname: '/customerDetails',
+          pathname: '/employeeCustomerSupplierDetails',
           params: {
             personId: item.id,
             personName: item.name,
             personType: 'customer',
-            createdBy: item.created_by
+            createdBy: item.created_user
           }
         })}
         activeOpacity={0.7}
@@ -124,23 +158,24 @@ export default function EmployeeDashboardScreen() {
         </View>
       </TouchableOpacity>
     </Animatable.View>
-  );
+  )};
 
   const renderSupplierItem = ({ item, index }) => (
     <Animatable.View
       animation="fadeInUp"
       duration={500}
       delay={index * 100}
+      key={item.id}
     >
       <TouchableOpacity
         style={styles.itemCard}
         onPress={() => router.push({
-          pathname: '/supplierDetails',
+          pathname: '/employeeCustomerSupplierDetails',
           params: {
             personId: item.id,
             personName: item.name,
             personType: 'supplier',
-            createdBy: item.created_by
+            createdBy: item.created_user
           }
         })}
         activeOpacity={0.7}

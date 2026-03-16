@@ -84,7 +84,7 @@ export default function TransactionDetails() {
       }
 
       const response = await ApiService.put(
-        `/transactions/${groupId}/transaction_group_id`, { status: "collected" },
+        `/transactions/${groupId}/transaction_group_id`, { status: "approved",is_Approved:true },
         {
           headers: {
             "Content-Type": "application/json",
@@ -93,7 +93,6 @@ export default function TransactionDetails() {
       );
 
       const result = await response.data;
-      console.log("collected::", result)
       if (response) {
         Alert.alert("Success", "Amount collected successfully");
       } else {
@@ -390,7 +389,6 @@ export default function TransactionDetails() {
         </View>
       </View>
       <View style={styles.collectContainer}>
-        {user.role === "employee" && (
 
           <TouchableOpacity
             style={styles.collectButton}
@@ -398,9 +396,8 @@ export default function TransactionDetails() {
             activeOpacity={0.8}
           >
             <CheckCircle size={18} color="#FFFFFF" />
-            <Text style={styles.collectButtonText}>Amount Collected</Text>
+            <Text style={styles.collectButtonText}>Amount Recived</Text>
           </TouchableOpacity>
-        )}
       </View>
       {/* Details */}
       <ScrollView
@@ -465,40 +462,37 @@ export default function TransactionDetails() {
               <Text style={styles.detailValue}>{formateDate(transaction?.transaction_date)}</Text>
             </View>
           </View>
-          {transaction?.status === "pending" && (
-            <>
-              {transactionType === "you_gave" && (
-                <TouchableOpacity
-                  style={styles.detailRow}
-                  onPress={() => {
-                    setNewAmount(String(transaction?.amount));
-                    setShowEditModal(true);
-                  }}
-                >
-                  <View style={[styles.detailIcon, { backgroundColor: 'rgba(37,211,102,0.1)' }]}>
-                    <Edit size={18} color="#10B981" />
-                  </View>
-                  <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Edit Transaction</Text>
-                    <Text style={[styles.detailValue, styles.editText]}>Tap to edit amount</Text>
-                  </View>
-                </TouchableOpacity>
-              )}
 
-              <TouchableOpacity
-                style={[styles.detailRow, styles.deleteRow]}
-                onPress={() => setShowDeleteModal(true)}
-              >
-                <View style={[styles.detailIcon, { backgroundColor: 'rgba(220,38,38,0.1)' }]}>
-                  <Delete size={18} color="#DC2626" />
-                </View>
-                <View style={styles.detailContent}>
-                  <Text style={[styles.detailLabel, { color: '#DC2626' }]}>Delete Transaction</Text>
-                  <Text style={[styles.detailValue, { color: '#DC2626' }]}>Remove permanently</Text>
-                </View>
-              </TouchableOpacity>
-            </>
+          {transactionType === "you_gave" && (
+            <TouchableOpacity
+              style={styles.detailRow}
+              onPress={() => {
+                setNewAmount(String(transaction?.amount));
+                setShowEditModal(true);
+              }}
+            >
+              <View style={[styles.detailIcon, { backgroundColor: 'rgba(37,211,102,0.1)' }]}>
+                <Edit size={18} color="#10B981" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={styles.detailLabel}>Edit Transaction</Text>
+                <Text style={[styles.detailValue, styles.editText]}>Tap to edit amount</Text>
+              </View>
+            </TouchableOpacity>
           )}
+
+          <TouchableOpacity
+            style={[styles.detailRow, styles.deleteRow]}
+            onPress={() => setShowDeleteModal(true)}
+          >
+            <View style={[styles.detailIcon, { backgroundColor: 'rgba(220,38,38,0.1)' }]}>
+              <Delete size={18} color="#DC2626" />
+            </View>
+            <View style={styles.detailContent}>
+              <Text style={[styles.detailLabel, { color: '#DC2626' }]}>Delete Transaction</Text>
+              <Text style={[styles.detailValue, { color: '#DC2626' }]}>Remove permanently</Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Share Buttons */}

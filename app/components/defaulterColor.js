@@ -1,6 +1,5 @@
 // Helper function to get color based on defaulter stage
 const getStageColor = (stage) => {
-    console.log("stage::",stage)
     switch(stage) {
       case 'Stage 4':
         return '#333333'; // black - Low risk

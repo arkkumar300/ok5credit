@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {View,Text,StyleSheet,TouchableOpacity,SafeAreaView,TextInput,Alert,ScrollView,Image,Dimensions,StatusBar,Platform,KeyboardAvoidingView} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import {ArrowLeft,Camera,Paperclip as PaperclipIcon,X,ArrowRight,Calendar,Clock,CheckCircle,FileText,CreditCard,IndianRupee} from 'lucide-react-native';
+import {ArrowLeft,Camera,Paperclip as PaperclipIcon,X,AlertTriangle,Calendar,Clock,CheckCircle,FileText,CreditCard,IndianRupee} from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -480,7 +480,14 @@ export default function TransactionScreen() {
             </View>
             <View style={styles.amountDivider} />
           </View>
-
+          {transactionType === "you_got" && (
+  <View style={styles.warningBox}>
+    <AlertTriangle size={18} color="#D97706" />
+    <Text style={styles.warningText}>
+      This payment transaction cannot be edited or deleted.
+    </Text>
+  </View>
+)}
           {amount ? (
             <>
               {/* Date Selection - Compact */}
@@ -1019,6 +1026,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 8,
+  },
+  warningBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
+    borderRadius: 10,
+    padding: 12,
+    marginHorizontal: 20,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#FCD34D",
+  },
+  
+  warningText: {
+    marginLeft: 8,
+    color: "#92400E",
+    fontSize: 14,
+    flex: 1,
   },
   selectorText: {
     fontSize: 14,

@@ -14,120 +14,8 @@ import ViewShot from 'react-native-view-shot';
 import Modal from 'react-native-modal';
 import { AuthContext } from './components/AuthContext';
 
-// Modal component for discount
-const DiscountModal = ({ visible, onClose, onSubmit, loading }) => {
-  const [discountAmount, setDiscountAmount] = useState('');
-  const [discountNote, setDiscountNote] = useState('');
-  const [animateOpacity] = useState(new Animated.Value(0));
-  const [animateTranslate] = useState(new Animated.Value(50));
-
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.timing(animateOpacity, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animateTranslate, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      animateOpacity.setValue(0);
-      animateTranslate.setValue(50);
-    }
-  }, [visible]);
-
-  const handleSubmit = () => {
-    if (!discountAmount || isNaN(discountAmount) || parseFloat(discountAmount) <= 0) {
-      Alert.alert('Invalid', 'Enter a valid discount amount');
-      return;
-    }
-
-    onSubmit({
-      amount: parseFloat(discountAmount),
-      note: discountNote,
-    });
-
-    setDiscountAmount('');
-    setDiscountNote('');
-  };
-
-  return (
-    <Modal
-      isVisible={visible}
-      onBackdropPress={onClose}
-      onBackButtonPress={onClose}
-      animationIn="fadeIn"
-      animationOut="fadeOut"
-      backdropOpacity={0.5}
-    >
-      <Animated.View
-        style={[
-          styles.modalContainer,
-          {
-            opacity: animateOpacity,
-            transform: [{ translateY: animateTranslate }],
-          },
-        ]}
-      >
-        <Text style={styles.modalTitle}>Add Discount</Text>
-
-        <TextInput
-          placeholder="Enter discount amount"
-          placeholderTextColor="#94A3B8"
-          keyboardType="numeric"
-          value={discountAmount}
-          onChangeText={setDiscountAmount}
-          style={styles.input}
-        />
-
-        <TextInput
-          placeholder="Note (optional)"
-          placeholderTextColor="#94A3B8"
-          value={discountNote}
-          onChangeText={setDiscountNote}
-          style={[styles.input, styles.textArea]}
-          multiline
-          numberOfLines={4}
-          textAlignVertical="top"
-        />
-
-        <View style={styles.modalButtonRow}>
-          <TouchableOpacity
-            style={[styles.modalButton, styles.cancelButton]}
-            onPress={onClose}
-            disabled={loading}
-          >
-            <Text style={[styles.modalButtonText, styles.cancelButtonText]}>
-              Cancel
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.modalButton,
-              styles.submitButton,
-              loading && styles.disabledButton,
-            ]}
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            <Text style={[styles.modalButtonText, styles.submitButtonText]}>
-              {loading ? 'Saving...' : 'Submit'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
-    </Modal>
-  );
-};
-
 // Transaction Item Component
-const TransactionItem = React.memo(({ item, personName, router, customer, userDetails }) => {
+const TransactionItem = React.memo(({ item, personName, router, customer }) => {
   const isReceived = item.transaction_type === 'you_got' || item.transaction_type === 'you_discount';
   const isApproved = item.is_Approved;
   const status = item.status;
@@ -157,7 +45,7 @@ const TransactionItem = React.memo(({ item, personName, router, customer, userDe
 
   const handlePress = () => {
     router.push({
-      pathname: '/transactionDetails',
+      pathname: '/employeeCustomerSupplierTransactionDetails',
       params: {
         transactionDetails: JSON.stringify(item),
         mobile: customer.mobile,
@@ -228,13 +116,14 @@ const TransactionItem = React.memo(({ item, personName, router, customer, userDe
   };
 
   // Get status icon based on approval
-  const getStatusIcon = () => {
-    if (isApproved) {
-      return <CheckCircle size={16} color="#4CAF50" />;
-    } else {
-      return <Clock size={16} color="#FF9800" />;
-    }
-  };
+  // const getStatusIcon = () => {
+  //   if (isApproved) {
+  //     return <CheckCircle size={16} color="#4CAF50" />;
+  //   } else {
+  //     return <Clock size={16} color="#FF9800" />;
+  //   }
+  // };
+
   return (
     <TouchableOpacity
       style={[
@@ -259,21 +148,13 @@ const TransactionItem = React.memo(({ item, personName, router, customer, userDe
               ₹ {parseFloat(item.amount).toFixed(2)}
             </Text>
           </View>
-          {userDetails?.role === "employee" ? (
             <View style={styles.statusContainer}>
               {getEmployeeStatusIcon()}
               <Text style={styles.statusText}>
                 {item?.status || ""}
               </Text>
             </View>
-          ) : item.transaction_type === "you_gave" ? (
-            <View style={styles.statusContainer}>
-              {getStatusIcon()}
-              <Text style={styles.statusText}>
-                {isApproved ? "Approved" : "Pending"}
-              </Text>
-            </View>
-          ) : null}
+          
         </View>
 
 
@@ -322,7 +203,7 @@ const TransactionItem = React.memo(({ item, personName, router, customer, userDe
 
 export default function CustomerDetails() {
   const router = useRouter();
-  const { personName, personType, personId } = useLocalSearchParams();
+  const { personName, personType, personId,createdBy } = useLocalSearchParams();
 
   const [customer, setCustomer] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -334,10 +215,7 @@ export default function CustomerDetails() {
   const [credit_given_count_user, setCredit_given_count_user] = useState(0);
   const [payment_got_count_user, setPayment_got_count_user] = useState(0);
   const [subscribePlan, setSubscribePlan_user] = useState('');
-  const [showDiscountModal, setShowDiscountModal] = useState(false);
-  const [discountLoading, setDiscountLoading] = useState(false);
   const [dueDate, setDueDate] = useState(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const viewShotRef = useRef(null);
   const [userDetails, setUserDetails] = useState(null);
 
@@ -356,13 +234,17 @@ export default function CustomerDetails() {
         return;
       }
 
-      const userId = JSON.parse(userData).id;
-      const ownerId = JSON.parse(userData).owner_user_id;
-      const response = await ApiService.post(`/customers/${personId}`, { userId, ownerId });
+      const userId =createdBy;
+      console.log("userId",userId)
+      const ownerId = JSON.parse(userData).id;
+      console.log("ownerId",ownerId)
+      const URL = personType === 'customer' ? `/customers/${personId}}` : `/supplier/${personId}`;
+      const response = await ApiService.post(URL, { userId, ownerId });
       const data = response.data;
 
-      setCustomer(data.customer);
-      setCustomerMobile(data.customer.mobile);
+      const rrr=personType === 'customer' ? data.customer : data.supplier
+      setCustomer(rrr);
+      setCustomerMobile(rrr.mobile);
       setTransactions(data.transactions || []);
 
       // Fetch due date if exists
@@ -488,106 +370,7 @@ Your current balance is ₹${balance} ${balanceType}`;
     });
   };
 
-  const handleAddTransaction = async (transactionType) => {
-    if (!isSubscribe_user) {
-      if (transactionType === 'you_got' && payment_got_count_user >= 10) {
-        setError('You have reached the limit for received transactions in Basic plan');
-        return;
-      }
-      if (transactionType === 'you_gave' && credit_given_count_user >= 10) {
-        setError('You have reached the limit for given transactions in Basic plan');
-        return;
-      }
-    } else {
-      const today = new Date();
-      const endDate = new Date(subscribeEndAt_user);
-      if (endDate < today) {
-        setError('Your subscription has expired');
-        return;
-      }
-    }
 
-    router.push({
-      pathname: '/transaction',
-      params: {
-        transactionType,
-        transaction_for: 'customer',
-        id: personId,
-        mobile: customerMobile,
-        personName: personName,
-        isSubscribe_user,
-        userAmountStatus: `₹ ${Math.abs(customer?.current_balance || 0)} ${Number(customer?.current_balance) > 0 ? 'Advance' : 'Due'}`,
-        transaction_limit: transactionType === 'you_got' ? payment_got_count_user : credit_given_count_user,
-      },
-    });
-  };
-
-  const handleDiscountSubmit = async ({ amount, note }) => {
-    setDiscountLoading(true);
-    try {
-      const userData = await AsyncStorage.getItem('userData');
-      if (!userData) throw new Error('User data not found');
-
-      const userId = JSON.parse(userData).id;
-      const ownerId = JSON.parse(userData).owner_user_id;
-      const date = moment().format('YYYY-MM-DD');
-
-      const payload = {
-        customer_id: customer.id,
-        userId,
-        ownerId,
-        created_user: userId,
-        transaction_type: 'you_discount',
-        transaction_for: 'customer',
-        amount: Number(amount),
-        description: note,
-        paidAmount: Number(amount),
-        remainingAmount: Number(amount),
-        transaction_date: date,
-        paymentType: 'paid',
-      };
-
-      await ApiService.post('/transactions/customer', payload, {
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      Alert.alert('Success', 'Discount added successfully');
-      await fetchCustomer();
-      setShowDiscountModal(false);
-    } catch (error) {
-      console.error('Error adding discount:', error);
-      Alert.alert('Error', 'Failed to add discount');
-    } finally {
-      setDiscountLoading(false);
-    }
-  };
-
-  const handleDateChange = async (event, selectedDate) => {
-    setShowDatePicker(false);
-
-    if (selectedDate) {
-      setDueDate(selectedDate);
-
-      try {
-        const userData = await AsyncStorage.getItem('userData');
-        const userId = JSON.parse(userData)?.id;
-
-        const response = await ApiService.put(`/customers/${customer.id}`, {
-          userId: Number(userId),
-          due_date: selectedDate.toISOString(),
-        });
-
-        if (response.status === 200) {
-          Alert.alert('Success', 'Due date updated successfully');
-        } else {
-          Alert.alert('Error', 'Failed to update due date');
-        }
-      } catch (error) {
-        console.error('Error updating date:', error);
-        Alert.alert('Error', 'Failed to update due date');
-      }
-    }
-  };
 
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
@@ -694,29 +477,9 @@ Your current balance is ₹${balance} ${balanceType}`;
           contentContainerStyle={styles.actionsScrollContent}
         >
           <View style={styles.actionsRow}>
-            {customer?.current_balance < 0 && (
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <View style={styles.actionIconContainer}>
-                  <Calendar size={18} color="#0A4D3C" />
-                </View>
-                <Text style={styles.actionText}>
-                  {dueDate ? moment(dueDate).format('DD/MM/YY') : 'Due Date'}
-                </Text>
-              </TouchableOpacity>
-            )}
+            
 
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => setShowDiscountModal(true)}
-            >
-              <View style={styles.actionIconContainer}>
-                <Percent size={18} color="#0A4D3C" />
-              </View>
-              <Text style={styles.actionText}>Discount</Text>
-            </TouchableOpacity>
+            
 
             <TouchableOpacity style={styles.actionButton} onPress={sendSMS}>
               <View style={styles.actionIconContainer}>
@@ -764,22 +527,6 @@ Your current balance is ₹${balance} ${balanceType}`;
 
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => router.push({
-                pathname: '/deleteCustomer',
-                params: {
-                  transaction_for: 'customer',
-                  id: personId,
-                },
-              })}
-            >
-              <View style={styles.actionIconContainer}>
-                <DeleteIcon size={18} color="#0A4D3C" />
-              </View>
-              <Text style={styles.actionText}>Delete</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
               onPress={() =>
                 router.push({
                   pathname: '/customerLedger',
@@ -799,26 +546,7 @@ Your current balance is ₹${balance} ${balanceType}`;
           </View>
         </ScrollView>
 
-        {isSubscribe_user === false && (
-          <>
-            <View style={styles.planDivider} />
-            <View style={styles.planInfo}>
-              <View style={styles.planBadge}>
-                <Text style={styles.planName}>Basic Plan</Text>
-              </View>
-              <View style={styles.planLimits}>
-                <Text style={styles.planLimit}>
-                  Receive: <Text style={styles.planLimitValue}>{payment_got_count_user}/4</Text>
-                </Text>
-                <Text style={styles.planLimit}>
-                  Give: <Text style={styles.planLimitValue}>{credit_given_count_user}/2</Text>
-                </Text>
-              </View>
-            </View>
-            <View style={styles.planDivider} />
-          </>
-        )}
-
+        
         <View style={styles.balanceRow}>
           <Text style={styles.balanceLabel}>Current Balance</Text>
           <View style={styles.balanceCard}>
@@ -845,48 +573,12 @@ Your current balance is ₹${balance} ${balanceType}`;
             </View>
           </View>
         </View>
-
-        <View style={styles.bottomButtonsRow}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.receivedButton]}
-            onPress={() => handleAddTransaction('you_got')}
-          >
-            <ArrowDown size={18} color="#0A4D3C" />
-            <Text style={styles.receivedText}>Received</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, styles.givenButton]}
-            onPress={() => handleAddTransaction('you_gave')}
-          >
-            <ArrowUp size={18} color="#DC2626" />
-            <Text style={styles.givenText}>Given</Text>
-          </TouchableOpacity>
-        </View>
       </View>
-
-      {/* Date Picker */}
-      {showDatePicker && (
-        <DateTimePicker
-          value={dueDate || new Date()}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={handleDateChange}
-          minimumDate={new Date()}
-        />
-      )}
 
       <ErrorModal
         visible={!!error}
         message={error}
         onClose={() => setError(null)}
-      />
-
-      <DiscountModal
-        visible={showDiscountModal}
-        onClose={() => setShowDiscountModal(false)}
-        onSubmit={handleDiscountSubmit}
-        loading={discountLoading}
       />
 
       <ViewShot

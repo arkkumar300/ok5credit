@@ -296,11 +296,11 @@ export default function ItemForm({ setItem, setNewItem }) {
                   <Text style={styles.cardTitle}>Advanced Details</Text>
 
                   {/* Barcode */}
-                  <Text style={styles.inputLabel}>Barcode</Text>
+                  <Text style={styles.inputLabel}>HSN Code</Text>
                   <View style={styles.inputWrapper}>
                     <Barcode size={16} color="#0A4D3C" style={styles.inputIcon} />
                     <TextInput
-                      placeholder="Enter barcode"
+                      placeholder="Enter HSN code"
                       placeholderTextColor="#94A3B8"
                       value={barcode}
                       onChangeText={setBarcode}
