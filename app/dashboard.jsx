@@ -483,39 +483,38 @@ export default function DashboardScreen() {
                 onPress={() => handlePersonClick(person)}
                 activeOpacity={0.7}
               >
-                <View style={[styles.personAvatar, { backgroundColor: getStageColor(person.defaulter_stage) + '30' }]}>
-                  <Text style={[styles.personAvatarText, { color: person.color }]}>
-                    {person.initial}
-                  </Text>
-                </View>
+                {/* Left border with color based on defaulter stage */}
+                <View style={[styles.personLeftBorder, { backgroundColor: getStageColor(person.defaulter_stage) }]} />
 
-                <View style={styles.personInfo}>
-                  <Text style={styles.personName}>{person.nickName}</Text>
-                  <View style={styles.paymentInfo}>
-                    <CheckCircle size={10} color="#0A4D3C" />
-                    <Text style={styles.paymentText}>
-                      {person.type === 'Advance' ? 'Payment Added' : 'Credit Added'} • {person.date}
-                    </Text>
+                <View style={styles.personContent}>
+                  <View style={styles.personInfo}>
+                    <Text style={styles.personName}>{person.nickName}</Text>
+                    <View style={styles.paymentInfo}>
+                      <CheckCircle size={10} color="#0A4D3C" />
+                      <Text style={styles.paymentText}>
+                        {person.type === 'Advance' ? 'Payment Added' : 'Credit Added'} • {person.date}
+                      </Text>
+                    </View>
                   </View>
-                </View>
 
-                <View style={styles.amountContainer}>
-                  <Text style={[
-                    styles.amount,
-                    person.type === 'Due' ? styles.dueAmount : styles.advanceAmount
-                  ]}>
-                    ₹{person.amount}
-                  </Text>
-                  <View style={[
-                    styles.typeBadge,
-                    { backgroundColor: person.type === 'Due' ? '#FEE2E2' : '#D1FAE5' }
-                  ]}>
+                  <View style={styles.amountContainer}>
                     <Text style={[
-                      styles.typeText,
-                      { color: person.type === 'Due' ? '#EF4444' : '#0A4D3C' }
+                      styles.amount,
+                      person.type === 'Due' ? styles.dueAmount : styles.advanceAmount
                     ]}>
-                      {person.type}
+                      ₹{person.amount}
                     </Text>
+                    <View style={[
+                      styles.typeBadge,
+                      { backgroundColor: person.type === 'Due' ? '#FEE2E2' : '#D1FAE5' }
+                    ]}>
+                      <Text style={[
+                        styles.typeText,
+                        { color: person.type === 'Due' ? '#EF4444' : '#0A4D3C' }
+                      ]}>
+                        {person.type}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -646,7 +645,7 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             )}
           </>
-        )}        
+        )}
         <TouchableOpacity style={styles.navItem} onPress={handleMorePress}>
           <View style={styles.navIcon}>
             <MoreHorizontal size={18} color="#64748B" />
@@ -950,10 +949,8 @@ const styles = StyleSheet.create({
   },
   personCard: {
     flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    padding: 12,
-    borderRadius: 8,
+
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -961,18 +958,18 @@ const styles = StyleSheet.create({
     elevation: 2,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    overflow: 'hidden',
   },
-  personAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  personLeftBorder: {
+    width: 4,
+    height: 'auto',
+  },
+  personContent: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  personAvatarText: {
-    fontSize: 16,
-    fontWeight: '700',
+    justifyContent: 'space-between',
+    padding: 12,
   },
   personInfo: {
     flex: 1,
@@ -1026,7 +1023,6 @@ const styles = StyleSheet.create({
   lottieAnimation: {
     width: 150,
     height: 120,
-
   },
   emptyText: {
     fontSize: 16,

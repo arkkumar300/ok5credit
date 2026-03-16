@@ -8,20 +8,28 @@ import { Appbar, Avatar } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
+import { LinearGradient } from 'expo-linear-gradient';
 
-const COLORS = { 
-  primary: '#2E7D32',
-  primaryLight: '#4CAF50',
-  primaryDark: '#1B5E20',
-  secondary: '#007B83',
-  background: '#F5F7FA',
+const COLORS = {
+  primary: '#0A4D3C',
+  primaryLight: '#1B6B50',
+  primaryDark: '#064332',
+  secondary: '#059669',
+  accent: '#F59E0B',
+  background: '#F8F9FA',
   white: '#FFFFFF',
-  black: '#333333',
-  gray: '#757575',
-  lightGray: '#E0E0E0',
-  error: '#D32F2F',
-  success: '#388E3C',
-  border: '#E8E8E8'
+  black: '#1E293B',
+  gray: '#64748B',
+  lightGray: '#94A3B8',
+  lighterGray: '#F1F5F9',
+  error: '#DC2626',
+  success: '#059669',
+  warning: '#F59E0B',
+  border: '#F1F5F9',
+  cardBg: '#FFFFFF',
+  textPrimary: '#1E293B',
+  textSecondary: '#64748B',
+  textMuted: '#94A3B8',
 };
 
 const ProfileScreen = () => {
@@ -32,7 +40,7 @@ const ProfileScreen = () => {
   const [imageUri, setImageUri] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   const router = useRouter();
   const { ID, profileType } = useLocalSearchParams();
 
@@ -48,18 +56,18 @@ const ProfileScreen = () => {
       const parsedUser = JSON.parse(userData);
       const userId = parsedUser.id;
       const ownerId = parsedUser.owner_user_id;
-      
+
       const URL = profileType === 'customer' ? `/customers/${ID}` : `/supplier/${ID}`;
 
       const response = await ApiService.post(URL, { userId, ownerId });
       const data = response.data;
-      
+
       if (profileType === 'customer') {
         setProfile(data?.customer);
       } else {
         setProfile(data?.supplier);
       }
-      
+
       setTransactions(data?.transactions || []);
       setImageUri(data?.customer?.photo || data?.supplier?.photo);
       setError(null);
@@ -88,15 +96,15 @@ const ProfileScreen = () => {
 
       const URL = profileType === 'customer' ? `/customers/${ID}` : `/supplier/${ID}`;
       const response = await ApiService.put(URL, updatedPayload);
-      
+
       if (response?.data) {
-        const updatedData = profileType === 'customer' 
-          ? response.data.customer 
+        const updatedData = profileType === 'customer'
+          ? response.data.customer
           : response.data.supplier;
-        
+
         setProfile(updatedData);
         if (payload.photo) setImageUri(payload.photo);
-        
+
         Alert.alert('Success', 'Profile updated successfully!');
         return updatedData;
       }
@@ -138,7 +146,7 @@ const ProfileScreen = () => {
       if (!result.canceled && result.assets[0].uri) {
         const localUri = result.assets[0].uri;
         setImageUri(localUri);
-        
+
         // Upload image
         const formData = new FormData();
         const fileName = localUri.split('/').pop();
@@ -181,8 +189,8 @@ const ProfileScreen = () => {
       `Are you sure you want to delete this ${profileType}? This action cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             await updateProfile({ status: 'Inactive' });
@@ -214,37 +222,44 @@ const ProfileScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
 
-      {/* Premium Header */}
-      <View style={styles.headerSolid}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-          >
-            <ArrowLeft size={20} color={COLORS.white} />
-          </TouchableOpacity>
+      {/* Premium Header with Gradient */}
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.primaryLight]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <SafeAreaView>
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+              activeOpacity={0.7}
+            >
+              <ArrowLeft size={20} color={COLORS.white} />
+            </TouchableOpacity>
 
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>{profile?.name || 'Profile'}</Text>
-            <Text style={styles.headerSubtitle}>
-              {profileType === 'customer' ? 'Customer Details' : 'Supplier Details'}
-            </Text>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>{profile?.name || 'Profile'}</Text>
+              <Text style={styles.headerSubtitle}>
+                {profileType === 'customer' ? 'Customer Details' : 'Supplier Details'}
+              </Text>
+            </View>
+
+            <View style={styles.headerRight} />
           </View>
-
-          <View style={styles.headerRight} />
-        </View>
-      </View>
+        </SafeAreaView>
+      </LinearGradient>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile Photo Section */}
-        <View style={styles.photoSection}>
+        {/* Profile Photo Section with Card */}
+        <View style={styles.photoCard}>
           <View style={styles.avatarContainer}>
             <Avatar.Image
               source={{
@@ -257,7 +272,7 @@ const ProfileScreen = () => {
               style={styles.cameraButton}
               onPress={showImageOptions}
             >
-              <Camera size={18} color={COLORS.white} />
+              <Camera size={16} color={COLORS.white} />
             </TouchableOpacity>
           </View>
           <Text style={styles.profileName}>{profile?.name || 'No Name'}</Text>
@@ -279,11 +294,11 @@ const ProfileScreen = () => {
           </View>
 
           <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(16,185,129,0.1)' }]}>
+            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(5,150,105,0.1)' }]}>
               <TrendingUp size={20} color={COLORS.secondary} />
             </View>
             <Text style={styles.statNumber}>
-              ₹{Math.abs(profile?.total_amount || 0)}
+              ₹{Math.abs(profile?.total_amount || 0).toLocaleString('en-IN')}
             </Text>
             <Text style={styles.statLabel}>Total Amount</Text>
           </View>
@@ -300,7 +315,7 @@ const ProfileScreen = () => {
 
           <ProfileItem
             icon={User}
-            label="Full Nick Name"
+            label="Nick Name"
             value={profile?.nickName || 'Not provided'}
             onPress={() => setActiveModal('nickName')}
           />
@@ -309,6 +324,7 @@ const ProfileScreen = () => {
             icon={Phone}
             label="Phone Number"
             value={profile?.mobile || 'Not provided'}
+            onPress={() => setActiveModal('mobile')}
           />
 
           <ProfileItem
@@ -337,7 +353,7 @@ const ProfileScreen = () => {
               <Text style={[styles.label, { color: COLORS.error }]}>Delete Profile</Text>
               <Text style={styles.subtitle}>Remove this {profileType} permanently</Text>
             </View>
-            <ChevronRight size={18} color={COLORS.gray} />
+            <ChevronRight size={16} color={COLORS.gray} />
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -360,7 +376,18 @@ const ProfileScreen = () => {
         value={profile?.nickName}
         field="nickName"
         onSave={updateProfile}
-        placeholder="Enter Nick Name"
+        placeholder="Enter nick name"
+      />
+
+      <EditModal
+        visible={activeModal === 'mobile'}
+        onClose={() => setActiveModal(null)}
+        title="Edit Phone Number"
+        value={profile?.mobile}
+        field="mobile"
+        onSave={updateProfile}
+        placeholder="Enter phone number"
+        keyboardType="phone-pad"
       />
 
       <EditModal
@@ -385,7 +412,7 @@ const ProfileScreen = () => {
         placeholder="Enter email address"
         keyboardType="email-address"
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -398,7 +425,7 @@ const ProfileItem = ({ icon: Icon, label, value, onPress, multiline }) => (
     disabled={!onPress}
   >
     <View style={styles.iconContainer}>
-      <Icon size={20} color={COLORS.primary} />
+      <Icon size={18} color={COLORS.primary} />
     </View>
     <View style={styles.textContainer}>
       <Text style={styles.label}>{label}</Text>
@@ -409,7 +436,7 @@ const ProfileItem = ({ icon: Icon, label, value, onPress, multiline }) => (
         {value}
       </Text>
     </View>
-    {onPress && <ChevronRight size={18} color={COLORS.gray} />}
+    {onPress && <ChevronRight size={16} color={COLORS.gray} />}
   </TouchableOpacity>
 );
 
@@ -465,7 +492,7 @@ const EditModal = ({
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title}</Text>
             <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
-              <XIcon size={22} color={COLORS.gray} />
+              <XIcon size={20} color={COLORS.gray} />
             </TouchableOpacity>
           </View>
 
@@ -477,7 +504,7 @@ const EditModal = ({
             value={inputValue}
             onChangeText={setInputValue}
             placeholder={placeholder}
-            placeholderTextColor={COLORS.gray}
+            placeholderTextColor={COLORS.textMuted}
             keyboardType={keyboardType}
             multiline={multiline}
             numberOfLines={numberOfLines}
@@ -501,7 +528,7 @@ const EditModal = ({
                 <ActivityIndicator size="small" color={COLORS.white} />
               ) : (
                 <>
-                  <Check size={18} color={COLORS.white} />
+                  <Check size={16} color={COLORS.white} />
                   <Text style={styles.saveButtonText}>Save</Text>
                 </>
               )}
@@ -518,34 +545,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  headerSolid: {
-    backgroundColor: COLORS.primary,
-    paddingTop: Platform.OS === 'android' ? 20 : 0,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+  headerGradient: {
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
   },
   headerTitleContainer: {
     alignItems: 'center',
@@ -574,7 +597,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
   },
   errorContainer: {
     flex: 1,
@@ -592,7 +615,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 25,
   },
   retryButtonText: {
     color: COLORS.white,
@@ -602,16 +625,26 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
   },
-  photoSection: {
+  photoCard: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 24,
+    padding: 24,
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   avatarContainer: {
     position: 'relative',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   avatar: {
-    backgroundColor: COLORS.lightGray,
+    backgroundColor: COLORS.lighterGray,
     borderWidth: 3,
     borderColor: COLORS.white,
     shadowColor: '#000',
@@ -625,9 +658,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     right: 0,
     backgroundColor: COLORS.primary,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -641,8 +674,8 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 22,
     fontWeight: '700',
-    color: COLORS.black,
-    marginBottom: 6,
+    color: COLORS.textPrimary,
+    marginBottom: 8,
   },
   profileTypeBadge: {
     backgroundColor: 'rgba(10,77,60,0.1)',
@@ -659,12 +692,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   statCard: {
     flex: 1,
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 20,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
@@ -686,17 +719,17 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 11,
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
     fontWeight: '500',
   },
   infoCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -717,8 +750,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     borderRadius: 12,
     backgroundColor: 'rgba(10,77,60,0.1)',
     justifyContent: 'center',
@@ -730,7 +763,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 11,
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
     marginBottom: 4,
     fontWeight: '500',
     textTransform: 'uppercase',
@@ -738,7 +771,7 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 15,
-    color: COLORS.black,
+    color: COLORS.textPrimary,
     fontWeight: '600',
   },
   multilineValue: {
@@ -746,7 +779,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 11,
-    color: COLORS.gray,
+    color: COLORS.textMuted,
     marginTop: 2,
   },
 
@@ -782,9 +815,9 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   modalCloseButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: COLORS.background,
     alignItems: 'center',
     justifyContent: 'center',
@@ -795,7 +828,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     fontSize: 15,
-    color: COLORS.black,
+    color: COLORS.textPrimary,
     marginBottom: 24,
     minHeight: 56,
     backgroundColor: COLORS.background,
@@ -814,18 +847,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
-    borderRadius: 16,
-    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 25,
+    gap: 6,
   },
   cancelButton: {
     backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   saveButton: {
     backgroundColor: COLORS.primary,
   },
   cancelButtonText: {
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
     fontSize: 15,
     fontWeight: '600',
   },

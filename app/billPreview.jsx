@@ -326,13 +326,18 @@ console.log("transaction_for::",transaction_for)
       >
         {/* Bill Preview Card */}
         <View style={styles.previewCard}>
-          {/* Business Info */}
+          {/* Business Info with Seller Tag */}
           <View style={styles.businessHeader}>
             <View style={styles.businessIconContainer}>
               <Receipt size={24} color="#0A4D3C" />
             </View>
             <View style={styles.businessInfo}>
-              <Text style={styles.businessName}>{userDetails?.name || 'Business Name'}</Text>
+              <View style={styles.nameWithTag}>
+                <Text style={styles.businessName}>{userDetails?.name || 'Business Name'}</Text>
+                <View style={styles.tagBadge}>
+                  <Text style={styles.tagText}>Seller</Text>
+                </View>
+              </View>
               {userDetails?.address && (
                 <View style={styles.infoRow}>
                   <MapPin size={12} color="#64748B" />
@@ -348,14 +353,19 @@ console.log("transaction_for::",transaction_for)
 
           <Divider style={styles.divider} />
 
-          {/* Customer Info */}
+          {/* Customer Info with Customer Tag */}
           {supplierInfo && (
             <View style={styles.customerHeader}>
               <View style={styles.customerIconContainer}>
                 <User size={24} color="#FFFFFF" />
               </View>
               <View style={styles.customerInfo}>
-                <Text style={styles.customerName}>{supplierInfo?.name}</Text>
+                <View style={styles.nameWithTag}>
+                  <Text style={styles.customerName}>{supplierInfo?.name}</Text>
+                  <View style={[styles.tagBadge, styles.customerTagBadge]}>
+                    <Text style={[styles.tagText, styles.customerTagText]}>Customer</Text>
+                  </View>
+                </View>
                 {supplierInfo?.address && (
                   <View style={styles.infoRow}>
                     <MapPin size={12} color="#64748B" />
@@ -625,12 +635,37 @@ const styles = StyleSheet.create({
   businessInfo: {
     flex: 1,
   },
+  nameWithTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   businessName: {
     fontSize: 16,
     fontWeight: '700',
     color: '#0A4D3C',
-    marginBottom: 4,
     textTransform: 'capitalize',
+  },
+  tagBadge: {
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#0A4D3C',
+  },
+  customerTagBadge: {
+    backgroundColor: '#0A4D3C',
+    borderColor: '#FFFFFF',
+  },
+  tagText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#0A4D3C',
+  },
+  customerTagText: {
+    color: '#FFFFFF',
   },
   customerHeader: {
     flexDirection: 'row',
@@ -653,7 +688,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#0A4D3C',
-    marginBottom: 4,
     textTransform: 'capitalize',
   },
   infoRow: {

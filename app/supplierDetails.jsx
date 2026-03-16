@@ -1,6 +1,37 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import {View,Text,StyleSheet,FlatList,SafeAreaView,TouchableOpacity,Image,Linking,Alert,Platform,ActivityIndicator,StatusBar,ScrollView} from 'react-native';
-import {PhoneCall,MessageSquare,ArrowDown,Send,MessageCircle,ArrowUp,ArrowLeft,CheckCircle,File,ChevronRight,Calendar,DeleteIcon,Clock,Percent,HelpCircle,AlertTriangle} from 'lucide-react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  TouchableOpacity,
+  Image,
+  Linking,
+  Alert,
+  Platform,
+  ActivityIndicator,
+  StatusBar,
+  ScrollView,
+  SectionList
+} from 'react-native';
+import {
+  PhoneCall,
+  MessageSquare,
+  ArrowDown,
+  Send,
+  MessageCircle,
+  ArrowUp,
+  ArrowLeft,
+  CheckCircle,
+  File,
+  ChevronRight,
+  Calendar,
+  Delete,
+  Clock,
+  Percent,
+  HelpCircle,
+  AlertTriangle
+} from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Divider } from 'react-native-paper';
 import moment from 'moment';
@@ -12,13 +43,41 @@ import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 
+// Function to format date for section headers (WhatsApp style)
+const formatSectionDate = (date) => {
+  const inputDate = moment(date);
+  const today = moment().startOf('day');
+  const yesterday = moment().subtract(1, 'days').startOf('day');
+  const lastWeek = moment().subtract(7, 'days').startOf('day');
+
+  if (inputDate.isSame(today, 'd')) {
+    return 'Today';
+  } else if (inputDate.isSame(yesterday, 'd')) {
+    return 'Yesterday';
+  } else if (inputDate.isAfter(lastWeek)) {
+    return inputDate.format('dddd'); // Returns day name (Monday, Tuesday, etc.)
+  } else {
+    return inputDate.format('DD MMM YYYY'); // Returns date like 15 Mar 2024
+  }
+};
+
+// Section Header Component (WhatsApp style)
+const SectionHeader = ({ title }) => (
+  <View style={styles.sectionHeader}>
+    <Text style={styles.sectionHeaderText}>{title}</Text>
+  </View>
+);
+
 // Transaction Item Component
 const TransactionItem = React.memo(
   ({ item, personName, router, supplier }) => {
     const isReceived = item.transaction_type === 'you_got';
-    const balanceText = item.balanceText
+    const balanceText = item.balanceText;
     const isApproved = item.is_Approved;
-   
+
+    // Format time only (like WhatsApp)
+    const formattedTime = item.created_at ? moment(item.created_at).format('hh:mm A') : '';
+
     if (item.is_Deleted) {
       return (
         <View
@@ -29,7 +88,7 @@ const TransactionItem = React.memo(
         >
           <View style={[styles.transactionBox, styles.deletedTransaction]}>
             <View style={styles.amountRow}>
-              <CheckCircle size={20} color="#94A3B8" />
+              <Delete size={20} color="#94A3B8" />
               <Text style={[styles.amountText, styles.deletedText]}>
                 ₹ {item.amount}
               </Text>
@@ -129,6 +188,10 @@ const TransactionItem = React.memo(
                 ₹ {parseFloat(item.amount).toFixed(2)}
               </Text>
             </View>
+
+            {/* Time display like WhatsApp */}
+            <Text style={styles.timeText}>{formattedTime}</Text>
+
             {item.transaction_type === 'you_gave' && (
               <View style={styles.statusContainer}>
                 {getStatusIcon()}
@@ -196,7 +259,6 @@ export default function SupplierDetails() {
   const [subscribePlan, setSubscribePlan_user] = useState('');
   const [dueDate, setDueDate] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  // const [runningBalance, setRunningBalance] = useState(0);
 
   const viewShotRef = useRef(null);
 
@@ -255,6 +317,37 @@ export default function SupplierDetails() {
     });
   }, [transactions]);
 
+  // Group transactions by date for section list (WhatsApp style)
+  const groupedTransactions = useMemo(() => {
+    const groups = {};
+
+    transactionsWithBalance.forEach((item) => {
+      const date = item.transaction_date || item.created_at;
+      if (!date) return;
+
+      const sectionTitle = formatSectionDate(date);
+
+      if (!groups[sectionTitle]) {
+        groups[sectionTitle] = [];
+      }
+
+      groups[sectionTitle].push(item);
+    });
+
+    // Sort groups by date (most recent first)
+    const sortedGroups = Object.keys(groups).sort((a, b) => {
+      // Custom sorting for Today, Yesterday, etc.
+      const dateA = groups[a][0]?.transaction_date || groups[a][0]?.created_at;
+      const dateB = groups[b][0]?.transaction_date || groups[b][0]?.created_at;
+      return moment(dateB).diff(moment(dateA));
+    });
+
+    return sortedGroups.map(title => ({
+      title,
+      data: groups[title]
+    }));
+  }, [transactionsWithBalance]);
+
   const fetchSupplierDueDate = async (supplierId) => {
     try {
       const userData = await AsyncStorage.getItem('userData');
@@ -300,7 +393,7 @@ export default function SupplierDetails() {
     } catch (err) {
       console.error('Error fetching subscription:', err);
     }
-  }, [personId]);
+  }, []);
 
   useEffect(() => {
     fetchSupplier();
@@ -440,11 +533,11 @@ Your current balance is ₹${balance} ${balanceType}`;
         }
         return true;
       } else {
-        if (transactionType === 'you_got' && payment_got_count_user >= 6) {
+        if (transactionType === 'you_got' && payment_got_count_user >= 30) {
           setError('You have reached the limit for received transactions in Basic plan');
           return false;
         }
-        if (transactionType === 'you_gave' && credit_given_count_user >= 4) {
+        if (transactionType === 'you_gave' && credit_given_count_user >= 30) {
           setError('You have reached the limit for given transactions in Basic plan');
           return false;
         }
@@ -541,29 +634,6 @@ Your current balance is ₹${balance} ${balanceType}`;
     </View>
   );
 
-  const renderPlanInfo = () => {
-    if (isSubscribe_user === false) {
-      return (
-        <>
-          <Divider style={styles.planDivider} />
-          <View style={styles.planInfo}>
-            <Text style={styles.planName}>
-              {isSubscribe_user === false ? 'Basic Plan' : subscribePlan}
-            </Text>
-            <Text style={styles.planLimit}>
-              Receive: {payment_got_count_user} / 4
-            </Text>
-            <Text style={styles.planLimit}>
-              Give: {credit_given_count_user} / 2
-            </Text>
-          </View>
-          <Divider style={styles.planDivider} />
-        </>
-      );
-    }
-    return null;
-  };
-
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -609,8 +679,8 @@ Your current balance is ₹${balance} ${balanceType}`;
         </View>
       </View>
 
-      <FlatList
-        data={transactionsWithBalance}
+      <SectionList
+        sections={groupedTransactions}
         style={styles.list}
         renderItem={({ item }) => (
           <TransactionItem
@@ -620,10 +690,14 @@ Your current balance is ₹${balance} ${balanceType}`;
             supplier={supplier}
           />
         )}
+        renderSectionHeader={({ section: { title } }) => (
+          <SectionHeader title={title} />
+        )}
         keyExtractor={(item) => item.id?.toString()}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={renderEmptyList}
+        stickySectionHeadersEnabled={false}
       />
 
       {/* Premium Bottom Section */}
@@ -719,7 +793,7 @@ Your current balance is ₹${balance} ${balanceType}`;
               })}
             >
               <View style={styles.actionIconContainer}>
-                <DeleteIcon size={18} color="#0A4D3C" />
+                <Delete size={18} color="#0A4D3C" />
               </View>
               <Text style={styles.actionText}>Delete</Text>
             </TouchableOpacity>
@@ -911,12 +985,36 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    paddingBottom: 220,
-    paddingTop: 20,
+    paddingBottom: 280,
+    paddingTop: 10,
     paddingHorizontal: 12,
   },
+sectionHeader: {
+  backgroundColor: 'rgba(10,77,60,0.08)',
+  paddingVertical: 6,
+  paddingHorizontal: 16,
+  marginTop: 16,
+  marginBottom: 8,
+  borderRadius: 20,
+  alignSelf: 'center',
+  borderWidth: 1,
+  borderColor: 'rgba(10,77,60,0.2)',
+  width: 120, // Fixed width
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+
+sectionHeaderText: {
+  fontSize: 13,
+  fontWeight: '600',
+  color: '#0A4D3C',
+  textTransform: 'uppercase',
+  letterSpacing: 0.5,
+  textAlign: 'center',
+  width: '100%', // Take full width of parent
+},
   transactionWrapper: {
-    marginVertical: 6,
+    marginVertical: 4,
   },
   leftContainer: {
     alignItems: 'flex-start',
@@ -952,14 +1050,16 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   timeText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#94A3B8',
+    marginLeft: 8,
   },
   messageHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 6,
+    flexWrap: 'wrap',
   },
   amountContainer: {
     flexDirection: 'row',
@@ -984,6 +1084,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
     gap: 4,
+    marginLeft: 8,
   },
   statusText: {
     fontSize: 10,
@@ -1036,7 +1137,7 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   emptyImage: {
-    width: '150',
+    width: 150,
     height: 300,
   },
   emptyText: {

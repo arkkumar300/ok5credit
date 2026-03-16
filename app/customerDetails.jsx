@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext } from 'react';
-import { View, Text, TextInput, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking, Animated, Alert, ScrollView, Platform, StatusBar } from 'react-native';
-import { PhoneCall, Bell, Delete, MessageSquare, Send, MessageCircle, Clock, CheckCircle, ArrowDown, Percent, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar, HelpCircle, DeleteIcon, AlertTriangle, CircleDollarSign } from 'lucide-react-native';
+import { View, Text, TextInput, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Image, Linking, Animated, Alert, ScrollView, Platform, StatusBar, SectionList } from 'react-native';
+import { PhoneCall, Bell, Delete, MessageSquare, Send, MessageCircle, Clock, CheckCircle, ArrowDown, Percent, ArrowUp, ArrowLeft, CheckIcon, File, ChevronRight, Calendar, HelpCircle, DeleteIcon, AlertTriangle, CircleDollarSign, XCircle } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Divider } from 'react-native-paper';
 import moment from 'moment';
@@ -13,6 +13,24 @@ import * as Sharing from 'expo-sharing';
 import ViewShot from 'react-native-view-shot';
 import Modal from 'react-native-modal';
 import { AuthContext } from './components/AuthContext';
+
+// Function to format date for section headers (WhatsApp style)
+const formatSectionDate = (date) => {
+  const inputDate = moment(date);
+  const today = moment().startOf('day');
+  const yesterday = moment().subtract(1, 'days').startOf('day');
+  const lastWeek = moment().subtract(7, 'days').startOf('day');
+
+  if (inputDate.isSame(today, 'd')) {
+    return 'Today';
+  } else if (inputDate.isSame(yesterday, 'd')) {
+    return 'Yesterday';
+  } else if (inputDate.isAfter(lastWeek)) {
+    return inputDate.format('dddd'); // Returns day name (Monday, Tuesday, etc.)
+  } else {
+    return inputDate.format('DD MMM YYYY'); // Returns date like 15 Mar 2024
+  }
+};
 
 // Modal component for discount
 const DiscountModal = ({ visible, onClose, onSubmit, loading }) => {
@@ -132,6 +150,10 @@ const TransactionItem = React.memo(({ item, personName, router, customer, userDe
   const isApproved = item.is_Approved;
   const status = item.status;
   const balanceText = item.balanceText;
+
+  // Format time only (like WhatsApp)
+  const formattedTime = item.created_at ? moment(item.created_at).format('hh:mm A') : '';
+
   if (item.is_Deleted) {
     return (
       <View
@@ -210,17 +232,15 @@ const TransactionItem = React.memo(({ item, personName, router, customer, userDe
       />
     );
   };
+
   const getEmployeeStatusIcon = () => {
     switch (status) {
       case "approved":
         return <CheckCircle size={16} color="#4CAF50" />;
-  
       case "rejected":
         return <XCircle size={16} color="#F44336" />;
-  
       case "collected":
         return <CircleDollarSign size={16} color="#B8860B" />;
-  
       case "pending":
       default:
         return <Clock size={16} color="#FF9800" />;
@@ -235,6 +255,11 @@ const TransactionItem = React.memo(({ item, personName, router, customer, userDe
       return <Clock size={16} color="#FF9800" />;
     }
   };
+
+  // Check if transaction has discount message
+  const hasDiscountMessage = item.transaction_type === 'you_discount' ||
+    (item.description && item.description.toLowerCase().includes('discount'));
+
   return (
     <TouchableOpacity
       style={[
@@ -259,6 +284,10 @@ const TransactionItem = React.memo(({ item, personName, router, customer, userDe
               ₹ {parseFloat(item.amount).toFixed(2)}
             </Text>
           </View>
+
+          {/* Time display like WhatsApp */}
+          <Text style={styles.timeText}>{formattedTime}</Text>
+
           {userDetails?.role === "employee" ? (
             <View style={styles.statusContainer}>
               {getEmployeeStatusIcon()}
@@ -276,7 +305,15 @@ const TransactionItem = React.memo(({ item, personName, router, customer, userDe
           ) : null}
         </View>
 
-
+        {/* Discount Message */}
+        {hasDiscountMessage && item.description && (
+          <View style={styles.discountMessageContainer}>
+            <MessageCircle size={12} color="#0A4D3C" />
+            <Text style={styles.discountMessageText} numberOfLines={2}>
+              {item.description}
+            </Text>
+          </View>
+        )}
 
         {item?.bill_id && (
           <>
@@ -319,6 +356,13 @@ const TransactionItem = React.memo(({ item, personName, router, customer, userDe
     </TouchableOpacity>
   );
 });
+
+// Section Header Component (WhatsApp style)
+const SectionHeader = ({ title }) => (
+  <View style={styles.sectionHeader}>
+    <Text style={styles.sectionHeaderText}>{title}</Text>
+  </View>
+);
 
 export default function CustomerDetails() {
   const router = useRouter();
@@ -418,7 +462,7 @@ export default function CustomerDetails() {
       fetchUserSubscription();
       getUser();
     }, [fetchCustomer, fetchUserSubscription])
-  )
+  );
 
   const handleCall = () => {
     if (!customerMobile) {
@@ -490,11 +534,11 @@ Your current balance is ₹${balance} ${balanceType}`;
 
   const handleAddTransaction = async (transactionType) => {
     if (!isSubscribe_user) {
-      if (transactionType === 'you_got' && payment_got_count_user >= 10) {
+      if (transactionType === 'you_got' && payment_got_count_user >= 30) {
         setError('You have reached the limit for received transactions in Basic plan');
         return;
       }
-      if (transactionType === 'you_gave' && credit_given_count_user >= 10) {
+      if (transactionType === 'you_gave' && credit_given_count_user >= 30) {
         setError('You have reached the limit for given transactions in Basic plan');
         return;
       }
@@ -532,6 +576,12 @@ Your current balance is ₹${balance} ${balanceType}`;
       const ownerId = JSON.parse(userData).owner_user_id;
       const date = moment().format('YYYY-MM-DD');
 
+      // Create discount message with formatted date
+      const formattedDate = formatSectionDate(new Date());
+      const discountMessage = note
+        ? `Discount of ₹${amount} applied on ${formattedDate}${note ? ` - ${note}` : ''}`
+        : `Discount of ₹${amount} applied on ${formattedDate}`;
+
       const payload = {
         customer_id: customer.id,
         userId,
@@ -540,7 +590,7 @@ Your current balance is ₹${balance} ${balanceType}`;
         transaction_type: 'you_discount',
         transaction_for: 'customer',
         amount: Number(amount),
-        description: note,
+        description: discountMessage,
         paidAmount: Number(amount),
         remainingAmount: Number(amount),
         transaction_date: date,
@@ -592,7 +642,7 @@ Your current balance is ₹${balance} ${balanceType}`;
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
       <Image
-        source={require('../assets/images/NoTransaction.png')}
+        source={require('../assets/images/no.png')}
         style={styles.emptyImage}
         resizeMode="contain"
       />
@@ -602,13 +652,44 @@ Your current balance is ₹${balance} ${balanceType}`;
     </View>
   );
 
+  // Group transactions by date for section list (WhatsApp style)
+  const groupedTransactions = useMemo(() => {
+    const groups = {};
+
+    transactions.forEach((item) => {
+      const date = item.transaction_date || item.created_at;
+      if (!date) return;
+
+      const sectionTitle = formatSectionDate(date);
+
+      if (!groups[sectionTitle]) {
+        groups[sectionTitle] = [];
+      }
+
+      groups[sectionTitle].push(item);
+    });
+
+    // Sort groups by date (most recent first)
+    const sortedGroups = Object.keys(groups).sort((a, b) => {
+      // Custom sorting for Today, Yesterday, etc.
+      const dateA = groups[a][0]?.transaction_date || groups[a][0]?.created_at;
+      const dateB = groups[b][0]?.transaction_date || groups[b][0]?.created_at;
+      return moment(dateB).diff(moment(dateA));
+    });
+
+    return sortedGroups.map(title => ({
+      title,
+      data: groups[title]
+    }));
+  }, [transactions]);
+
   const transactionsWithBalance = useMemo(() => {
     let balance = 0;
 
     return transactions.map((item) => {
       if (!item.is_Deleted) {
         balance +=
-          item.transaction_type === 'you_got'
+          item.transaction_type === 'you_got' || item.transaction_type === 'you_discount'
             ? Number(item.amount)
             : -Number(item.amount);
       }
@@ -668,8 +749,8 @@ Your current balance is ₹${balance} ${balanceType}`;
         </View>
       </View>
 
-      <FlatList
-        data={transactionsWithBalance}
+      <SectionList
+        sections={groupedTransactions}
         style={styles.list}
         renderItem={({ item }) => (
           <TransactionItem
@@ -680,10 +761,14 @@ Your current balance is ₹${balance} ${balanceType}`;
             customer={customer}
           />
         )}
+        renderSectionHeader={({ section: { title } }) => (
+          <SectionHeader title={title} />
+        )}
         keyExtractor={(item) => item.id?.toString()}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={renderEmptyList}
+        stickySectionHeadersEnabled={false}
       />
 
       {/* Premium Bottom Section */}
@@ -984,12 +1069,36 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    paddingBottom: 220,
-    paddingTop: 20,
+    paddingBottom: 280,
+    paddingTop: 10,
     paddingHorizontal: 12,
   },
+sectionHeader: {
+  backgroundColor: 'rgba(10,77,60,0.08)',
+  paddingVertical: 6,
+  paddingHorizontal: 16,
+  marginTop: 16,
+  marginBottom: 8,
+  borderRadius: 20,
+  alignSelf: 'center',
+  borderWidth: 1,
+  borderColor: 'rgba(10,77,60,0.2)',
+  width: 120, // Fixed width
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+
+sectionHeaderText: {
+  fontSize: 13,
+  fontWeight: '600',
+  color: '#0A4D3C',
+  textTransform: 'uppercase',
+  letterSpacing: 0.5,
+  textAlign: 'center',
+  width: '100%', // Take full width of parent
+},
   transactionWrapper: {
-    marginVertical: 6,
+    marginVertical: 4,
   },
   leftContainer: {
     alignItems: 'flex-start',
@@ -1025,14 +1134,33 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
   },
   timeText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#94A3B8',
+    marginLeft: 8,
+  },
+  discountMessageContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(10,77,60,0.05)',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginTop: 6,
+    marginBottom: 4,
+    gap: 6,
+  },
+  discountMessageText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#0A4D3C',
+    fontWeight: '500',
   },
   messageHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 2,
+    flexWrap: 'wrap',
   },
   amountContainer: {
     flexDirection: 'row',
@@ -1057,6 +1185,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
     gap: 4,
+    marginLeft: 8,
   },
   statusText: {
     fontSize: 10,

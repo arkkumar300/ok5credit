@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import {View,Text,StyleSheet,TouchableOpacity,SafeAreaView,TextInput,Alert,ScrollView,Image,Dimensions,StatusBar,Platform,KeyboardAvoidingView} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import {ArrowLeft,Camera,Paperclip as PaperclipIcon,X,AlertTriangle,Calendar,Clock,CheckCircle,FileText,CreditCard,IndianRupee} from 'lucide-react-native';
+import {ArrowLeft,Camera,Paperclip as PaperclipIcon,X,AlertTriangle,Calendar,Clock,CheckCircle,FileText,CreditCard,IndianRupee,Download} from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './components/ApiServices';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Appbar, Modal } from 'react-native-paper';
+import { Appbar } from 'react-native-paper';
 import ProgressButton from './components/ProgressButton';
 import DateModal from './components/DateModal';
 import { sendTransaction } from '../hooks/sendSMS';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Animatable from 'react-native-animatable';
+import Modal from 'react-native-modal';
 
 const { width } = Dimensions.get('window');
 
@@ -35,6 +38,9 @@ export default function TransactionScreen() {
   const [changeUpcommigDueDate, setChangeUpcommigDueDate] = useState(new Date());
   const [upcommigDueDate, setUpcommigDueDate] = useState(new Date());
 
+  // Success Popup States
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [transactionDetails, setTransactionDetails] = useState(null);
 
   const handleNumberPress = (num) => {
     if (amount === '0') {
@@ -127,7 +133,6 @@ export default function TransactionScreen() {
 
     } catch (err) {
       console.error(err);
-      setError('Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -146,8 +151,6 @@ export default function TransactionScreen() {
     }
 
     try {
-
-      // Use the selected date (date), NOT dueDate
       const response = await ApiService.put(
         `transactions/updateTransactions/DueDate`,
         dueDatePayload
@@ -177,6 +180,7 @@ export default function TransactionScreen() {
       const userId = JSON.parse(userData).id;
       const ownerId = JSON.parse(userData).owner_user_id;
       const userName = JSON.parse(userData).name;
+
       if (paymentType === 'credit' && !dueDate) {
         Alert.alert('Validation Error', 'Please select a due date');
         setLoading(false);
@@ -251,38 +255,32 @@ export default function TransactionScreen() {
         },
       });
 
-      const invoice = response.data.transaction.id
-      sendTransaction(mobile, personName, amount, userName, invoice)
+      const invoice = response.data.transaction.id;
+      sendTransaction(mobile, personName, amount, userName, invoice);
 
       if (transactionType === 'you_got') {
-        updateTransactionDueDate(changeUpcommigDueDate)
+        updateTransactionDueDate(changeUpcommigDueDate);
       }
-      // -----------------------
-      // 🎉 Success animation + navigation
-      // -----------------------
-      setTimeout(() => {
-        setSuccess(true);
-        setLoading(false);
-        if (transactionFor === "customer") {
-          router.push({
-            pathname: "/customerDetails",
-            params: {
-              personName: personName,
-              personType: transaction_for,
-              personId: id,
-            },
-          });
-        } else {
-          router.push({
-            pathname: "/supplierDetails",
-            params: {
-              personName: personName,
-              personType: transaction_for,
-              personId: id,
-            },
-          });
-        }
-      }, 1000);
+
+      // Store transaction details for popup
+      setTransactionDetails({
+        id: invoice,
+        amount: amount,
+        date: moment(selectedDate).format('DD MMM YYYY'),
+        type: transactionType === 'you_got' ? 'Payment Received' : 'Credit Given',
+        personName: personName,
+        note: note || 'No note added',
+        imagesCount: images.length,
+        paymentType: paymentType === 'paid' ? 'Paid Now' : 'Credit',
+        dueDate: paymentType === 'credit' ? moment(dueDate).format('DD MMM YYYY') : null,
+        isPayment: transactionType === 'you_got',
+        mobile: mobile
+      });
+
+      // Show success popup
+      setShowSuccessPopup(true);
+      setLoading(false);
+
     } catch (error) {
       console.error("Error:", error);
       setLoading(false);
@@ -290,19 +288,32 @@ export default function TransactionScreen() {
     }
   };
 
-  const getInitial = (name) => {
-    return name ? name.charAt(0).toUpperCase() : 'U';
+  const handleClosePopup = () => {
+    setShowSuccessPopup(false);
+    // Navigate back after popup closes
+    if (transaction_for === "customer") {
+      router.push({
+        pathname: "/customerDetails",
+        params: {
+          personName: personName,
+          personType: transaction_for,
+          personId: id,
+        },
+      });
+    } else {
+      router.push({
+        pathname: "/supplierDetails",
+        params: {
+          personName: personName,
+          personType: transaction_for,
+          personId: id,
+        },
+      });
+    }
   };
 
-  const requestPermissions = async () => {
-    const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-    const { status: libraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (cameraStatus !== 'granted' || libraryStatus !== 'granted') {
-      Alert.alert('Permission Required', 'Camera and photo library permissions are required to add images.');
-      return false;
-    }
-    return true;
+  const getInitial = (name) => {
+    return name ? name.charAt(0).toUpperCase() : 'U';
   };
 
   const showImagePickerOptions = () => {
@@ -319,7 +330,6 @@ export default function TransactionScreen() {
   };
 
   const handleCamera = async () => {
-    // Request camera permission
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       alert('Camera permission is required!');
@@ -328,19 +338,19 @@ export default function TransactionScreen() {
 
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ["images"],  // correct        quality: 1,
+        mediaTypes: ["images"],
+        quality: 1,
         allowsEditing: false,
         saveToPhotos: true,
       });
 
       if (!result.canceled) {
         const asset = result.assets[0];
-
         const imageData = {
           uri: asset.uri,
-          type: asset.type,          // usually "image"
-          fileName: asset.fileName,  // actual filename
-          size: asset.fileSize,      // in bytes
+          type: asset.type,
+          fileName: asset.fileName,
+          size: asset.fileSize,
         };
         setImages(prev => [...prev, imageData]);
       }
@@ -358,8 +368,8 @@ export default function TransactionScreen() {
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],  // correct
-        allowsMultipleSelection: true,            // for multiple images
+        mediaTypes: ["images"],
+        allowsMultipleSelection: true,
         quality: 1,
       });
 
@@ -385,10 +395,12 @@ export default function TransactionScreen() {
     setSelectedImage(imgUri);
     setPreviewVisible(true);
   };
+
   const closePreview = () => {
     setPreviewVisible(false);
     setSelectedImage(null);
   };
+
   useEffect(() => {
     if (typeof selectedDate === "string") {
       setSelectedDate(new Date(selectedDate));
@@ -480,14 +492,7 @@ export default function TransactionScreen() {
             </View>
             <View style={styles.amountDivider} />
           </View>
-          {transactionType === "you_got" && (
-  <View style={styles.warningBox}>
-    <AlertTriangle size={18} color="#D97706" />
-    <Text style={styles.warningText}>
-      This payment transaction cannot be edited or deleted.
-    </Text>
-  </View>
-)}
+
           {amount ? (
             <>
               {/* Date Selection - Compact */}
@@ -821,14 +826,139 @@ export default function TransactionScreen() {
         </View>
       </View>
 
-      {/* Image Preview Modal */}
-      <Modal visible={previewVisible} transparent>
-        <View style={styles.previewModal}>
+      {/* Image Preview Modal - Using react-native-modal */}
+      <Modal
+        isVisible={previewVisible}
+        onBackdropPress={closePreview}
+        onBackButtonPress={closePreview}
+        style={styles.previewModal}
+      >
+        <View style={styles.previewContent}>
           <Image source={{ uri: selectedImage }} style={styles.previewImage} />
           <TouchableOpacity onPress={closePreview} style={styles.closePreviewButton}>
             <X size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
+      </Modal>
+
+      {/* Success Popup Modal - Using react-native-modal */}
+      <Modal
+        isVisible={showSuccessPopup}
+        onBackdropPress={() => setShowSuccessPopup(false)}
+        onBackButtonPress={() => setShowSuccessPopup(false)}
+        style={styles.popupModal}
+      >
+        <Animatable.View
+          animation="bounceIn"
+          duration={600}
+          style={styles.popupContainer}
+        >
+          <View style={styles.popupHeader}>
+            <View style={styles.successIconContainer}>
+              <CheckCircle size={32} color="#0A4D3C" />
+            </View>
+            <Text style={styles.popupTitle}>Transaction Successful!</Text>
+          </View>
+
+          {transactionDetails && (
+            <View style={styles.popupContent}>
+              {/* Warning for Payment Transactions */}
+              {transactionDetails.isPayment && (
+                <View style={styles.popupWarningBox}>
+                  <AlertTriangle size={18} color="#D97706" />
+                  <Text style={styles.popupWarningText}>
+                    This payment transaction cannot be edited or deleted.
+                  </Text>
+                </View>
+              )}
+
+              {/* Transaction Details */}
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Transaction ID:</Text>
+                <Text style={styles.detailValue}>#{transactionDetails.id}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Person:</Text>
+                <Text style={styles.detailValue}>{transactionDetails.personName}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Type:</Text>
+                <View style={[styles.typeBadge, { backgroundColor: transactionDetails.isPayment ? '#E8F5E9' : '#FEE2E2' }]}>
+                  <Text style={[styles.typeBadgeText, { color: transactionDetails.isPayment ? '#0A4D3C' : '#EF4444' }]}>
+                    {transactionDetails.type}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Amount:</Text>
+                <Text style={[styles.detailAmount, { color: transactionDetails.isPayment ? '#0A4D3C' : '#EF4444' }]}>
+                  ₹ {parseFloat(transactionDetails.amount).toFixed(2)}
+                </Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Date:</Text>
+                <Text style={styles.detailValue}>{transactionDetails.date}</Text>
+              </View>
+
+              {transactionDetails.paymentType === 'Credit' && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Due Date:</Text>
+                  <Text style={styles.detailValue}>{transactionDetails.dueDate}</Text>
+                </View>
+              )}
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Payment Mode:</Text>
+                <Text style={styles.detailValue}>{transactionDetails.paymentType}</Text>
+              </View>
+
+              {transactionDetails.imagesCount > 0 && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Attachments:</Text>
+                  <Text style={styles.detailValue}>{transactionDetails.imagesCount} image(s)</Text>
+                </View>
+              )}
+
+              <View style={styles.noteBox}>
+                <Text style={styles.noteBoxLabel}>Note:</Text>
+                <Text style={styles.noteBoxText}>{transactionDetails.note}</Text>
+              </View>
+
+              <View style={styles.infoBox}>
+                <Text style={styles.infoBoxText}>
+                  A confirmation SMS has been sent to {transactionDetails.mobile || 'the customer'}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          <View style={styles.popupActions}>
+            <TouchableOpacity
+              style={styles.popupButton}
+              onPress={handleClosePopup}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#0A4D3C', '#1B6B50']}
+                style={styles.popupButtonGradient}
+              >
+                <Text style={styles.popupButtonText}>View Details</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.popupSecondaryButton}
+              onPress={handleClosePopup}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.popupSecondaryButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </Animatable.View>
       </Modal>
     </View>
   );
@@ -919,7 +1049,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 250, // Increased padding to accommodate calculator and ensure submit button is visible
+    paddingBottom: 250,
   },
   limitCard: {
     flexDirection: 'row',
@@ -1026,24 +1156,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 8,
-  },
-  warningBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FEF3C7",
-    borderRadius: 10,
-    padding: 12,
-    marginHorizontal: 20,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: "#FCD34D",
-  },
-  
-  warningText: {
-    marginLeft: 8,
-    color: "#92400E",
-    fontSize: 14,
-    flex: 1,
   },
   selectorText: {
     fontSize: 14,
@@ -1236,28 +1348,185 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   previewModal: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.95)',
+    margin: 0,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  previewImage: {
+  previewContent: {
     width: width - 32,
     height: '70%',
-    resizeMode: 'contain',
     borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
   },
   closePreviewButton: {
     position: 'absolute',
-    top: 50,
-    right: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    top: 10,
+    right: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  popupModal: {
+    margin: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  popupContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 30,
+    width: '90%',
+    maxWidth: 400,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  popupHeader: {
+    alignItems: 'center',
+    paddingTop: 30,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  successIconContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 15,
+  },
+  popupTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  popupContent: {
+    padding: 20,
+  },
+  popupWarningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: '#FCD34D',
+    gap: 10,
+  },
+  popupWarningText: {
+    fontSize: 13,
+    color: '#92400E',
+    fontWeight: '500',
+    flex: 1,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#1E293B',
+    fontWeight: '600',
+  },
+  detailAmount: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  typeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  typeBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  noteBox: {
+    backgroundColor: '#F8FAFC',
+    padding: 14,
+    borderRadius: 12,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  noteBoxLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  noteBoxText: {
+    fontSize: 13,
+    color: '#1E293B',
+    lineHeight: 18,
+  },
+  infoBox: {
+    backgroundColor: '#E8F5E9',
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#C6E6D7',
+  },
+  infoBoxText: {
+    fontSize: 12,
+    color: '#0A4D3C',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  popupActions: {
+    flexDirection: 'row',
+    gap: 10,
+    padding: 20,
+    paddingTop: 0,
+  },
+  popupButton: {
+    flex: 2,
+    borderRadius: 25,
+    overflow: 'hidden',
+  },
+  popupButtonGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  popupButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  popupSecondaryButton: {
+    flex: 1,
+    paddingVertical: 14,
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 25,
+  },
+  popupSecondaryButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#64748B',
   },
 });
