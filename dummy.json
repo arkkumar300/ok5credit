@@ -692,6 +692,62 @@
     ],
     "transaction_type": "you_gave",
     "updated_at": "2026-03-03T12:05:31.000Z"
+},
+{
+    "availableSlots": 1,
+    "cancellation_reason": null,
+    "created_at": "2026-03-15T07:05:17.000Z",
+    "daysRemaining": 27,
+    "end_date": "2026-04-14",
+    "hasExpired": false,
+    "id": 2,
+    "isActive": true,
+    "is_active": true,
+    "is_cancelled": false,
+    "memberCount": 2,
+    "members": [
+        {
+            "created_at": "2026-03-15T07:05:17.000Z",
+            "id": 2,
+            "subscription_id": 2,
+            "updated_at": "2026-03-15T07:05:17.000Z",
+            "user": [Object
+            ],
+            "user_id": 4
+        },
+        {
+            "created_at": "2026-03-15T07:42:27.000Z",
+            "id": 4,
+            "subscription_id": 2,
+            "updated_at": "2026-03-15T07:42:27.000Z",
+            "user": [Object
+            ],
+            "user_id": 9
+        }
+    ],
+    "planDetails": {
+        "NOU": 99,
+        "description": "used to manage the business for multiple places with employees",
+        "duration_days": 30,
+        "id": 1,
+        "name": "Corrparate Login",
+        "points": [
+            "multiple Emplyees can add",
+            "unlimited transaction",
+            "valid for 30 days "
+        ],
+        "price": "99.00"
+    },
+    "plan_id": 1,
+    "purchased_user_count": 3,
+    "start_date": "2026-03-15",
+    "total_price": "297.00",
+    "updated_at": "2026-03-15T07:05:17.000Z",
+    "user": {
+        "email": null,
+        "id": 4,
+        "mobile": "9494130830",
+        "name": "Ravi kumar"
+    },
+    "user_id": 4
 }
-
-

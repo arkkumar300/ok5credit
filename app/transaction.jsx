@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import {View,Text,StyleSheet,TouchableOpacity,SafeAreaView,TextInput,Alert,ScrollView,Image,Dimensions,StatusBar,Platform,KeyboardAvoidingView} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput, Alert, ScrollView, Image, Dimensions, StatusBar, Platform, KeyboardAvoidingView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import {ArrowLeft,Camera,Paperclip as PaperclipIcon,X,AlertTriangle,Calendar,Clock,CheckCircle,FileText,CreditCard,IndianRupee,Download} from 'lucide-react-native';
+import { ArrowLeft, Camera, Paperclip as PaperclipIcon, X, AlertTriangle, Calendar, Clock, CheckCircle, FileText, CreditCard, IndianRupee } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -19,7 +19,7 @@ const { width } = Dimensions.get('window');
 
 export default function TransactionScreen() {
   const router = useRouter();
-  const { mobile, transactionType, transaction_for, id, personName, isSubscribe_user, transaction_limit, userAmountStatus,transactionAmount } = useLocalSearchParams();
+  const { mobile, transactionType, transaction_for, id, personName, isSubscribe_user, transaction_limit, userAmountStatus, transactionAmount } = useLocalSearchParams();
   const [amount, setAmount] = useState(Number(transactionAmount) || "")
   const [note, setNote] = useState('');
   const [images, setImages] = useState([]);
@@ -181,6 +181,8 @@ export default function TransactionScreen() {
       const ownerId = JSON.parse(userData).owner_user_id;
       const userName = JSON.parse(userData).name;
 
+      const userRole = JSON.parse(userData).role;
+      console.log("role:::",userRole)
       if (paymentType === 'credit' && !dueDate) {
         Alert.alert('Validation Error', 'Please select a due date');
         setLoading(false);
@@ -207,10 +209,12 @@ export default function TransactionScreen() {
       // -----------------------
       // 📌 Build Base Payload
       // -----------------------
+      const isEmployeeGot = transactionType === "you_got" && userRole === "employee";
+      console.log("isEmployeeGot:::",isEmployeeGot)
       const commonPayload = {
         userId,
         ownerId,
-        created_user:userId,
+        created_user: userId,
         transaction_type: transactionType,
         transaction_for: transactionFor,
         amount: Number(amount),
@@ -221,6 +225,8 @@ export default function TransactionScreen() {
         due_date: formattedDueDate,
         paymentType: paymentType,
         // Add image fields only if available
+        is_Approved: isEmployeeGot,
+        ...(isEmployeeGot && { status: "approved" }),
         ...(images_url ? { transaction_pic: images_url } : {}),
         ...(billID ? { bill_id: billID } : {}),
         ...(paymentType === 'credit' && formattedDueDate
@@ -233,7 +239,7 @@ export default function TransactionScreen() {
       // -----------------------
       const payload =
         transactionFor === "customer"
-          ? { ...commonPayload, customer_id: Number(id)}
+          ? { ...commonPayload, customer_id: Number(id) }
           : { ...commonPayload, supplier_id: Number(id) };
 
       // -----------------------
@@ -470,7 +476,7 @@ export default function TransactionScreen() {
                 </View>
                 <Text style={styles.limitText}>
                   {transactionType === "you_gave" ? (
-                    <>Daily Give Limit: <Text style={styles.limitValue}>{transaction_limit}/20</Text></>
+                    <>Daily Give Limit: <Text style={styles.limitValue}>{transaction_limit}/8</Text></>
                   ) : (
                     <>Daily Receive Limit: <Text style={styles.limitValue}>{transaction_limit}/8</Text></>
                   )}
@@ -493,6 +499,14 @@ export default function TransactionScreen() {
             <View style={styles.amountDivider} />
           </View>
 
+          {/* {transactionType === "you_got" && (
+            <View style={styles.warningBox}>
+              <AlertTriangle size={18} color="#D97706" />
+              <Text style={styles.warningText}>
+                This payment transaction cannot be edited or deleted.
+              </Text>
+            </View>
+          )} */}
           {amount ? (
             <>
               {/* Date Selection - Compact */}
@@ -1156,6 +1170,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 8,
+  },
+  warningBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
+    borderRadius: 10,
+    padding: 12,
+    marginHorizontal: 20,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#FCD34D",
+  },
+
+  warningText: {
+    marginLeft: 8,
+    color: "#92400E",
+    fontSize: 14,
+    flex: 1,
   },
   selectorText: {
     fontSize: 14,

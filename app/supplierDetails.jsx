@@ -42,6 +42,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
+import { useSubscription } from './components/checkSubscription';
 
 // Function to format date for section headers (WhatsApp style)
 const formatSectionDate = (date) => {
@@ -252,13 +253,12 @@ export default function SupplierDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [supplierMobile, setSupplierMobile] = useState('');
-  const [isSubscribe_user, setIsSubscribe_user] = useState(null);
-  const [subscribeEndAt_user, setSubscribeEndAt_user] = useState(null);
   const [credit_given_count_user, setCredit_given_count_user] = useState(0);
   const [payment_got_count_user, setPayment_got_count_user] = useState(0);
-  const [subscribePlan, setSubscribePlan_user] = useState('');
   const [dueDate, setDueDate] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const { subscription, isLoading, checkSubscription } = useSubscription();
+  console.log("subscription::", subscription);
 
   const viewShotRef = useRef(null);
 
@@ -377,18 +377,12 @@ export default function SupplierDetails() {
 
       if (response.data) {
         const {
-          isSubscribe,
-          subscribeEndAt,
           credit_given_count,
-          subscribePlan,
           payment_got_count,
         } = response.data;
 
-        setIsSubscribe_user(isSubscribe);
-        setSubscribeEndAt_user(subscribeEndAt);
         setCredit_given_count_user(credit_given_count || 0);
         setPayment_got_count_user(payment_got_count || 0);
-        setSubscribePlan_user(subscribePlan || '');
       }
     } catch (err) {
       console.error('Error fetching subscription:', err);
@@ -522,38 +516,24 @@ Your current balance is ₹${balance} ${balanceType}`;
     }
   };
 
-  const checkTransactionEligibility = useCallback(
-    (transactionType) => {
-      if (isSubscribe_user) {
-        const today = new Date();
-        const endDate = new Date(subscribeEndAt_user);
-        if (endDate < today) {
-          setError('Your subscription has expired');
-          return false;
-        }
-        return true;
-      } else {
-        if (transactionType === 'you_got' && payment_got_count_user >= 30) {
-          setError('You have reached the limit for received transactions in Basic plan');
-          return false;
-        }
-        if (transactionType === 'you_gave' && credit_given_count_user >= 30) {
-          setError('You have reached the limit for given transactions in Basic plan');
-          return false;
-        }
-        return true;
-      }
-    },
-    [isSubscribe_user, subscribeEndAt_user, payment_got_count_user, credit_given_count_user]
-  );
-
   const navigateToTransaction = useCallback(
     (transactionType) => {
-      if (!checkTransactionEligibility(transactionType)) {
-        return;
+      if (!subscription || !subscription.isActive) {
+        if (transactionType === 'you_got' && payment_got_count_user >= 3) {
+          setError('You have reached the limit for received transactions in Basic plan');
+          return;
+        }
+        if (transactionType === 'you_gave' && credit_given_count_user >=3) {
+          setError('You have reached the limit for given transactions in Basic plan');
+          return;
+        }
       }
-
-      router.push({
+      // Check expired subscription
+      if (subscription && subscription.hasExpired) {
+        setError("Your subscription has expired");
+        return false;
+      }
+        router.push({
         pathname: '/transaction',
         params: {
           transactionType,
@@ -561,7 +541,7 @@ Your current balance is ₹${balance} ${balanceType}`;
           id: personId,
           mobile: supplierMobile,
           personName: personName,
-          isSubscribe_user,
+          isSubscribe_user:subscription?.isActive,
           userAmountStatus: `₹ ${Math.abs(supplier?.current_balance || 0)} ${Number(supplier?.current_balance) > 0 ? 'Advance' : 'Due'}`,
           transaction_limit:
             transactionType === 'you_got'
@@ -571,12 +551,11 @@ Your current balance is ₹${balance} ${balanceType}`;
       });
     },
     [
-      checkTransactionEligibility,
       router,
       personId,
       supplierMobile,
       personName,
-      isSubscribe_user,
+      subscription?.isActive,
       payment_got_count_user,
       credit_given_count_user,
     ]
@@ -633,6 +612,27 @@ Your current balance is ₹${balance} ${balanceType}`;
       </Text>
     </View>
   );
+
+  const renderPlanInfo = () => {
+      return (
+        <>
+          <Divider style={styles.planDivider} />
+          <View style={styles.planInfo}>
+            <Text style={styles.planName}>
+              {subscription.isActive ? 'Basic Plan' : subscription.planDetails.name}
+            </Text>
+            <Text style={styles.planLimit}>
+              Receive: {payment_got_count_user} / 4
+            </Text>
+            <Text style={styles.planLimit}>
+              Give: {credit_given_count_user} / 4
+            </Text>
+          </View>
+          <Divider style={styles.planDivider} />
+        </>
+      );
+    return null;
+  };
 
   if (loading) {
     return (
@@ -800,7 +800,7 @@ Your current balance is ₹${balance} ${balanceType}`;
           </View>
         </ScrollView>
 
-        {isSubscribe_user === false && (
+        {!subscription?.isActive && (
           <>
             <View style={styles.planDivider} />
             <View style={styles.planInfo}>
@@ -809,7 +809,7 @@ Your current balance is ₹${balance} ${balanceType}`;
               </View>
               <View style={styles.planLimits}>
                 <Text style={styles.planLimit}>
-                  Receive: <Text style={styles.planLimitValue}>{payment_got_count_user}/4</Text>
+                  Receive: <Text style={styles.planLimitValue}>{payment_got_count_user}/2</Text>
                 </Text>
                 <Text style={styles.planLimit}>
                   Give: <Text style={styles.planLimitValue}>{credit_given_count_user}/2</Text>

@@ -13,6 +13,7 @@ import * as Sharing from 'expo-sharing';
 import ViewShot from 'react-native-view-shot';
 import Modal from 'react-native-modal';
 import { AuthContext } from './components/AuthContext';
+import { useSubscription } from './components/checkSubscription';
 
 // Function to format date for section headers (WhatsApp style)
 const formatSectionDate = (date) => {
@@ -373,24 +374,17 @@ export default function CustomerDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [customerMobile, setCustomerMobile] = useState('');
-  const [isSubscribe_user, setIsSubscribe_user] = useState(null);
-  const [subscribeEndAt_user, setSubscribeEndAt_user] = useState(null);
   const [credit_given_count_user, setCredit_given_count_user] = useState(0);
   const [payment_got_count_user, setPayment_got_count_user] = useState(0);
-  const [subscribePlan, setSubscribePlan_user] = useState('');
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [discountLoading, setDiscountLoading] = useState(false);
   const [dueDate, setDueDate] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const viewShotRef = useRef(null);
   const [userDetails, setUserDetails] = useState(null);
+  const { subscription, isLoading, checkSubscription } = useSubscription();
+  console.log("subscription::", subscription);
 
-  const { subscription } = useContext(AuthContext);
-
-  const isSubscribed =
-    subscription &&
-    subscription.is_active &&
-    new Date(subscription.end_date) >= new Date();
 
   const fetchCustomer = useCallback(async () => {
     try {
@@ -431,18 +425,12 @@ export default function CustomerDetails() {
 
       if (response.data) {
         const {
-          isSubscribe,
-          subscribeEndAt,
           credit_given_count,
-          subscribePlan,
           payment_got_count,
         } = response.data;
 
-        setIsSubscribe_user(isSubscribe);
-        setSubscribeEndAt_user(subscribeEndAt);
         setCredit_given_count_user(credit_given_count || 0);
         setPayment_got_count_user(payment_got_count || 0);
-        setSubscribePlan_user(subscribePlan || '');
       }
     } catch (err) {
       console.error('Error fetching subscription:', err);
@@ -532,9 +520,11 @@ Your current balance is ₹${balance} ${balanceType}`;
     });
   };
 
+
+
   const handleAddTransaction = async (transactionType) => {
-    if (!isSubscribe_user) {
-      if (transactionType === 'you_got' && payment_got_count_user >= 30) {
+    if (!subscription || !subscription.isActive) {
+      if (transactionType === 'you_got' && payment_got_count_user >= 10) {
         setError('You have reached the limit for received transactions in Basic plan');
         return;
       }
@@ -542,13 +532,11 @@ Your current balance is ₹${balance} ${balanceType}`;
         setError('You have reached the limit for given transactions in Basic plan');
         return;
       }
-    } else {
-      const today = new Date();
-      const endDate = new Date(subscribeEndAt_user);
-      if (endDate < today) {
-        setError('Your subscription has expired');
-        return;
-      }
+    }
+    // Check expired subscription
+    if (subscription && subscription.hasExpired) {
+      setError("Your subscription has expired");
+      return false;
     }
 
     router.push({
@@ -559,7 +547,7 @@ Your current balance is ₹${balance} ${balanceType}`;
         id: personId,
         mobile: customerMobile,
         personName: personName,
-        isSubscribe_user,
+        isSubscribe_user:subscription?.isActive,
         userAmountStatus: `₹ ${Math.abs(customer?.current_balance || 0)} ${Number(customer?.current_balance) > 0 ? 'Advance' : 'Due'}`,
         transaction_limit: transactionType === 'you_got' ? payment_got_count_user : credit_given_count_user,
       },
@@ -884,7 +872,7 @@ Your current balance is ₹${balance} ${balanceType}`;
           </View>
         </ScrollView>
 
-        {isSubscribe_user === false && (
+        {!subscription.isActive && (
           <>
             <View style={styles.planDivider} />
             <View style={styles.planInfo}>
