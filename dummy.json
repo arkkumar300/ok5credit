@@ -751,3 +751,167 @@
     },
     "user_id": 4
 }
+
+{
+    "available_slots": 1,
+    "members": [
+        {
+            "created_at": "2026-03-15T07:05:17.000Z",
+            "id": 2,
+            "subscription_id": 2,
+            "updated_at": "2026-03-15T07:05:17.000Z",
+            "user": {
+                "email": null,
+                "id": 4,
+                "mobile": "9494130830",
+                "name": "Ravi kumar",
+                "owner_user_id": 4
+            },
+            "user_id": 4
+        },
+        {
+            "created_at": "2026-03-15T07:42:27.000Z",
+            "id": 4,
+            "subscription_id": 2,
+            "updated_at": "2026-03-15T07:42:27.000Z",
+            "user": {
+                "email": "shanthi@gmail.com",
+                "id": 9,
+                "mobile": "6301860874",
+                "name": "shanthi",
+                "owner_user_id": 4
+            },
+            "user_id": 9
+        }
+    ],
+    "plan": {
+        "NOU": 99,
+        "created_at": "2026-03-14T16:04:58.000Z",
+        "description": "used to manage the business for multiple places with employees",
+        "duration_days": 30,
+        "id": 1,
+        "is_active": true,
+        "name": "Corrparate Login",
+        "points": [
+            "multiple Emplyees can add",
+            "unlimited transaction",
+            "valid for 30 days "
+        ],
+        "price": "99.00",
+        "updated_at": "2026-03-14T16:04:58.000Z"
+    },
+    "purchased_user_count": 3,
+    "subscription_id": "2",
+    "total_members": 2
+}
+
+{
+    "supplier": {
+        "address": null,
+        "business_owner_id": 1,
+        "created_at": "2026-06-20T12:32:25.000Z",
+        "created_user": 1,
+        "current_balance": "1000.00",
+        "defaulter_stage": null,
+        "delay_days": 0,
+        "due_date": null,
+        "email": null,
+        "id": 1,
+        "mobile": "9346081818",
+        "name": "Verma",
+        "nickName": "Verma",
+        "photo": null,
+        "status": "Active",
+        "total_credit_given": "100.00",
+        "total_discount_got": "0.00",
+        "total_payment_got": "1100.00",
+        "updated_at": "2026-06-26T10:36:26.000Z"
+    },
+    "transactions": [
+        {
+            "amount": "1000.00",
+            "bill_id": 1,
+            "business_owner_id": 1,
+            "created_at": "2026-06-20T12:42:34.000Z",
+            "created_user": 1,
+            "customer_id": null,
+            "delete_date": null,
+            "description": "note",
+            "due_date": "2026-06-22T00:00:00.000Z",
+            "id": 2,
+            "is_Approved": false,
+            "is_Bill": false,
+            "is_Deleted": false,
+            "mirror_transaction_id": 1,
+            "paidAmount": "100.00",
+            "paymentType": "credit",
+            "remainingAmount": "900.00",
+            "status": "pending",
+            "supplier_id": 1,
+            "transaction_date": "2026-06-20T00:00:00.000Z",
+            "transaction_for": "supplier",
+            "transaction_group_id": "group_1781959354111_ute9vw42r",
+            "transaction_pic": [Array
+            ],
+            "transaction_type": "you_got",
+            "updated_at": "2026-06-26T10:36:26.000Z"
+        },
+        {
+            "amount": "100.00",
+            "bill_id": null,
+            "business_owner_id": 1,
+            "created_at": "2026-06-20T12:48:18.000Z",
+            "created_user": 1,
+            "customer_id": null,
+            "delete_date": null,
+            "description": "Phone pay",
+            "due_date": null,
+            "id": 4,
+            "is_Approved": true,
+            "is_Bill": false,
+            "is_Deleted": false,
+            "mirror_transaction_id": 3,
+            "paidAmount": "100.00",
+            "paymentType": "paid",
+            "remainingAmount": "0.00",
+            "status": "approved",
+            "supplier_id": 1,
+            "transaction_date": "2026-06-20T00:00:00.000Z",
+            "transaction_for": "supplier",
+            "transaction_group_id": "group_1781959698249_7y8ypraap",
+            "transaction_pic": [Array
+            ],
+            "transaction_type": "you_gave",
+            "updated_at": "2026-06-20T12:48:18.000Z"
+        },
+        {
+            "amount": "100.00",
+            "bill_id": null,
+            "business_owner_id": 1,
+            "created_at": "2026-06-26T10:36:26.000Z",
+            "created_user": 1,
+            "customer_id": null,
+            "delete_date": null,
+            "description": null,
+            "due_date": null,
+            "id": 5,
+            "is_Approved": false,
+            "is_Bill": false,
+            "is_Deleted": false,
+            "mirror_transaction_id": 6,
+            "paidAmount": "100.00",
+            "paymentType": "paid",
+            "remainingAmount": "0.00",
+            "status": "pending",
+            "supplier_id": 1,
+            "transaction_date": "2026-06-26T00:00:00.000Z",
+            "transaction_for": "supplier",
+            "transaction_group_id": "group_1782470186745_7y9j501be",
+            "transaction_pic": [Array
+            ],
+            "transaction_type": "you_got",
+            "updated_at": "2026-06-26T10:36:26.000Z"
+        }
+    ],
+    "transactionsCount": 3
+}

@@ -33,11 +33,10 @@ export async function registerForPushNotificationsAsync() {
   try {
     // 🔥 This gives you the real FCM token (Android) or APNs token (iOS)
     const token = (await Notifications.getDevicePushTokenAsync()).data;
-    console.log('FCM Token:', token);
 
     await AsyncStorage.setItem('UserFCMToken', token);
     return token;
   } catch (error) {
-    console.log('Error getting FCM token:', error);
+    console.error('Error getting FCM token:', error);
   }
 }

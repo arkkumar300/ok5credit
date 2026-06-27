@@ -15,7 +15,7 @@ const sendWhatsappWithPDF = async (pdfUrl) => {
     });
 
   } catch (error) {
-    console.log("Error sharing PDF:", error);
+    console.error("Error sharing PDF:", error);
     alert("Unable to share PDF");
   }
 };

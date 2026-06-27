@@ -46,8 +46,6 @@ export default function TransactionDetails() {
       Alert.alert("Error", "Customer mobile number not available");
       return;
     }
-    console.log("SMS:::", customerMobile);
-    console.log("messageText:::", messageText);
     const smsUrl = `sms:${customerMobile}?body=${encodeURIComponent(messageText)}`;
 
     const supported = await Linking.canOpenURL(smsUrl);
@@ -77,7 +75,6 @@ export default function TransactionDetails() {
   const handleAmountCollected = async () => {
     try {
       const groupId = transaction?.transaction_group_id;
-      console.log("groupId::", groupId)
       if (!groupId) {
         Alert.alert("Error", "Transaction group ID not found");
         return;
@@ -95,11 +92,12 @@ export default function TransactionDetails() {
       const result = await response.data;
       if (response) {
         Alert.alert("Success", "Amount collected successfully");
+        router.back();
       } else {
         Alert.alert("Error", result?.message || "Failed to update status");
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       Alert.alert("Error", "Something went wrong");
     }
   };
@@ -137,7 +135,7 @@ export default function TransactionDetails() {
         Alert.alert("Delete Failed", response.data?.message || "Unknown error");
       }
     } catch (error) {
-      console.log("Delete Error:", error);
+      console.error("Delete Error:", error);
       Alert.alert("Error", "Something went wrong");
     }
   };
@@ -388,6 +386,9 @@ export default function TransactionDetails() {
           <Text style={styles.dateText}>{formateDate(transaction?.transaction_date)}</Text>
         </View>
       </View>
+      {user.role !== "employee" &&
+          transaction?.status === 'collected' &&
+          transaction?.transaction_type === 'you_got' && (
       <View style={styles.collectContainer}>
 
           <TouchableOpacity
@@ -399,6 +400,7 @@ export default function TransactionDetails() {
             <Text style={styles.collectButtonText}>Amount Recived</Text>
           </TouchableOpacity>
       </View>
+          )}
       {/* Details */}
       <ScrollView
         style={styles.detailsContainer}

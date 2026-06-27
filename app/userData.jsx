@@ -34,6 +34,8 @@ export default function UserInfo() {
       setNickNameInput(response.data.nickName)
       await AsyncStorage.setItem("isLogin", "true");
       await AsyncStorage.setItem("userData", JSON.stringify(response.data));
+      await AsyncStorage.setItem('isSecurityEnabled', 'true');
+
     } catch (err) {
       console.error('Failed to fetch user:', err.message);
       Alert.alert('Error', 'Failed to fetch user data.');
@@ -53,6 +55,7 @@ export default function UserInfo() {
       setUserData(prev => ({ ...prev, name: response.data.name }));
       await AsyncStorage.setItem("isLogin", "true");
       await AsyncStorage.setItem("userData", JSON.stringify(response.data.user));
+      await AsyncStorage.setItem('isSecurityEnabled', 'true');
       sendWelcomePushNotification();
     } catch (err) {
       console.error('Failed to update name:', err.message);

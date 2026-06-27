@@ -30,7 +30,6 @@ export default function BillGenaration() {
     const [searchText, setSearchText] = useState('');
 
     const { Id = "", bill_type = "", billId = "", mode = "", bill_date = "", billNo = "", transaction_for, ownerId = "" } = useLocalSearchParams();
-    console.log("transaction_for::::",transaction_for)
     const router = useRouter();
     const totalAmount = Array.isArray(items)
         ? items.reduce((acc, item) => acc + Number(item?.total || 0), 0)
@@ -172,7 +171,7 @@ export default function BillGenaration() {
             setSupplier(data.customer || data.supplier || null);
 
         } catch (err) {
-            console.log("Load Edit Error:", err);
+            console.error("Load Edit Error:", err);
         }
     };
 

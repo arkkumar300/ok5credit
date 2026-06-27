@@ -9,7 +9,6 @@ export default async function FirebasePermission() {
       authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
     if (enabled) {
-      console.log("📌 Notification Permission Granted");
       const token = await messaging().getToken();
       await AsyncStorage.setItem("UserFCMToken", token);
     } else {

@@ -1,33 +1,8 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  Dimensions
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, SafeAreaView, ScrollView, StatusBar, Dimensions } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Avatar, Card, Title, Paragraph, Badge } from 'react-native-paper';
-import {
-  Users,
-  DollarSign,
-  TrendingUp,
-  Calendar,
-  User,
-  Phone,
-  ArrowLeft,
-  CheckCircle,
-  Clock,
-  Award,
-  UserCheck,
-  Briefcase,
-  Wallet,
-  PieChart
-} from 'lucide-react-native';
+import { Users, DollarSign, TrendingUp, Calendar, User, Phone, ArrowLeft, CheckCircle, Clock, Award, UserCheck, Briefcase, Wallet, PieChart } from 'lucide-react-native';
 import * as Animatable from 'react-native-animatable';
 
 const { width } = Dimensions.get('window');
@@ -52,30 +27,28 @@ export default function EmployeeDashboardScreen() {
   const handleAmountCollected = async () => {
     try {
       const groupId = transaction?.transaction_group_id;
-  console.log("groupId::",groupId)
       if (!groupId) {
         Alert.alert("Error", "Transaction group ID not found");
         return;
       }
-  
+
       const response = await ApiService.put(
-        `/transactions/${groupId}/transaction_group_id`,{ status: "collected"},
+        `/transactions/${groupId}/transaction_group_id`, { status: "collected" },
         {
           headers: {
             "Content-Type": "application/json",
           },
         }
       );
-  
+
       const result = await response.data;
-  console.log("collected::",result)
       if (response) {
         Alert.alert("Success", "Amount collected successfully");
       } else {
         Alert.alert("Error", result?.message || "Failed to update status");
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       Alert.alert("Error", "Something went wrong");
     }
   };
@@ -98,67 +71,72 @@ export default function EmployeeDashboardScreen() {
   };
 
   const renderCustomerItem = ({ item, index }) => {
-    console.log("customerItems::",item)
-    return(
-    <Animatable.View
-      animation="fadeInUp"
-      duration={500}
-      delay={index * 100}
-      key={item.id}
-    >
-      <TouchableOpacity
-        style={styles.itemCard}
-        onPress={() => router.push({
-          pathname: '/employeeCustomerSupplierDetails',
-          params: {
-            personId: item.id,
-            personName: item.name,
-            personType: 'customer',
-            createdBy: item.created_user
-          }
-        })}
-        activeOpacity={0.7}
+    return (
+      <Animatable.View
+        animation="fadeInUp"
+        duration={500}
+        delay={index * 100}
+        key={item.id}
       >
-        <View style={styles.itemCardInner}>
-          <View style={styles.avatarContainer}>
-            <View style={[styles.avatar, { backgroundColor: '#E8F5E9' }]}>
-              <Text style={[styles.avatarText, { color: '#0A4D3C' }]}>
-                {getInitials(item.name)}
-              </Text>
+        <TouchableOpacity
+          style={styles.itemCard}
+          onPress={() => router.push({
+            pathname: '/employeeCustomerSupplierDetails',
+            params: {
+              personId: item.id,
+              personName: item.name,
+              personType: 'customer',
+              createdBy: item.created_user
+            }
+          })}
+          activeOpacity={0.7}
+        >
+          <View style={styles.itemCardInner}>
+            <View style={styles.avatarContainer}>
+              <View style={[styles.avatar, { backgroundColor: '#E8F5E9' }]}>
+                <Text style={[styles.avatarText, { color: '#0A4D3C' }]}>
+                  {getInitials(item.name)}
+                </Text>
+              </View>
             </View>
-          </View>
 
-          <View style={styles.itemInfo}>
-            <Text style={styles.itemName}>{item.name}</Text>
-            <View style={styles.phoneContainer}>
-              <Phone size={12} color="#64748B" />
-              <Text style={styles.itemPhone}>{item.phone || 'No phone'}</Text>
+            <View style={styles.itemInfo}>
+              <Text style={styles.itemName}>{item.name}</Text>
+              <View style={styles.phoneContainer}>
+                <Phone size={12} color="#64748B" />
+                <Text style={styles.itemPhone}>{item.phone || 'No phone'}</Text>
+              </View>
             </View>
-          </View>
 
-          <View style={styles.amountContainer}>
-            <Text style={[
-              styles.amountText,
-              { color: parseFloat(item.current_balance) <= 0 ? '#EF4444' : '#0A4D3C' }
-            ]}>
-              ₹{parseFloat(item.current_balance || 0).toFixed(2)}
-            </Text>
-            <View style={[
-              styles.typeBadge,
-              { backgroundColor: parseFloat(item.current_balance) <= 0 ? '#FEE2E2' : '#E8F5E9' }
-            ]}>
+            <View style={styles.amountContainer}>
               <Text style={[
-                styles.typeText,
+                styles.amountText,
                 { color: parseFloat(item.current_balance) <= 0 ? '#EF4444' : '#0A4D3C' }
               ]}>
-                {parseFloat(item.current_balance) <= 0 ? 'Due' : 'Advance'}
+                ₹{parseFloat(item.current_balance || 0).toFixed(2)}
               </Text>
+              <View style={[
+                styles.typeBadge,
+                { backgroundColor: parseFloat(item.current_balance) <= 0 ? '#FEE2E2' : '#E8F5E9' }
+              ]}>
+                <Text style={[
+                  styles.typeText,
+                  { color: parseFloat(item.current_balance) <= 0 ? '#EF4444' : '#0A4D3C' }
+                ]}>
+                  {parseFloat(item.current_balance) <= 0 ? 'Due' : 'Advance'}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
-      </TouchableOpacity>
-    </Animatable.View>
-  )};
+          <View style={styles.collectedBadge}>
+            <Text style={styles.collectedBadgeText}>
+              ₹{parseFloat(item.totalCollected || 0).toFixed(2)} Collected
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </Animatable.View>
+    )
+  };
 
   const renderSupplierItem = ({ item, index }) => (
     <Animatable.View
@@ -462,6 +440,19 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: 44,
+  },
+  collectedBadge: {
+    marginTop: 6,
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-end'
+  },
+  collectedBadgeText: {
+    fontSize: 11,
+    color: '#0284C7',
+    fontWeight: '600'
   },
   headerBadge: {
     width: 8,

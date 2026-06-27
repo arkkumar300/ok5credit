@@ -120,6 +120,30 @@ export default function OTPScreen() {
     }
   };
 
+  const handlevValidateReferalCode = async (referralCode) => {
+    // Validate referral code with backend first (optional)
+    if (referralCode) {
+      const valid = await ApiService.get(`/referral/validate/${referralCode}`);
+      if (!valid.data.success) {
+        Alert.alert('Invalid referral code');
+        return;
+      }
+    }
+  }
+
+  const addReferalData = async (userData,referalCode) => {
+    // Validate referral code with backend first (optional)
+    const referalPayload={
+      referalCode:referalCode,
+      newUerId:userData.id }
+      const resp = await ApiService.post(`/user/CreateReferral/`,referalPayload);
+      if (!resp.data.success) {
+        Alert.alert('Invalid referral code');
+        return;
+      }else{
+        await AsyncStorage.setItem('isReferral', 'true');
+      }
+  }
   // --------------------------
   // VERIFY OTP
   // --------------------------
@@ -147,6 +171,18 @@ export default function OTPScreen() {
       login(response.data.user)
       // await AsyncStorage.setItem("userData",JSON.stringify(response.data.user))
       await addFCMToken(response.data.user);
+
+      // referal link code
+      // const isReferral = await AsyncStorage.getItem('isReferral');
+      // const referralCode = await AsyncStorage.getItem('referral_code');
+      // if (!isReferral) {
+      //  const referalValidate= handlevValidateReferalCode(referralCode)
+
+      //   if (referalValidate) {
+      //     const verifiedUserData=response.data.user
+      //     await addReferalData(verifiedUserData,referralCode);
+      //   }
+      // } 
 
     } catch (error) {
       console.error("❌ OTP Verification Error:", error);

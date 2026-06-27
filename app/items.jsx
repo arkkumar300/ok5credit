@@ -31,14 +31,11 @@ export default function Items() {
     };
 
     const deleteItem = async (id) => {
-        console.log("delete item id", id)
         try {
             const response = await ApiService.delete(`/item/${id}`);
             if (response?.data?.success === false) {
                 throw new Error(response.data.message || "Delete failed");
             }
-
-            console.log("Item deleted successfully:", response.data);
 
         } catch (err) {
             console.error("Error deleting item:", err.message);

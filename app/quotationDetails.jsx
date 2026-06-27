@@ -43,7 +43,6 @@ export default function QuotationDetails() {
       try {
         const parsedData = JSON.parse(decodeURIComponent(customerInfo));
         setCustomerData(parsedData);
-        console.log("Parsed customer info:", parsedData.mobile);
       } catch (error) {
         console.error("Failed to parse customerInfo:", error);
       }

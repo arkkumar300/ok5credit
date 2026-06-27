@@ -1,43 +1,10 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Alert,
-  RefreshControl,
-  ActivityIndicator,
-  Modal,
-  TextInput,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  StatusBar,
-  Dimensions
+import {View,Text,StyleSheet,FlatList,TouchableOpacity,Alert,RefreshControl,ActivityIndicator,Modal,TextInput,ScrollView,KeyboardAvoidingView,Platform,StatusBar,Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Appbar, Avatar, Divider, Card } from 'react-native-paper';
-import {
-  UserPlus,
-  Minus,
-  Plus,
-  Users,
-  Mail,
-  Phone,
-  Calendar,
-  ChevronRight,
-  X,
-  Award,
-  Shield,
-  CheckCircle,
-  Clock,
-  ArrowLeft,
-  CreditCard,
-  User,
-  DollarSign,
-  Info
+import {UserPlus,Minus,Plus,Users,Mail,Phone,Calendar,ChevronRight,X,Award,Shield,CheckCircle,Clock,ArrowLeft,CreditCard,User,DollarSign,Info
 } from 'lucide-react-native';
 import { AuthContext } from './components/AuthContext';
 import ApiService from './components/ApiServices';
@@ -212,7 +179,6 @@ export default function SubscriptionMembersScreen() {
         return;
       }
       const userDetails = JSON.parse(userData);
-      console.log("userDetails :::", userDetails)
       if (!selectedPlanData || !subscription) {
         Alert.alert("Error", "Subscription details not found");
         return;
@@ -228,8 +194,6 @@ export default function SubscriptionMembersScreen() {
         subscriber_email: userDetails.email,
         subscriber_phone: userDetails.mobile
       };
-
-      console.log("Sending payload:", payload);
 
       // Create order for additional users
       const res = await ApiService.post(
@@ -274,12 +238,11 @@ export default function SubscriptionMembersScreen() {
 
       RazorpayCheckout.open(options)
         .then(paymentResult => {
-          console.log("Additional Users Payment Result:", paymentResult);
           // Verify additional users payment
           verifyAdditionalUsersPayment(options, paymentResult);
         })
         .catch(error => {
-          console.log("Payment Error:", error);
+          console.error("Payment Error:", error);
           if (error.code === 2) {
             Alert.alert("Payment Cancelled", "You cancelled the payment");
           } else {
@@ -291,14 +254,13 @@ export default function SubscriptionMembersScreen() {
         });
 
     } catch (error) {
-      console.log("Error starting additional users payment:", error);
+      console.error("Error starting additional users payment:", error);
       Alert.alert("Error", error.response?.data?.message || "Something went wrong");
       setProcessingPayment(false);
     }
   };
 
   const verifyAdditionalUsersPayment = async (options, paymentResult) => {
-    console.log("verify-additional-users-payment")
 
     try {
       // Get the list of new users we want to add (we'll add them after payment verification)
@@ -334,7 +296,7 @@ export default function SubscriptionMembersScreen() {
         Alert.alert("Error", "Payment verification failed");
       }
     } catch (error) {
-      console.log("Additional users verification error:", error);
+      console.error("Additional users verification error:", error);
       Alert.alert("Error", error.response?.data?.message || "Payment verification failed");
     }
   };
@@ -393,7 +355,6 @@ export default function SubscriptionMembersScreen() {
   const handleMemberPress = async (member) => {
     try {
       setLoading(true);
-      console.log("members::", member);
       // Fetch dashboard data for this member (employee)
       const response = await ApiService.post("/dashboard/businessOwner", {
         userId: member.user.id,

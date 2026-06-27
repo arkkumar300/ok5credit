@@ -70,7 +70,7 @@ export default function BillDetails() {
       setGenerating(false);
 
     } catch (error) {
-      console.log("Share error", error);
+      console.error("Share error", error);
       Alert.alert('Error', error.message || 'Something went wrong');
       setGenerating(false);
     }

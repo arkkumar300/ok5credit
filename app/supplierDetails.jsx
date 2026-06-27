@@ -1,37 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  TouchableOpacity,
-  Image,
-  Linking,
-  Alert,
-  Platform,
-  ActivityIndicator,
-  StatusBar,
-  ScrollView,
-  SectionList
-} from 'react-native';
-import {
-  PhoneCall,
-  MessageSquare,
-  ArrowDown,
-  Send,
-  MessageCircle,
-  ArrowUp,
-  ArrowLeft,
-  CheckCircle,
-  File,
-  ChevronRight,
-  Calendar,
-  Delete,
-  Clock,
-  Percent,
-  HelpCircle,
-  AlertTriangle
-} from 'lucide-react-native';
+import {View,Text,StyleSheet,SafeAreaView,TouchableOpacity,Image,Linking,Alert,Platform,ActivityIndicator,StatusBar,ScrollView,SectionList} from 'react-native';
+import {PhoneCall,MessageSquare,ArrowDown,Send,MessageCircle,ArrowUp,ArrowLeft,CheckCircle,File,ChevronRight,Calendar,Delete,Clock,Percent,HelpCircle,AlertTriangle} from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Appbar, Divider } from 'react-native-paper';
 import moment from 'moment';
@@ -258,7 +227,6 @@ export default function SupplierDetails() {
   const [dueDate, setDueDate] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const { subscription, isLoading, checkSubscription } = useSubscription();
-  console.log("subscription::", subscription);
 
   const viewShotRef = useRef(null);
 

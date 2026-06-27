@@ -111,7 +111,7 @@ export default function Search() {
                 }
             } catch (checkError) {
                 // Continue with adding if check fails (assuming it doesn't exist)
-                console.log("Check failed, proceeding with add:", checkError);
+                console.error("Check failed, proceeding with add:", checkError);
             }
 
             // Add new customer/supplier

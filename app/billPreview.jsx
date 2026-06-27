@@ -29,7 +29,7 @@ export default function BillPreview() {
 
   const router = useRouter();
   const { items = [], totalAmount = 0, bill = "", mode = "", extraCharges = [], supplierData = "", transaction_for = "", bill_prm_id = "" } = useLocalSearchParams();
-console.log("transaction_for::",transaction_for)
+
   const parsedItems = items ? JSON.parse(items) : [];
   const parsedExtraCharges = extraCharges ? JSON.parse(extraCharges) : [];
   
@@ -93,7 +93,6 @@ console.log("transaction_for::",transaction_for)
       setLoading(false);
       setUploadProgress(1);
     } catch (error) {
-      console.log("submit error:", error);
       Alert.alert("Error", error.message || "Something went wrong");
       setLoading(false);
       setSuccess(false);
@@ -246,7 +245,6 @@ console.log("transaction_for::",transaction_for)
       if (!response) {
         throw new Error("Failed to fetch user data");
       }
-      console.log("ownerData::", response.data)
       setUserDetails(response.data);
 
     } catch (error) {

@@ -46,7 +46,7 @@ export const useSubscription = () => {
         return null;
       }
     } catch (error) {
-      console.log("Subscription check error:", error);
+      console.error("Subscription check error:", error);
 
       if (error?.response?.status === 404) {
         setSubscription(null);

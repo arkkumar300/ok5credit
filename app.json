@@ -13,14 +13,18 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sureshpentapilli.aquacredit",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to use Face ID to securely authenticate you and protect your financial data."
+      }
     },
     "plugins": [
       "expo-router",
       "expo-font",
       "expo-web-browser",
       "expo-build-properties",
-      "@react-native-firebase/app"
+      "@react-native-firebase/app",
+      "expo-applinks"
     ],
     "web": {
       "bundler": "metro",
@@ -39,7 +43,28 @@
     "android": {
       "package": "com.sureshpentapilli.aquacredit",
       "googleServicesFile": "./android/app/google-services.json",
-      "useNextNotificationsApi": true
+      "useNextNotificationsApi": true,
+      "permissions": [
+        "USE_BIOMETRIC"
+      ],
+      "associatedDomains": [
+        "applinks:aquaadmin.esotericprojects.tech"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": {
+            "scheme": "https",
+            "host": "aquaadmin.esotericprojects.tech",
+            "pathPrefix": "/refer"
+          }
+        }
+      ]
     }
   }
 }

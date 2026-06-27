@@ -69,7 +69,7 @@ export default function MyPlanScreen() {
       }
 
     } catch (error) {
-      console.log("Fetch plan error:", error);
+      console.error("Fetch plan error:", error);
       Alert.alert("Error", "Failed to load plans");
     } finally {
       setLoading(false);
@@ -115,8 +115,6 @@ export default function MyPlanScreen() {
 
   const paymentVerify = async (basicData, paymentData) => {
     try {
-      console.log("Verifying payment...", { basicData, paymentData });
-
       // Get user data
       const userData = await AsyncStorage.getItem("userData");
       if (!userData) {
@@ -143,7 +141,7 @@ export default function MyPlanScreen() {
         Alert.alert("Warning", "Payment was successful but verification failed. Please contact support.");
       }
     } catch (error) {
-      console.log("Payment verification error:", error);
+      console.error("Payment verification error:", error);
         Alert.alert(
           "Success",
           "Payment completed! Your subscription will be activated shortly.",
@@ -217,12 +215,11 @@ export default function MyPlanScreen() {
 
       RazorpayCheckout.open(options)
         .then(paymentResult => {
-          console.log("Payment Result:", paymentResult);
           // Verify payment
           paymentVerify(options, paymentResult);
         })
         .catch(error => {
-          console.log("Payment Error:", error);
+          console.error("Payment Error:", error);
           if (error.code === 2) {
             Alert.alert("Payment Cancelled", "You cancelled the payment");
           } else {
@@ -234,7 +231,7 @@ export default function MyPlanScreen() {
         });
 
     } catch (error) {
-      console.log("Error starting payment:", error);
+      console.error("Error starting payment:", error);
       Alert.alert("Error", error.response?.data?.message || "Something went wrong");
       setProcessingPayment(false);
     }
@@ -267,7 +264,7 @@ export default function MyPlanScreen() {
 
       return { eligible: true };
     } catch (error) {
-      console.log("Eligibility error:", error);
+      console.error("Eligibility error:", error);
       return { eligible: false, reason: "ERROR" };
     }
   };

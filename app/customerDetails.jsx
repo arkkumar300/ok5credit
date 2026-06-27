@@ -383,8 +383,6 @@ export default function CustomerDetails() {
   const viewShotRef = useRef(null);
   const [userDetails, setUserDetails] = useState(null);
   const { subscription, isLoading, checkSubscription } = useSubscription();
-  console.log("subscription::", subscription);
-
 
   const fetchCustomer = useCallback(async () => {
     try {
@@ -523,7 +521,7 @@ Your current balance is ₹${balance} ${balanceType}`;
 
 
   const handleAddTransaction = async (transactionType) => {
-    if (!subscription || !subscription.isActive) {
+    if (!subscription || !subscription?.isActive) {
       if (transactionType === 'you_got' && payment_got_count_user >= 10) {
         setError('You have reached the limit for received transactions in Basic plan');
         return;
@@ -534,7 +532,7 @@ Your current balance is ₹${balance} ${balanceType}`;
       }
     }
     // Check expired subscription
-    if (subscription && subscription.hasExpired) {
+    if (subscription && subscription?.hasExpired) {
       setError("Your subscription has expired");
       return false;
     }
@@ -872,7 +870,7 @@ Your current balance is ₹${balance} ${balanceType}`;
           </View>
         </ScrollView>
 
-        {!subscription.isActive && (
+        {!subscription?.isActive && (
           <>
             <View style={styles.planDivider} />
             <View style={styles.planInfo}>

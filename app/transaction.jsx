@@ -65,21 +65,17 @@ export default function TransactionScreen() {
         });
       });
 
-      console.log("FormData ready:", formData);
-
       const response = await ApiService.post(`/upload/multi`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
         onUploadProgress: (progressEvent) => {
           const progress = progressEvent.loaded / progressEvent.total;
-          console.log("Upload progress:", progress);
           // Optionally update a state for progress bar
         },
       });
 
       const result = response.data;
-      console.log("Upload success:", result);
 
       // If your backend returns an array of uploaded files
       if (result.files && Array.isArray(result.files)) {
@@ -167,6 +163,14 @@ export default function TransactionScreen() {
     }
   }
 
+  const completeReferral = async () => {
+   const referalCompleted= await ApiService.post('/referral/complete');
+   if (referalCompleted.data.success) {
+    
+   }
+    // Show reward message
+  };
+
   const addTransaction = async () => {
     if (loading) return; // Prevent double taps
 
@@ -182,7 +186,6 @@ export default function TransactionScreen() {
       const userName = JSON.parse(userData).name;
 
       const userRole = JSON.parse(userData).role;
-      console.log("role:::",userRole)
       if (paymentType === 'credit' && !dueDate) {
         Alert.alert('Validation Error', 'Please select a due date');
         setLoading(false);
@@ -209,8 +212,7 @@ export default function TransactionScreen() {
       // -----------------------
       // 📌 Build Base Payload
       // -----------------------
-      const isEmployeeGot = transactionType === "you_got" && userRole === "employee";
-      console.log("isEmployeeGot:::",isEmployeeGot)
+      const isEmployeeGot = transactionType === "you_got" && userRole !== "employee";
       const commonPayload = {
         userId,
         ownerId,

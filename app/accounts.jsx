@@ -40,7 +40,6 @@ const Account = () => {
             });
 
             const json = response?.data;
-            console.log("Dashboard response:", json);
 
             if (json?.success) {
                 const customers = json?.Customers || [];

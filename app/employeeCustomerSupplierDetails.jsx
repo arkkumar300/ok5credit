@@ -235,9 +235,7 @@ export default function CustomerDetails() {
       }
 
       const userId =createdBy;
-      console.log("userId",userId)
       const ownerId = JSON.parse(userData).id;
-      console.log("ownerId",ownerId)
       const URL = personType === 'customer' ? `/customers/${personId}}` : `/supplier/${personId}`;
       const response = await ApiService.post(URL, { userId, ownerId });
       const data = response.data;

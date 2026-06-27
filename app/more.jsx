@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useContext } from 'react';
-import {View,Text,StyleSheet,TouchableOpacity,SafeAreaView,ScrollView,StatusBar,Platform,Modal} from 'react-native';
+import React, { useState, useCallback, useContext, useEffect } from 'react';
+import {View,Text,StyleSheet,TouchableOpacity,SafeAreaView,ScrollView,StatusBar,Platform,Modal,Alert,Switch,ActivityIndicator} from 'react-native';
 import { useRouter } from 'expo-router';
-import {UserPlus,User,FileText,MoreHorizontal,Package,Settings,CreditCard,Star,CircleHelp as HelpCircle,Share2,Share,LogOut,Award,Home,ChevronRight,CheckCircle,X,RefreshCw} from 'lucide-react-native';
+import {UserPlus,User,FileText,MoreHorizontal,Package,Settings,CreditCard,Star,CircleHelp as HelpCircle,Share2,Share,LogOut,Award,Home,ChevronRight,CheckCircle,X,RefreshCw,Shield,Lock} from 'lucide-react-native';
 import { Appbar, Avatar } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -20,6 +20,10 @@ export default function MoreScreen() {
   const [showRenewalModal, setShowRenewalModal] = useState(false);
   const [renewalLoading, setRenewalLoading] = useState(false);
   const [subscriptionDetails, setSubscriptionDetails] = useState(null);
+  const [isSecurityEnabled, setIsSecurityEnabled] = useState(false);
+  const [securityLoading, setSecurityLoading] = useState(true);
+  const [shareLink, setShareLink] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   
   const {
     user,
@@ -28,6 +32,66 @@ export default function MoreScreen() {
     subscription,
     refreshSubscription
   } = useContext(AuthContext);
+
+  // Load security setting from AsyncStorage
+  useEffect(() => {
+    loadSecuritySetting();
+  }, []);
+
+
+  const fetchReferralInfo = async () => {
+    const response = await ApiService.get('/referral/info'); // your auth GET
+    setShareLink(response.data.data.shareLink);
+    setReferralCode(response.data.data.referral_code);
+    onShare();
+  };
+
+  const onShare = async () => {
+    try {
+      await Share.share({
+        message: `Join me on AppName! Use my referral code: ${referralCode}\nDownload: ${shareLink}`,
+        url: shareLink, // Android only
+      });
+    } catch (err) {
+      Alert.alert('Error', err.message);
+    }
+  };
+  
+  const loadSecuritySetting = async () => {
+    try {
+      const securityValue = await AsyncStorage.getItem('isSecurityEnabled');
+      if (securityValue !== null) {
+        setIsSecurityEnabled(securityValue === 'true');
+      } else {
+        // Set default value to false
+        await AsyncStorage.setItem('isSecurityEnabled', 'false');
+        setIsSecurityEnabled(false);
+      }
+    } catch (error) {
+      console.error('Error loading security setting:', error);
+    } finally {
+      setSecurityLoading(false);
+    }
+  };
+
+  const handleSecurityToggle = async (value) => {
+    try {
+      setIsSecurityEnabled(value);
+      await AsyncStorage.setItem('isSecurityEnabled', value.toString());
+      
+      // Optional: Show feedback to user
+      Alert.alert(
+        "Security Setting Updated",
+        `Security mode has been ${value ? 'enabled' : 'disabled'}.`,
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      console.error('Error saving security setting:', error);
+      Alert.alert("Error", "Failed to save security setting");
+      // Revert the toggle if save fails
+      setIsSecurityEnabled(!value);
+    }
+  };
 
   const fetchSubscriptionDetails = async () => {
     try {
@@ -81,8 +145,6 @@ export default function MoreScreen() {
         return;
       }
 
-      console.log("Creating renewal order for subscription:", subscription.id);
-
       // Create renewal order
       const response = await ApiService.post('/payment_rozarpay/renew-subscription', {
         subscription_id: subscription.id,
@@ -128,11 +190,9 @@ export default function MoreScreen() {
 
       RazorpayCheckout.open(options)
         .then(paymentResult => {
-          console.log("Renewal Payment Result:", paymentResult);
           verifyRenewalPayment(options, paymentResult);
         })
         .catch(error => {
-          console.log("Renewal Payment Error:", error);
           if (error.code === 2) {
             Alert.alert("Payment Cancelled", "You cancelled the renewal payment");
           } else {
@@ -155,8 +215,6 @@ export default function MoreScreen() {
         razorpay_payment_id: paymentResult.razorpay_payment_id,
         razorpay_signature: paymentResult.razorpay_signature
       };
-
-      console.log("Verifying renewal payment:", verificationData);
 
       const response = await ApiService.post('/payment_rozarpay/verify-renewal-payment', verificationData);
 
@@ -240,11 +298,25 @@ export default function MoreScreen() {
       items: getBusinessMenuItems()
     },
     {
+      section: 'Security',
+      items: [
+        { 
+          icon: <Shield size={20} color="#666" />, 
+          title: 'Security Mode', 
+          subtitle: 'Enable additional security features for your account',
+          isToggle: true,
+          toggleValue: isSecurityEnabled,
+          onToggle: handleSecurityToggle,
+          loading: securityLoading
+        },
+      ]
+    },
+    {
       section: 'Support',
       items: [
         { icon: <HelpCircle size={20} color="#666" />, title: 'Help', subtitle: 'Get support and help center', onPress: () => router.push('/help') },
         { icon: <Star size={20} color="#666" />, title: 'Rate App', subtitle: 'Rate Aqua Credit on app store' },
-        { icon: <Share2 size={20} color="#666" />, title: 'Share App', subtitle: 'Invite friends to use Aqua Credit' },
+        { icon: <Share2 size={20} color="#666" />, title: 'Share App', subtitle: 'Invite friends to use Aqua Credit',onPress: () =>fetchReferralInfo()  },
         { icon: <LogOut size={20} color="#666" />, title: 'LogOut', subtitle: 'Logout from your account', onPress: () => setShowLogoutModal(true) },
       ]
     }
@@ -331,8 +403,8 @@ export default function MoreScreen() {
                     styles.menuItem,
                     itemIndex !== section.items.length - 1 && styles.menuItemBorder
                   ]}
-                  onPress={() => handleItemPress(item)}
-                  activeOpacity={0.7}
+                  onPress={() => !item.isToggle && handleItemPress(item)}
+                  activeOpacity={item.isToggle ? 1 : 0.7}
                 >
                   <View style={styles.menuIcon}>
                     {item.icon}
@@ -341,9 +413,25 @@ export default function MoreScreen() {
                     <Text style={styles.menuTitle}>{item.title}</Text>
                     <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
                   </View>
-                  <View style={styles.menuArrow}>
-                    <ChevronRight size={18} color="#CBD5E1" />
-                  </View>
+                  {item.isToggle ? (
+                    <View style={styles.toggleContainer}>
+                      {item.loading ? (
+                        <ActivityIndicator size="small" color="#0A4D3C" />
+                      ) : (
+                        <Switch
+                          value={item.toggleValue}
+                          onValueChange={item.onToggle}
+                          trackColor={{ false: '#CBD5E1', true: '#0A4D3C' }}
+                          thumbColor={item.toggleValue ? '#FFFFFF' : '#F1F5F9'}
+                          ios_backgroundColor="#CBD5E1"
+                        />
+                      )}
+                    </View>
+                  ) : (
+                    <View style={styles.menuArrow}>
+                      <ChevronRight size={18} color="#CBD5E1" />
+                    </View>
+                  )}
                 </TouchableOpacity>
               ))}
             </View>
@@ -356,7 +444,7 @@ export default function MoreScreen() {
         </View>
       </ScrollView>
 
-      {/* Renewal Confirmation Modal - Normal Modal */}
+      {/* Renewal Confirmation Modal - Fixed Styles */}
       <Modal
         visible={showRenewalModal}
         transparent={true}
@@ -365,12 +453,23 @@ export default function MoreScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.renewalModalContainer}>
-            <View style={styles.renewalModalHeader}>
-              <Text style={styles.renewalModalTitle}>Renew Subscription</Text>
-              <TouchableOpacity onPress={() => setShowRenewalModal(false)}>
-                <X size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
+            <LinearGradient
+              colors={['#0A4D3C', '#1B6B50']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.renewalModalGradient}
+            >
+              <View style={styles.renewalModalHeader}>
+                <RefreshCw size={28} color="#FFFFFF" />
+                <Text style={styles.renewalModalTitle}>Renew Subscription</Text>
+                <TouchableOpacity 
+                  onPress={() => setShowRenewalModal(false)}
+                  style={styles.renewalModalClose}
+                >
+                  <X size={24} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
 
             <View style={styles.renewalModalContent}>
               <Text style={styles.renewalModalText}>
@@ -379,19 +478,26 @@ export default function MoreScreen() {
               
               {subscriptionDetails && (
                 <View style={styles.renewalDetailsContainer}>
-                  <View style={styles.renewalDetailRow}>
-                    <Text style={styles.renewalDetailLabel}>Current Plan:</Text>
-                    <Text style={styles.renewalDetailValue}>{subscriptionDetails.plan_name}</Text>
-                  </View>
-                  <View style={styles.renewalDetailRow}>
-                    <Text style={styles.renewalDetailLabel}>Expires on:</Text>
-                    <Text style={styles.renewalDetailValue}>
-                      {new Date(subscriptionDetails.end_date).toLocaleDateString()}
-                    </Text>
-                  </View>
-                  <View style={styles.renewalDetailRow}>
-                    <Text style={styles.renewalDetailLabel}>Amount:</Text>
-                    <Text style={styles.renewalDetailValue}>₹{subscriptionDetails.total_price}</Text>
+                  <View style={styles.renewalDetailCard}>
+                    <View style={styles.renewalDetailRow}>
+                      <Text style={styles.renewalDetailLabel}>Current Plan:</Text>
+                      <Text style={styles.renewalDetailValue}>{subscriptionDetails.plan_name}</Text>
+                    </View>
+                    <View style={styles.renewalDetailRow}>
+                      <Text style={styles.renewalDetailLabel}>Expires on:</Text>
+                      <Text style={styles.renewalDetailValue}>
+                        {new Date(subscriptionDetails.end_date).toLocaleDateString('en-US', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        })}
+                      </Text>
+                    </View>
+                    <View style={styles.renewalDetailDivider} />
+                    <View style={styles.renewalDetailRow}>
+                      <Text style={styles.renewalDetailLabel}>Amount:</Text>
+                      <Text style={styles.renewalDetailAmount}>₹{subscriptionDetails.total_price}</Text>
+                    </View>
                   </View>
                 </View>
               )}
@@ -412,7 +518,10 @@ export default function MoreScreen() {
                   {renewalLoading ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text style={styles.renewalConfirmButtonText}>Renew Now</Text>
+                    <>
+                      <RefreshCw size={18} color="#FFFFFF" style={styles.renewalButtonIcon} />
+                      <Text style={styles.renewalConfirmButtonText}>Renew Now</Text>
+                    </>
                   )}
                 </TouchableOpacity>
               </View>
@@ -421,7 +530,7 @@ export default function MoreScreen() {
         </View>
       </Modal>
 
-      {/* Logout Modal - Fixed */}
+      {/* Logout Modal */}
       <Modal
         visible={showLogoutModal}
         transparent={true}
@@ -472,7 +581,7 @@ export default function MoreScreen() {
         </View>
       </Modal>
 
-      {/* Bottom Navigation - Exactly like dashboard */}
+      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => router.push('/dashboard')}>
           <View style={[styles.navIcon, styles.navIconInactive]}>
@@ -699,6 +808,9 @@ const styles = StyleSheet.create({
   menuArrow: {
     padding: 4,
   },
+  toggleContainer: {
+    padding: 4,
+  },
   footer: {
     alignItems: 'center',
     paddingVertical: 24,
@@ -715,13 +827,137 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Fixed Modal Styles
+  // Renewal Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  renewalModalContainer: {
+    width: '90%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  renewalModalGradient: {
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+  },
+  renewalModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  renewalModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 12,
+  },
+  renewalModalClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  renewalModalContent: {
+    padding: 24,
+  },
+  renewalModalText: {
+    fontSize: 16,
+    color: '#475569',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 24,
+  },
+  renewalDetailsContainer: {
+    marginBottom: 24,
+  },
+  renewalDetailCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(10,77,60,0.1)',
+  },
+  renewalDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  renewalDetailLabel: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  renewalDetailValue: {
+    fontSize: 14,
+    color: '#1E293B',
+    fontWeight: '600',
+  },
+  renewalDetailAmount: {
+    fontSize: 18,
+    color: '#0A4D3C',
+    fontWeight: '700',
+  },
+  renewalDetailDivider: {
+    height: 1,
+    backgroundColor: 'rgba(10,77,60,0.1)',
+    marginVertical: 12,
+  },
+  renewalButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  renewalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  renewalCancelButton: {
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: 'rgba(10,77,60,0.2)',
+  },
+  renewalConfirmButton: {
+    backgroundColor: '#0A4D3C',
+    shadowColor: '#0A4D3C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  renewalCancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  renewalConfirmButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  renewalButtonIcon: {
+    marginRight: 4,
+  },
+
+  // Logout Modal Styles
   modalContainer: {
     width: '85%',
     backgroundColor: '#FFFFFF',

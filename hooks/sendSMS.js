@@ -25,9 +25,7 @@ export const sendSMS = async (mobile, otp) => {
   
     // Construct final SMS API URL
     const url = `https://smslogin.co/v3/api.php?username=SIKHISERVICES&apikey=4f841d38d93faea3a7c2&mobile=${mobile}&senderid=SSSVLD&message=${encodedMessage}&templateid=1407176647106245979`;
-  
-    console.log("SMS URL:", url);
-  
+    
     const response = await fetch(url);
     return response.text();
   };

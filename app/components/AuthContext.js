@@ -28,7 +28,7 @@ export const AuthContext = createContext();
         await checkSubscription(parsedUser.id);
       }
     } catch (error) {
-      console.log('Error loading stored user:', error);
+      console.error('Error loading stored user:', error);
     }
   };
 
@@ -39,7 +39,7 @@ export const AuthContext = createContext();
       await AsyncStorage.setItem('userData', JSON.stringify(userData));
       await checkSubscription(userData.id);
     } catch (error) {
-      console.log('Error saving user:', error);
+      console.error('Error saving user:', error);
     }
   };
 
@@ -50,7 +50,7 @@ export const AuthContext = createContext();
       setIsAuthenticated(false);
       await AsyncStorage.removeItem('userData');
     } catch (error) {
-      console.log('Error logging out:', error);
+      console.error('Error logging out:', error);
     }
   };
 
@@ -83,7 +83,7 @@ export const AuthContext = createContext();
       
       return subscriptionData;
     } catch (error) {
-      console.log('Error checking subscription:', error);
+      console.error('Error checking subscription:', error);
       // If 404, user has no subscription
       if (error.response?.status === 404) {
         setSubscription(null);

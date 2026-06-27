@@ -20,7 +20,6 @@ export const useFCM = () => {
       }
 
       const enabled = finalStatus === "granted";
-      console.log("🔔 Notification permission:", enabled);
 
       if (enabled) {
         await fetchFCMToken();
@@ -46,14 +45,13 @@ export const useFCM = () => {
       setFcmToken(token);
       await AsyncStorage.setItem("UserFCMToken", token);
     } catch (error) {
-      console.log("❌ Error fetching FCM token:", error);
+      console.error("❌ Error fetching FCM token:", error);
     }
   };
 
   // Listen for foreground notifications
   const listenForNotifications = () => {
     return Notifications.addNotificationReceivedListener((notification) => {
-      console.log("📩 Foreground notification:", notification);
       setNotification(notification);
 
       const title = notification.request.content.title;

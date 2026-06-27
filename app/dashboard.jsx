@@ -18,7 +18,7 @@ import * as Animatable from 'react-native-animatable';
 
 const { width } = Dimensions.get('window');
 
-const FILTER_CATEGORIES = ['Sort By', 'Name'];
+const FILTER_CATEGORIES = ['Sort By', 'Name',"Defaulters"];
 const SORT_OPTIONS = [
   'Default',
   'Amount: Low to High',
@@ -27,6 +27,7 @@ const SORT_OPTIONS = [
   'Newest First',
 ];
 const NAME = ['A-Z', 'Z-A'];
+const DEFAULTERS = ['ASE', 'DEC'];
 
 export default function DashboardScreen() {
   const [activeTab, setActiveTab] = useState('Customer');
@@ -105,7 +106,8 @@ export default function DashboardScreen() {
           initial: c.name?.charAt(0).toUpperCase(),
           color: "#4CAF50",
           created_by: c.created_user,
-          defaulter_stage: c.defaulter_stage
+          defaulter_stage: c.defaulter_stage,
+          delay_days: c.delay_days
         }));
 
         const fetchedSuppliers = (response.data.Suppliers || []).map((s) => ({
@@ -118,7 +120,8 @@ export default function DashboardScreen() {
           initial: s.name?.charAt(0).toUpperCase(),
           color: "#2196F3",
           created_by: s.created_user,
-          defaulter_stage: s.defaulter_stage
+          defaulter_stage: s.defaulter_stage,
+          delay_days: s.delay_days
         }));
 
         setCustomers(fetchedCustomers);
@@ -162,7 +165,7 @@ export default function DashboardScreen() {
       loadStoredUser();
       setIsVerified(is_verified);
     } catch (error) {
-      console.log("Error checking eligibility:", error);
+      console.error("Error checking eligibility:", error);
       setIsVerified(false);
     }
   };
@@ -191,6 +194,14 @@ export default function DashboardScreen() {
         }
         break;
 
+        case 'Defaulters':
+          if (selectedOption === 'ASE') {
+            data.sort((a, b) => b.delay_days - a.delay_days);
+          } else if (selectedOption === 'DEC') {
+            data.sort((a, b) => a.delay_days - b.delay_days);
+          }
+          break;
+
       default:
         break;
     }
@@ -215,6 +226,17 @@ export default function DashboardScreen() {
         ));
       case 'Name':
         return NAME.map((option) => (
+          <TouchableOpacity
+            key={option}
+            style={styles.optionRow}
+            onPress={() => setSelectedOption(option)}
+          >
+            <Text style={styles.optionText}>{option}</Text>
+            {selectedOption === option && <View style={styles.radioSelected} />}
+          </TouchableOpacity>
+        ));
+      case 'Defaulters':
+        return DEFAULTERS.map((option) => (
           <TouchableOpacity
             key={option}
             style={styles.optionRow}
@@ -479,12 +501,12 @@ export default function DashboardScreen() {
             currentData.map((person, index) => (
               <TouchableOpacity
                 key={person.id}
-                style={styles.personCard}
+                style={[styles.personCard, { borderLeftColor: getStageColor(person.defaulter_stage), borderLeftWidth: 10, borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }]}
                 onPress={() => handlePersonClick(person)}
                 activeOpacity={0.7}
               >
                 {/* Left border with color based on defaulter stage */}
-                <View style={[styles.personLeftBorder, { backgroundColor: getStageColor(person.defaulter_stage) }]} />
+                {/* <View style={[styles.personLeftBorder, { backgroundColor: getStageColor(person.defaulter_stage) }]} /> */}
 
                 <View style={styles.personContent}>
                   <View style={styles.personInfo}>
@@ -945,19 +967,17 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingHorizontal: 16,
-    gap: 10,
   },
   personCard: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    elevation: 5,
+    // borderWidth: 1,
+    // borderColor: '#E2E8F0',
     overflow: 'hidden',
   },
   personLeftBorder: {
@@ -966,13 +986,15 @@ const styles = StyleSheet.create({
   },
   personContent: {
     flex: 1,
+    borderTopLeftRadius: 8,
+    borderBottomLeftRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 12,
   },
   personInfo: {
-    flex: 1,
+    flex: 1
   },
   personName: {
     fontSize: 15,

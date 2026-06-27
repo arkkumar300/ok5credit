@@ -50,12 +50,11 @@ const updateUserData = async (payload) => {
         "userData",
         JSON.stringify(updatedUserData)
       );
-      console.log('Updated successfully & AsyncStorage synced');
       return updatedUserData;
 
     }
   } catch (error) {
-    console.log('error::', error);
+    console.error('error::', error);
   }
   return null;
 }
@@ -470,7 +469,7 @@ const BusinessCardModal = ({ visible, onClose, userDetails }) => {
         dialogTitle: 'Share Business Card',
       });
     } catch (error) {
-      console.log(error);
+      console.error(error);
       Alert.alert('Error', 'Failed to share business card');
     }
   };

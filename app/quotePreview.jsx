@@ -73,7 +73,7 @@ export default function QuotePreview() {
       const uploadedPath = `https://aquaservices.esotericprojects.tech/uploads/${uploadJson.file_info.filename}`;
       handleSave(uploadedPath)
     } catch (error) {
-      console.log("error ::", error);
+      console.error("error ::", error);
       Alert.alert('Error', 'Failed to save quotation');
       setSaving(false);
       setLoading(false);
