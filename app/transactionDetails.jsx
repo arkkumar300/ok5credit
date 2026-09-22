@@ -12,6 +12,7 @@ import ApiService from './components/ApiServices';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { AuthContext } from './components/AuthContext';
+import getSignedUrl from './components/signedURL';
 
 export default function TransactionDetails() {
   const navigation = useNavigation();
@@ -20,6 +21,7 @@ export default function TransactionDetails() {
   const [transaction, setTransaction] = useState(null);
   const [transactionType, setTransactionType] = useState(null);
   const [images, setImages] = useState([]);
+const [rawPaths, setRawPaths] = useState([]);
 
   const {
     user,
@@ -139,30 +141,39 @@ export default function TransactionDetails() {
     }
   };
 
-  useEffect(() => {
-    if (!transactionDetails) return;
 
+  const uploadTransactionImages = async () => {
+    if (!transactionDetails) return;
+  
     const tx = JSON.parse(transactionDetails);
     setTransaction(tx);
     setTransactionType(tx?.transaction_type);
-
+  
     let parsedImages = [];
-
+  
     if (Array.isArray(tx?.transaction_pic)) {
       const firstItem = tx.transaction_pic[0];
-
       if (typeof firstItem === 'string' && firstItem.startsWith('[')) {
         try {
           parsedImages = JSON.parse(firstItem);
         } catch (e) {
-          console.error("Invalid transaction_pic JSON", e);
+          console.error('Invalid transaction_pic JSON', e);
         }
       } else {
         parsedImages = tx.transaction_pic;
       }
     }
-
-    setImages(parsedImages);
+  
+    const signedUploadedUrls = await Promise.all(
+      parsedImages.map((fp) => getSignedUrl(fp))
+    );
+    
+    setRawPaths(parsedImages);                     // raw for backend
+    setImages(signedUploadedUrls.filter(Boolean));
+    }; 
+  
+  useEffect( () => {
+    uploadTransactionImages()
   }, [transactionDetails]);
 
 
@@ -185,7 +196,7 @@ export default function TransactionDetails() {
       if (!response) {
         throw new Error(response?.message || "Upload failed");
       }
-      return response.data.file_info.filename; // or filename if backend gives URL
+      return response.data.file_info.url; // or filename if backend gives URL
     } catch (error) {
       console.error("Upload error:", error);
       Alert.alert("Upload failed", "Unable to upload image");
@@ -207,30 +218,48 @@ export default function TransactionDetails() {
     );
   };
 
+  /**
+ * Extracts the storage path from a GCS URL or plain path.
+ *
+ * Examples:
+ *   "https://storage.googleapis.com/aqua_credit_bucket/images/abc.webp"
+ *     → "images/abc.webp"
+ *
+ *   "images/abc.webp"
+ *     → "images/abc.webp"
+ *
+ *   "https://api.aquacredit.in/uploads/https://storage.googleapis.com/aqua_credit_bucket/images/abc.webp"
+ *     → "images/abc.webp"   (legacy malformed value)
+ */
+
   const openCamera = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
       Alert.alert("Permission required", "Camera access is needed");
       return;
     }
-
+  
     const result = await ImagePicker.launchCameraAsync({
       quality: 0.7,
     });
-
-    if (!result.canceled) {
-      const uploadedFile = await uploadImage(result.assets[0].uri);
-      if (!uploadedFile) return;
-      const imageUrl = `https://aquaservices.esotericprojects.tech/uploads/${uploadedFile}`;
-
-      const updatedImages = [...images, imageUrl];
-
-      // update UI immediately
-      setImages(updatedImages);
-
-      // update backend with correct data
-      await handleUpdateTransactionPics(updatedImages);
+  
+    if (result.canceled) return;
+  
+    // 1. Upload → get the raw stored path
+    const rawPath = await uploadImage(result.assets[0].uri);
+    if (!rawPath) return;
+  
+    // 2. Raw paths are what the backend stores
+    const updatedRawPaths = [...rawPaths, rawPath];
+  
+    // 3. Signed URL is what we render
+    const signedUrl = await getSignedUrl(rawPath);
+    if (signedUrl) {
+      setImages((prev) => [...prev, signedUrl]);
     }
+  
+    // 4. Persist raw paths to backend
+    await handleUpdateTransactionPics(updatedRawPaths);
   };
 
   const openGallery = async () => {
@@ -239,35 +268,37 @@ export default function TransactionDetails() {
       Alert.alert("Permission required", "Gallery access is needed");
       return;
     }
-
+  
     const result = await ImagePicker.launchImageLibraryAsync({
       quality: 0.7,
       allowsMultipleSelection: true,
     });
-
-    if (!result.canceled) {
-      const uploadedUrls = [];
-
-      for (const asset of result.assets) {
-        const uploadedFile = await uploadImage(asset.uri);
-        if (uploadedFile) {
-          const imageUrl = `https://aquaservices.esotericprojects.tech/uploads/${uploadedFile}`;
-          uploadedUrls.push(imageUrl);
-        }
-      }
-
-      if (uploadedUrls.length === 0) return;
-
-      const updatedImages = [...images, ...uploadedUrls];
-
-      // Update UI
-      setImages(updatedImages);
-
-      // Sync with backend
-      await handleUpdateTransactionPics(updatedImages);
+  
+    if (result.canceled) return;
+  
+    // 1. Upload every selected asset → collect raw paths
+    const newRawPaths = [];
+    for (const asset of result.assets) {
+      const uploadedPath = await uploadImage(asset.uri);
+      if (uploadedPath) newRawPaths.push(uploadedPath);
     }
+  
+    if (newRawPaths.length === 0) return;
+  
+    // 2. Combined raw paths (what backend stores)
+    const updatedRawPaths = [...rawPaths, ...newRawPaths];
+  
+    // 3. Resolve signed URLs in parallel (not sequentially, not forgetting await!)
+    const newSignedUrls = (
+      await Promise.all(newRawPaths.map((p) => getSignedUrl(p)))
+    ).filter(Boolean);
+  
+    // 4. Update UI
+    setImages((prev) => [...prev, ...newSignedUrls]);
+  
+    // 5. Persist raw paths to backend
+    await handleUpdateTransactionPics(updatedRawPaths);
   };
-
   // ---------------------- HANDLE EDIT API ----------------------
   const handleUpdateTransaction = async () => {
     if (!newAmount || isNaN(Number(newAmount))) {
@@ -317,6 +348,7 @@ export default function TransactionDetails() {
   };
 
   const handleUpdateTransactionPics = async (updatedImages) => {
+    console.log("rrr::",updatedImages)
     try {
       const url = `/transactions/${transaction.id}`
 

@@ -186,7 +186,7 @@ export default function TransactionDetails() {
       if (!response) {
         throw new Error(response?.message || "Upload failed");
       }
-      return response.data.file_info.filename; // or filename if backend gives URL
+      return response.data.file_info.url; // or filename if backend gives URL
     } catch (error) {
       console.error("Upload error:", error);
       Alert.alert("Upload failed", "Unable to upload image");
@@ -222,7 +222,7 @@ export default function TransactionDetails() {
     if (!result.canceled) {
       const uploadedFile = await uploadImage(result.assets[0].uri);
       if (!uploadedFile) return;
-      const imageUrl = `https://aquaservices.esotericprojects.tech/uploads/${uploadedFile}`;
+      const imageUrl = uploadedFile;
 
       const updatedImages = [...images, imageUrl];
 
@@ -252,7 +252,7 @@ export default function TransactionDetails() {
       for (const asset of result.assets) {
         const uploadedFile = await uploadImage(asset.uri);
         if (uploadedFile) {
-          const imageUrl = `https://aquaservices.esotericprojects.tech/uploads/${uploadedFile}`;
+          const imageUrl = uploadedFile;
           uploadedUrls.push(imageUrl);
         }
       }

@@ -4,7 +4,7 @@ import axios from 'axios';
 
 const ApiService = axios.create({
   //  baseURL: 'http://192.168.0.4:3000/9023/api/', // Change for production/testing
-  baseURL: 'https://aquaservices.esotericprojects.tech/9023/api/', // Change for production/testing
+  baseURL: 'https://api.aquacredit.in/9023/api/', // Change for production/testing
 });
 
 // Automatically set the right Content-Type

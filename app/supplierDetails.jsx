@@ -12,6 +12,8 @@ import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useSubscription } from './components/checkSubscription';
+import getSignedUrl from './components/signedURL';
+import { useFocusEffect } from '@react-navigation/native';
 
 // Function to format date for section headers (WhatsApp style)
 const formatSectionDate = (date) => {
@@ -37,6 +39,47 @@ const SectionHeader = ({ title }) => (
     <Text style={styles.sectionHeaderText}>{title}</Text>
   </View>
 );
+
+const FALLBACK_IMAGE =
+  'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg';
+
+  // Cache signed URLs so we don't refetch the same path on every render
+const signedUrlCache = new Map();
+export const clearSignedUrlCache = () => signedUrlCache.clear();
+
+const getCachedSignedUrl = async (path) => {
+  if (!path) return null;
+  if (signedUrlCache.has(path)) return signedUrlCache.get(path);
+  const url = await getSignedUrl(path);
+  if (url) signedUrlCache.set(path, url);
+  return url;
+};
+
+// ---------- Thumbnail that resolves its own signed URL ----------
+const TransactionThumbnail = React.memo(({ rawPath, style }) => {
+  const [uri, setUri] = useState(FALLBACK_IMAGE);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolve = async () => {
+      if (!rawPath) {
+        if (!cancelled) setUri(FALLBACK_IMAGE);
+        return;
+      }
+      const signed = await getCachedSignedUrl(rawPath);
+      if (!cancelled) setUri(signed || FALLBACK_IMAGE);
+    };
+
+    resolve();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rawPath]);
+
+  return <Image source={{ uri }} style={style} resizeMode="stretch" />;
+});
 
 // Transaction Item Component
 const TransactionItem = React.memo(
@@ -111,21 +154,16 @@ const TransactionItem = React.memo(
 
     const renderImage = () => {
       const images = parseTransactionImages(item?.transaction_pic);
-
-      const url =
-        images.length > 0
-          ? images[0]
-          : "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg";
-
+      const firstImage = images.length > 0 ? images[0] : null;
+    
       return (
-        <Image
-          source={{ uri: url }}
+        <TransactionThumbnail
+          rawPath={firstImage}
           style={styles.transactionImage}
-          resizeMode="cover"
         />
       );
-    };
-
+    };  
+  
     const getStatusIcon = () => {
       if (isApproved) {
         return <CheckCircle size={14} color="#0A4D3C" />;
@@ -357,10 +395,21 @@ export default function SupplierDetails() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchSupplier();
-    fetchUserSubscription();
-  }, [fetchSupplier, fetchUserSubscription]);
+  const getUser = async () => {
+    const userData = await AsyncStorage.getItem("userData");
+    if (userData) {
+      setUserDetails(JSON.parse(userData));
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      clearSignedUrlCache();
+      fetchSupplier();
+      fetchUserSubscription();
+      getUser();
+    }, [fetchSupplier, fetchUserSubscription])
+  );
 
   const handleCall = () => {
     if (!supplierMobile) {
@@ -777,10 +826,10 @@ Your current balance is ₹${balance} ${balanceType}`;
               </View>
               <View style={styles.planLimits}>
                 <Text style={styles.planLimit}>
-                  Receive: <Text style={styles.planLimitValue}>{payment_got_count_user}/2</Text>
+                  Receive: <Text style={styles.planLimitValue}>{payment_got_count_user}/3</Text>
                 </Text>
                 <Text style={styles.planLimit}>
-                  Give: <Text style={styles.planLimitValue}>{credit_given_count_user}/2</Text>
+                  Give: <Text style={styles.planLimitValue}>{credit_given_count_user}/3</Text>
                 </Text>
               </View>
             </View>

@@ -12,6 +12,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import ViewShot from 'react-native-view-shot';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import getSignedUrl from './components/signedURL';
 
 const COLORS = {
   primary: '#2E7D32',
@@ -108,138 +109,114 @@ const ProfileScreen = () => {
         setInitialsLetter(initials)
         const response = await ApiService.get(`/user/${userId}`);
         setUserData(response.data)
-        setImageUri(response?.data.photo)
+        const signerUserURL=await getSignedUrl(response?.data.photo)
+        setImageUri(signerUserURL)
 
       }
       fetchUser()
     }, [activeModal])
   )
 
-  const requestPermissions = async () => {
-    const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-    const { status: libraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (cameraStatus !== 'granted' || libraryStatus !== 'granted') {
-      Alert.alert('Permission Required', 'Camera and photo library permissions are required to add images.');
-      return false;
-    }
-    return true;
+  const showImageOptions = () => {
+    Alert.alert('Update Profile Photo', 'Choose an option', [
+      { text: 'Take Photo', onPress: () => handleImagePick('camera') },
+      { text: 'Choose from Gallery', onPress: () => handleImagePick('gallery') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
-  const showImagePickerOptions = () => {
-    Alert.alert(
-      'Add Images',
-      'Choose an option',
-      [
-        { text: 'Camera', onPress: openCamera },
-        { text: 'Gallery', onPress: openGallery },
-        { text: 'Cancel', style: 'cancel' }
-      ],
-      { cancelable: true }
-    );
-  };
-
-  const uploadImage = async (uri) => {
+  const handleImagePick = async (type) => {
     try {
-      const formData = new FormData();
+      if (type === 'camera') {
+        let permissionResult = await ImagePicker.getCameraPermissionsAsync();
+        if (permissionResult.status !== 'granted') {
+          permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+        }
+        if (permissionResult.status !== 'granted') {
+          Alert.alert(
+            'Permission Required',
+            'Camera permission is required to take a photo.'
+          );
+          return;
+        }
+      }
 
-      const fileName = uri.split('/').pop();
+      if (type === 'gallery') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            'Permission Required',
+            'Photo library permission is required to choose an image.'
+          );
+          return;
+        }
+      }
+
+      const options = {
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      };
+
+      let result;
+      if (type === 'camera') {
+        result = await ImagePicker.launchCameraAsync(options);
+      } else {
+        result = await ImagePicker.launchImageLibraryAsync(options);
+      }
+
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+
+      const localUri = result.assets[0].uri;
+
+      // Optimistically show the local image while upload happens
+      setImageUri(localUri);
+
+      // Upload image
+      const fileName = localUri.split('/').pop();
       const fileType = fileName.split('.').pop();
 
+      const formData = new FormData();
       formData.append('file', {
-        uri,
+        uri: localUri,
         name: fileName,
         type: `image/${fileType}`,
       });
-      const response = await ApiService.post(`/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+
+      const uploadResponse = await ApiService.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      const result = response.data;
+      // Backend now returns a file path/key instead of a full URL
+      const fileInfo = uploadResponse?.data?.file_info;
+      const filePath =
+        fileInfo?.url ||      // preferred: S3/MinIO key
+        fileInfo?.path ||      // preferred: S3/MinIO key
+        fileInfo?.key ||       // alternative key name
+        fileInfo?.filename;    // legacy fallback
 
-      const rrr = `https://aquaservices.esotericprojects.tech/uploads/${result.file_info.filename}`;
-      return rrr;
-    } catch (error) {
-      console.error('Upload failed:', error);
-      Alert.alert('Upload Failed', 'Could not upload image');
-    }
-  };
+      if (!filePath) throw new Error('Upload did not return a file path');
 
-  const openCamera = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
+      // Save the PATH to the profile (not the URL)
+      const updated = await updateUserData({ photo: filePath });
 
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-        cameraType: ImagePicker.CameraType.back, // ✅ Choose back camera
-      });
-
+      if (updated) {
+        Alert.alert('Success', 'Profile photo updated successfully!');
+      }
+    } catch (err) {
+      console.error('Image pick error:', err);
       if (
-        result &&
-        !result.canceled &&
-        Array.isArray(result.assets) &&
-        result.assets.length > 0 &&
-        result.assets[0].uri
+        err.message.includes('ActivityNotFoundException') ||
+        err.message.includes('No Activity found')
       ) {
-        const localUri = result.assets[0].uri;
-
-        // Optional: preview the local image first
-        setImageUri(localUri);
-
-        // Upload the image (assuming uploadImage returns a URL)
-        const uploadedUrl = await uploadImage(localUri);
-
-        // Save the uploaded image URL
-        setImageUri(uploadedUrl);
-        setImages([uploadedUrl]); // Store it as an array with one image
-
-        const payload = { photo: uploadedUrl }
-        updateUserData(payload)
+        Alert.alert(
+          'Camera Not Available',
+          'The emulator or device does not have a camera app installed. Please use a physical device or install a camera app on the emulator.'
+        );
       } else {
-        console.log('Camera cancelled or no image selected');
+        Alert.alert('Error', 'Failed to process image. Please try again.');
       }
-    } catch (error) {
-      console.error('Camera error:', error);
-      Alert.alert('Error', 'Failed to open camera');
-    }
-  };
-
-  const openGallery = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
-
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8
-      });
-
-      if (!result.canceled && result.assets) {
-        const localUri = result.assets[0].uri;
-
-        // Optional: preview the local image first
-        setImageUri(localUri);
-
-        // Upload the image (assuming uploadImage returns a URL)
-        const uploadedUrl = await uploadImage(localUri);
-
-        // Save the uploaded image URL
-        setImageUri(uploadedUrl);
-        setImages([uploadedUrl]); // Store it as an array with one image
-
-        const payload = { photo: uploadedUrl }
-        updateUserData(payload)
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to open gallery');
     }
   };
 
@@ -297,7 +274,7 @@ const ProfileScreen = () => {
               style={styles.avatar}
             />
             <View style={styles.cameraButtonSolid}>
-              <TouchableOpacity onPress={showImagePickerOptions}>
+              <TouchableOpacity  onPress={showImageOptions}>
                 <Camera size={20} color="#FFFFFF" />
               </TouchableOpacity>
             </View>

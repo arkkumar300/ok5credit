@@ -79,7 +79,7 @@ export default function TransactionScreen() {
 
       // If your backend returns an array of uploaded files
       if (result.files && Array.isArray(result.files)) {
-        return result.files.map(f => `https://aquaservices.esotericprojects.tech/uploads/${f.filename}`);
+        return result.files.map(f => f.url);
       }
 
       return [];

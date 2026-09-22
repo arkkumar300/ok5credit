@@ -76,7 +76,7 @@ export default function BillPreview() {
         },
       });
 
-      const uploadedPath = `https://aquaservices.esotericprojects.tech/uploads/${uploadRes.data.file_info.filename}`;
+      const uploadedPath = uploadRes.data.file_info.url;
       setUploadProgress(0.66); // 66% complete
 
       if (mode === "add") {
@@ -86,7 +86,7 @@ export default function BillPreview() {
       } else {
         /** STEP 3 → Update bill */
         const updateBill = await updateBillToServer(uploadedPath);
-        await sendTransaction(supplierInfo?.mobile, supplierInfo?.name, totalAmount, userDetails.name, uploadedPath);
+        await updateTransaction(updateBill)
       }
       /** 🎉 ALL SUCCESS */
       setSuccess(true);
@@ -168,6 +168,57 @@ export default function BillPreview() {
       ? `/transactions/supplier`
       : `/transactions/customer`;
     const response = await ApiService.post(URL, payload);
+
+    const invoice = response.data.transaction.id
+    await sendTransaction(supplierInfo.mobile, supplierInfo.name, totalAmount, userName, invoice)
+    const encodedCustomer = encodeURIComponent(JSON.stringify(supplierInfo));
+    router.push({
+      pathname: "/billDetails", 
+      params: {
+        billId: billData.id,
+        supplierInfo: encodedCustomer,
+        bill,
+        transaction_for
+      }
+    });
+
+    return response.data;
+  };
+
+  const updateTransaction = async (billData) => {
+    const date = moment().format("YYYY-MM-DD");
+    const userData = await AsyncStorage.getItem("userData");
+    const userId = JSON.parse(userData)?.id;
+    const ownerId = JSON.parse(userData).owner_user_id;
+    const userName = JSON.parse(userData)?.name;
+    const formattedDueDate = format === 'unpaid'
+      ? moment(dueDate).format('YYYY-MM-DD')
+      : undefined;
+    const payload = {
+      userId,
+      ownerId,
+      created_user: userId,
+      transaction_type: "you_gave",
+      transaction_for: transaction_for,
+      amount: Number(totalAmount),
+      paidAmount: format === 'unpaid' ? 0 : Number(totalAmount),
+      remainingAmount: format === 'unpaid' ? Number(totalAmount) : 0,
+      paymentType: format === 'paid' ? "paid" : "credit",
+      description: "note",
+      transaction_date: date,
+      status:"pending",
+      bill_id: billData.id,
+      ...(format === 'unpaid' && formattedDueDate
+        ? { due_date: formattedDueDate }
+        : {}),
+      ...(transaction_for === "supplier"
+        ? { supplier_id: supplierInfo?.id }
+        : { customer_id: supplierInfo?.id }),
+    };
+    const URL = transaction_for === "supplier"
+      ? `/transactions/supplier/${billData.transaction_id}`
+      : `/transactions/customer/${billData.transaction_id}`;
+    const response = await ApiService.put(URL, payload);
 
     const invoice = response.data.transaction.id
     await sendTransaction(supplierInfo.mobile, supplierInfo.name, totalAmount, userName, invoice)

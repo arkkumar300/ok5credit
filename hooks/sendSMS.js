@@ -13,20 +13,40 @@ export const sendSMS = async (mobile, otp) => {
   };
   
 
-  export const sendTransaction = async (mobile, customerName, amount, userName, invoiceQuery) => {
-    // Build full URL with query string
-    const invoiceUrl = `https://aquaadmin.esotericprojects.tech/bill.html?id=${encodeURIComponent(invoiceQuery)}`;
+  export const sendTransaction = async (
+    mobile,
+    customerName,
+    amount,
+    userName,
+    invoiceQuery
+  ) => {
+    // Build invoice URL using the URL registered in the SMS template
+    const invoiceUrl = `https://admin.aquacredit.in/bill.html?id=${encodeURIComponent(
+      invoiceQuery
+    )}`;
   
-    // Build message according to template
-    const message = `AquaCredit: Hello ${customerName}, to approve the quotation of ${amount} from ${userName},\nplease visit ${invoiceUrl}\n-SIKHI SERVICES`;
+    // Message must match the DLT/template text
+    const message = `AquaCredit: Dear ${customerName}, approve bill ${amount}/- from ${userName}. Visit: ${invoiceUrl} -SIKHI SERVICES`;
   
-    // Encode message for URL
+    // Encode message for API request
     const encodedMessage = encodeURIComponent(message);
   
-    // Construct final SMS API URL
-    const url = `https://smslogin.co/v3/api.php?username=SIKHISERVICES&apikey=4f841d38d93faea3a7c2&mobile=${mobile}&senderid=SSSVLD&message=${encodedMessage}&templateid=1407176647106245979`;
-    
+    // Construct SMS API URL
+    const url =
+      `https://smslogin.co/v3/api.php` +
+      `?username=SIKHISERVICES` +
+      `&apikey=4f841d38d93faea3a7c2` +
+      `&mobile=${encodeURIComponent(mobile)}` +
+      `&senderid=SSSVLD` +
+      `&message=${encodedMessage}` +
+      `&templateid=1477178903143180752`;
+  
     const response = await fetch(url);
+  
+    if (!response.ok) {
+      throw new Error(`SMS API failed: ${response.status}`);
+    }
+  
     return response.text();
   };
   

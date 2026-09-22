@@ -386,7 +386,8 @@ export default function BillGenaration() {
 
     const renderTaxDetails = () =>
         items.map((item, index) => {
-          const taxable = item?.taxableAmount || 0;
+          console.log("item::",item)
+          const taxable = parseInt(item?.price)*parseInt(item?.quantity) || 0;
           const gst = parseFloat(item?.gstAmount || 0);
           const cess = parseFloat(item?.cessAmount || 0);
           const total = parseFloat(item?.total || 0);

@@ -1,14 +1,15 @@
 // ProfileScreen.js
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, SafeAreaView, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar} from 'react-native';
-import { X, Pencil, UserRound, Share2, Store, Phone, FileText, Hash, Building2, MapPin, Mail, User, Delete, ChevronRight, ArrowLeft, Camera, Image as ImageIcon, Check, X as XIcon, Award, TrendingUp, Wallet} from 'lucide-react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {View,Text,TextInput,SafeAreaView,StyleSheet,ScrollView,TouchableOpacity,Modal,Alert,ActivityIndicator,KeyboardAvoidingView,Platform,StatusBar} from 'react-native';
+import {User,Phone,Mail,MapPin,Delete,ChevronRight,ArrowLeft,Camera,Check,X as XIcon,TrendingUp,Wallet} from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Appbar, Avatar } from 'react-native-paper';
+import { Avatar } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ApiService from './components/ApiServices';
 import { LinearGradient } from 'expo-linear-gradient';
+import ApiService from './components/ApiServices';
+import getSignedUrl from './components/signedURL';
 
 const COLORS = {
   primary: '#0A4D3C',
@@ -32,45 +33,60 @@ const COLORS = {
   textMuted: '#94A3B8',
 };
 
+const DEFAULT_AVATAR =
+  'https://images.pexels.com/photos/3785079/pexels-photo-3785079.jpeg?auto=compress&cs=tinysrgb&w=400&h=400';
+
 const ProfileScreen = () => {
-  // State management
+  const router = useRouter();
+  const { ID, profileType } = useLocalSearchParams();
+
   const [activeModal, setActiveModal] = useState(null);
   const [profile, setProfile] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [imageUri, setImageUri] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const router = useRouter();
-  const { ID, profileType } = useLocalSearchParams();
+  const isCustomer = profileType === 'customer';
+  const endpoint = isCustomer ? `/customers/${ID}` : `/supplier/${ID}`;
 
-  // Fetch profile data
-  useEffect(() => {
-    fetchProfile();
-  }, [ID, profileType]);
+  useFocusEffect(
+    useCallback(() => {
+      if (profile?.photo) {
+        getSignedUrl(profile.photo).then(setImageUri);
+      }
+    }, [profile?.photo, getSignedUrl])
+  );
 
-  const fetchProfile = async () => {
+  // ---------- Fetch Profile ----------
+  const fetchProfile = useCallback(async () => {
     try {
       setLoading(true);
-      const userData = await AsyncStorage.getItem("userData");
-      const parsedUser = JSON.parse(userData);
-      const userId = parsedUser.id;
-      const ownerId = parsedUser.owner_user_id;
+      setError(null);
 
-      const URL = profileType === 'customer' ? `/customers/${ID}` : `/supplier/${ID}`;
-
-      const response = await ApiService.post(URL, { userId, ownerId });
-      const data = response.data;
-
-      if (profileType === 'customer') {
-        setProfile(data?.customer);
-      } else {
-        setProfile(data?.supplier);
+      const userData = await AsyncStorage.getItem('userData');
+      const parsedUser = userData ? JSON.parse(userData) : null;
+      if (!parsedUser?.id) {
+        throw new Error('User session not found');
       }
 
+      const { id: userId, owner_user_id: ownerId } = parsedUser;
+      const response = await ApiService.post(endpoint, { userId, ownerId });
+      const data = response?.data ?? {};
+
+      const profileData = isCustomer ? data?.customer : data?.supplier;
+      setProfile(profileData || null);
       setTransactions(data?.transactions || []);
-      setImageUri(data?.customer?.photo || data?.supplier?.photo);
-      setError(null);
+
+      // Resolve the photo path to a signed URL for display
+      const photoPath = profileData?.photo;
+      if (photoPath) {
+        const signedUrl = await getSignedUrl(photoPath);
+        setImageUri(signedUrl);
+      } else {
+        setImageUri(null);
+      }
     } catch (err) {
       console.error('Fetch error:', err);
       setError('Failed to load profile data');
@@ -78,111 +94,158 @@ const ProfileScreen = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [endpoint, isCustomer, getSignedUrl]);
 
+  useEffect(() => {
+    if (ID && profileType) fetchProfile();
+  }, [ID, profileType, fetchProfile]);
+
+  // ---------- Update Profile ----------
   const updateProfile = async (payload) => {
     try {
-      setLoading(true);
-      const userData = await AsyncStorage.getItem("userData");
-      const parsedUser = JSON.parse(userData);
-      const userId = parsedUser.id;
-      const ownerId = parsedUser.owner_user_id;
+      setSaving(true);
 
-      const updatedPayload = {
+      const userData = await AsyncStorage.getItem('userData');
+      const parsedUser = JSON.parse(userData);
+      const { id: userId, owner_user_id: ownerId } = parsedUser;
+
+      const response = await ApiService.put(endpoint, {
         ...payload,
         userId,
-        ownerId
-      };
+        ownerId,
+      });
 
-      const URL = profileType === 'customer' ? `/customers/${ID}` : `/supplier/${ID}`;
-      const response = await ApiService.put(URL, updatedPayload);
-
-      if (response?.data) {
-        const updatedData = profileType === 'customer'
+      const updatedData = response?.data
+        ? isCustomer
           ? response.data.customer
-          : response.data.supplier;
+          : response.data.supplier
+        : null;
 
+      if (updatedData) {
         setProfile(updatedData);
-        if (payload.photo) setImageUri(payload.photo);
 
-        Alert.alert('Success', 'Profile updated successfully!');
-        return updatedData;
+        // If a new photo path was saved, fetch a fresh signed URL
+        if (payload.photo) {
+          const signedUrl = await getSignedUrl(payload.photo);
+          setImageUri(signedUrl);
+        }
       }
+
+      return updatedData;
     } catch (err) {
       console.error('Update error:', err);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
+      return null;
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
+  // ---------- Image Handling ----------
   const handleImagePick = async (type) => {
     try {
-      const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-      const { status: libraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (cameraStatus !== 'granted' || libraryStatus !== 'granted') {
-        Alert.alert('Permission Required', 'Camera and photo library permissions are required.');
-        return;
+      if (type === 'camera') {
+        let permissionResult = await ImagePicker.getCameraPermissionsAsync();
+        if (permissionResult.status !== 'granted') {
+          permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+        }
+        if (permissionResult.status !== 'granted') {
+          Alert.alert(
+            'Permission Required',
+            'Camera permission is required to take a photo.'
+          );
+          return;
+        }
       }
+
+      if (type === 'gallery') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            'Permission Required',
+            'Photo library permission is required to choose an image.'
+          );
+          return;
+        }
+      }
+
+      const options = {
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      };
 
       let result;
       if (type === 'camera') {
-        result = await ImagePicker.launchCameraAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.8,
-        });
+        result = await ImagePicker.launchCameraAsync(options);
       } else {
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.8,
-        });
+        result = await ImagePicker.launchImageLibraryAsync(options);
       }
 
-      if (!result.canceled && result.assets[0].uri) {
-        const localUri = result.assets[0].uri;
-        setImageUri(localUri);
+      if (result.canceled || !result.assets?.[0]?.uri) return;
 
-        // Upload image
-        const formData = new FormData();
-        const fileName = localUri.split('/').pop();
-        const fileType = fileName.split('.').pop();
+      const localUri = result.assets[0].uri;
 
-        formData.append('file', {
-          uri: localUri,
-          name: fileName,
-          type: `image/${fileType}`,
-        });
+      // Optimistically show the local image while upload happens
+      setImageUri(localUri);
 
-        const uploadResponse = await ApiService.post('/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+      // Upload image
+      const fileName = localUri.split('/').pop();
+      const fileType = fileName.split('.').pop();
 
-        const photoUrl = `https://aquaservices.esotericprojects.tech/uploads/${uploadResponse.data.file_info.filename}`;
-        await updateProfile({ photo: photoUrl });
+      const formData = new FormData();
+      formData.append('file', {
+        uri: localUri,
+        name: fileName,
+        type: `image/${fileType}`,
+      });
+
+      const uploadResponse = await ApiService.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      // Backend now returns a file path/key instead of a full URL
+      const fileInfo = uploadResponse?.data?.file_info;
+      const filePath =
+        fileInfo?.url ||      // preferred: S3/MinIO key
+        fileInfo?.path ||      // preferred: S3/MinIO key
+        fileInfo?.key ||       // alternative key name
+        fileInfo?.filename;    // legacy fallback
+
+      if (!filePath) throw new Error('Upload did not return a file path');
+
+      // Save the PATH to the profile (not the URL)
+      const updated = await updateProfile({ photo: filePath });
+
+      if (updated) {
+        Alert.alert('Success', 'Profile photo updated successfully!');
       }
-    } catch (error) {
-      console.error('Image pick error:', error);
-      Alert.alert('Error', 'Failed to process image');
+    } catch (err) {
+      console.error('Image pick error:', err);
+      if (
+        err.message.includes('ActivityNotFoundException') ||
+        err.message.includes('No Activity found')
+      ) {
+        Alert.alert(
+          'Camera Not Available',
+          'The emulator or device does not have a camera app installed. Please use a physical device or install a camera app on the emulator.'
+        );
+      } else {
+        Alert.alert('Error', 'Failed to process image. Please try again.');
+      }
     }
   };
 
   const showImageOptions = () => {
-    Alert.alert(
-      'Update Profile Photo',
-      'Choose an option',
-      [
-        { text: 'Take Photo', onPress: () => handleImagePick('camera') },
-        { text: 'Choose from Gallery', onPress: () => handleImagePick('gallery') },
-        { text: 'Cancel', style: 'cancel' }
-      ]
-    );
+    Alert.alert('Update Profile Photo', 'Choose an option', [
+      { text: 'Take Photo', onPress: () => handleImagePick('camera') },
+      { text: 'Choose from Gallery', onPress: () => handleImagePick('gallery') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
+  // ---------- Delete ----------
   const handleDelete = () => {
     Alert.alert(
       'Delete Profile',
@@ -193,14 +256,15 @@ const ProfileScreen = () => {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            await updateProfile({ status: 'Inactive' });
-            router.back();
-          }
-        }
+            const result = await updateProfile({ status: 'Inactive' });
+            if (result) router.back();
+          },
+        },
       ]
     );
   };
 
+  // ---------- Loading / Error ----------
   if (loading && !profile) {
     return (
       <View style={styles.loadingContainer}>
@@ -210,7 +274,7 @@ const ProfileScreen = () => {
     );
   }
 
-  if (error) {
+  if (error && !profile) {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
@@ -221,11 +285,11 @@ const ProfileScreen = () => {
     );
   }
 
+  // ---------- UI ----------
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
 
-      {/* Premium Header with Gradient */}
       <LinearGradient
         colors={[COLORS.primary, COLORS.primaryLight]}
         start={{ x: 0, y: 0 }}
@@ -243,9 +307,11 @@ const ProfileScreen = () => {
             </TouchableOpacity>
 
             <View style={styles.headerTitleContainer}>
-              <Text style={styles.headerTitle}>{profile?.name || 'Profile'}</Text>
+              <Text style={styles.headerTitle} numberOfLines={1}>
+                {profile?.name || 'Profile'}
+              </Text>
               <Text style={styles.headerSubtitle}>
-                {profileType === 'customer' ? 'Customer Details' : 'Supplier Details'}
+                {isCustomer ? 'Customer Details' : 'Supplier Details'}
               </Text>
             </View>
 
@@ -258,13 +324,10 @@ const ProfileScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile Photo Section with Card */}
         <View style={styles.photoCard}>
           <View style={styles.avatarContainer}>
             <Avatar.Image
-              source={{
-                uri: imageUri || 'https://images.pexels.com/photos/3785079/pexels-photo-3785079.jpeg?auto=compress&cs=tinysrgb&w=400&h=400'
-              }}
+              source={{ uri: imageUri || DEFAULT_AVATAR }}
               size={100}
               style={styles.avatar}
             />
@@ -275,18 +338,24 @@ const ProfileScreen = () => {
               <Camera size={16} color={COLORS.white} />
             </TouchableOpacity>
           </View>
+
           <Text style={styles.profileName}>{profile?.name || 'No Name'}</Text>
+
           <View style={styles.profileTypeBadge}>
             <Text style={styles.profileTypeText}>
-              {profileType === 'customer' ? 'Customer' : 'Supplier'}
+              {isCustomer ? 'Customer' : 'Supplier'}
             </Text>
           </View>
         </View>
 
-        {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(10,77,60,0.1)' }]}>
+            <View
+              style={[
+                styles.statIconContainer,
+                { backgroundColor: 'rgba(10,77,60,0.1)' },
+              ]}
+            >
               <Wallet size={20} color={COLORS.primary} />
             </View>
             <Text style={styles.statNumber}>{transactions?.length || 0}</Text>
@@ -294,7 +363,12 @@ const ProfileScreen = () => {
           </View>
 
           <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(5,150,105,0.1)' }]}>
+            <View
+              style={[
+                styles.statIconContainer,
+                { backgroundColor: 'rgba(5,150,105,0.1)' },
+              ]}
+            >
               <TrendingUp size={20} color={COLORS.secondary} />
             </View>
             <Text style={styles.statNumber}>
@@ -304,7 +378,6 @@ const ProfileScreen = () => {
           </View>
         </View>
 
-        {/* Profile Information */}
         <View style={styles.infoCard}>
           <ProfileItem
             icon={User}
@@ -316,7 +389,7 @@ const ProfileScreen = () => {
           <ProfileItem
             icon={User}
             label="Nick Name"
-            value={profile?.nickName || 'Not provided'}
+            value={profile?.nickName || profile?.nick_name || 'Not provided'}
             onPress={() => setActiveModal('nickName')}
           />
 
@@ -346,19 +419,27 @@ const ProfileScreen = () => {
             style={[styles.item, styles.deleteItem]}
             onPress={handleDelete}
           >
-            <View style={[styles.iconContainer, { backgroundColor: 'rgba(220,38,38,0.1)' }]}>
+            <View
+              style={[
+                styles.iconContainer,
+                { backgroundColor: 'rgba(220,38,38,0.1)' },
+              ]}
+            >
               <Delete size={20} color={COLORS.error} />
             </View>
             <View style={styles.textContainer}>
-              <Text style={[styles.label, { color: COLORS.error }]}>Delete Profile</Text>
-              <Text style={styles.subtitle}>Remove this {profileType} permanently</Text>
+              <Text style={[styles.label, { color: COLORS.error }]}>
+                Delete Profile
+              </Text>
+              <Text style={styles.subtitle}>
+                Remove this {profileType} permanently
+              </Text>
             </View>
             <ChevronRight size={16} color={COLORS.gray} />
           </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/* Modals */}
       <EditModal
         visible={activeModal === 'name'}
         onClose={() => setActiveModal(null)}
@@ -367,16 +448,18 @@ const ProfileScreen = () => {
         field="name"
         onSave={updateProfile}
         placeholder="Enter full name"
+        saving={saving}
       />
 
       <EditModal
         visible={activeModal === 'nickName'}
         onClose={() => setActiveModal(null)}
         title="Edit Nick Name"
-        value={profile?.nickName}
+        value={profile?.nickName || profile?.nick_name}
         field="nickName"
         onSave={updateProfile}
         placeholder="Enter nick name"
+        saving={saving}
       />
 
       <EditModal
@@ -388,6 +471,7 @@ const ProfileScreen = () => {
         onSave={updateProfile}
         placeholder="Enter phone number"
         keyboardType="phone-pad"
+        saving={saving}
       />
 
       <EditModal
@@ -400,6 +484,7 @@ const ProfileScreen = () => {
         placeholder="Enter complete address"
         multiline
         numberOfLines={3}
+        saving={saving}
       />
 
       <EditModal
@@ -411,12 +496,13 @@ const ProfileScreen = () => {
         onSave={updateProfile}
         placeholder="Enter email address"
         keyboardType="email-address"
+        saving={saving}
       />
     </View>
   );
 };
 
-// Profile Item Component
+// ---------- ProfileItem ----------
 const ProfileItem = ({ icon: Icon, label, value, onPress, multiline }) => (
   <TouchableOpacity
     style={styles.item}
@@ -440,7 +526,7 @@ const ProfileItem = ({ icon: Icon, label, value, onPress, multiline }) => (
   </TouchableOpacity>
 );
 
-// Edit Modal Component
+// ---------- EditModal ----------
 const EditModal = ({
   visible,
   onClose,
@@ -451,25 +537,27 @@ const EditModal = ({
   placeholder,
   keyboardType = 'default',
   multiline = false,
-  numberOfLines = 1
+  numberOfLines = 1,
+  saving = false,
 }) => {
   const [inputValue, setInputValue] = useState(value || '');
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setInputValue(value || '');
-  }, [value]);
+    if (visible) setInputValue(value || '');
+  }, [value, visible]);
 
   const handleSave = async () => {
-    if (!inputValue.trim()) {
+    const trimmed = inputValue.trim();
+    if (!trimmed) {
       Alert.alert('Error', 'Please enter a value');
       return;
     }
 
-    setLoading(true);
-    await onSave({ [field]: inputValue.trim() });
-    setLoading(false);
-    onClose();
+    const result = await onSave({ [field]: trimmed });
+    if (result) {
+      Alert.alert('Success', 'Profile updated successfully!');
+      onClose();
+    }
   };
 
   return (
@@ -497,10 +585,7 @@ const EditModal = ({
           </View>
 
           <TextInput
-            style={[
-              styles.modalInput,
-              multiline && styles.modalTextArea
-            ]}
+            style={[styles.modalInput, multiline && styles.modalTextArea]}
             value={inputValue}
             onChangeText={setInputValue}
             placeholder={placeholder}
@@ -509,12 +594,14 @@ const EditModal = ({
             multiline={multiline}
             numberOfLines={numberOfLines}
             autoFocus
+            editable={!saving}
           />
 
           <View style={styles.modalActions}>
             <TouchableOpacity
               style={[styles.modalButton, styles.cancelButton]}
               onPress={onClose}
+              disabled={saving}
             >
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
@@ -522,9 +609,9 @@ const EditModal = ({
             <TouchableOpacity
               style={[styles.modalButton, styles.saveButton]}
               onPress={handleSave}
-              disabled={loading}
+              disabled={saving}
             >
-              {loading ? (
+              {saving ? (
                 <ActivityIndicator size="small" color={COLORS.white} />
               ) : (
                 <>
@@ -540,11 +627,9 @@ const EditModal = ({
   );
 };
 
+// ---------- Styles ----------
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
   headerGradient: {
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     borderBottomLeftRadius: 30,
@@ -570,10 +655,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitleContainer: {
-    alignItems: 'center',
-    flex: 1,
-  },
+  headerTitleContainer: { alignItems: 'center', flex: 1 },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -585,9 +667,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
   },
-  headerRight: {
-    width: 40,
-  },
+  headerRight: { width: 40 },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -617,14 +697,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 25,
   },
-  retryButtonText: {
-    color: COLORS.white,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  scrollContent: {
-    padding: 16,
-  },
+  retryButtonText: { color: COLORS.white, fontSize: 15, fontWeight: '600' },
+  scrollContent: { padding: 16 },
   photoCard: {
     backgroundColor: COLORS.cardBg,
     borderRadius: 24,
@@ -639,19 +713,11 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  avatarContainer: {
-    position: 'relative',
-    marginBottom: 16,
-  },
+  avatarContainer: { position: 'relative', marginBottom: 16 },
   avatar: {
     backgroundColor: COLORS.lighterGray,
     borderWidth: 3,
     borderColor: COLORS.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
   cameraButton: {
     position: 'absolute',
@@ -665,10 +731,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: COLORS.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
     elevation: 3,
   },
   profileName: {
@@ -702,10 +764,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
     elevation: 2,
   },
   statIconContainer: {
@@ -722,21 +780,13 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     marginBottom: 4,
   },
-  statLabel: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-  },
+  statLabel: { fontSize: 11, color: COLORS.textSecondary, fontWeight: '500' },
   infoCard: {
     backgroundColor: COLORS.cardBg,
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
     elevation: 2,
   },
   item: {
@@ -746,9 +796,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  deleteItem: {
-    borderBottomWidth: 0,
-  },
+  deleteItem: { borderBottomWidth: 0 },
   iconContainer: {
     width: 38,
     height: 38,
@@ -758,9 +806,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  textContainer: {
-    flex: 1,
-  },
+  textContainer: { flex: 1 },
   label: {
     fontSize: 11,
     color: COLORS.textSecondary,
@@ -769,25 +815,11 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  value: {
-    fontSize: 15,
-    color: COLORS.textPrimary,
-    fontWeight: '600',
-  },
-  multilineValue: {
-    lineHeight: 20,
-  },
-  subtitle: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    marginTop: 2,
-  },
+  value: { fontSize: 15, color: COLORS.textPrimary, fontWeight: '600' },
+  multilineValue: { lineHeight: 20 },
+  subtitle: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
 
-  // Modal Styles
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
+  modalContainer: { flex: 1, justifyContent: 'flex-end' },
   modalOverlay: {
     position: 'absolute',
     top: 0,
@@ -809,11 +841,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: COLORS.primary },
   modalCloseButton: {
     width: 38,
     height: 38,
@@ -833,15 +861,8 @@ const styles = StyleSheet.create({
     minHeight: 56,
     backgroundColor: COLORS.background,
   },
-  modalTextArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
+  modalTextArea: { minHeight: 100, textAlignVertical: 'top' },
+  modalActions: { flexDirection: 'row', gap: 12 },
   modalButton: {
     flex: 1,
     flexDirection: 'row',
@@ -856,19 +877,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  saveButton: {
-    backgroundColor: COLORS.primary,
-  },
+  saveButton: { backgroundColor: COLORS.primary },
   cancelButtonText: {
     color: COLORS.textSecondary,
     fontSize: 15,
     fontWeight: '600',
   },
-  saveButtonText: {
-    color: COLORS.white,
-    fontSize: 15,
-    fontWeight: '600',
-  },
+  saveButtonText: { color: COLORS.white, fontSize: 15, fontWeight: '600' },
 });
 
 export default ProfileScreen;

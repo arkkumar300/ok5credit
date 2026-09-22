@@ -105,7 +105,7 @@ export default function LoginScreen() {
                   style={styles.phoneInput}
                   value={phoneNumber}
                   onChangeText={handleChange}
-                  placeholder="98765 43210"
+                  placeholder="Mobile Number"
                   placeholderTextColor="rgba(10,77,60,0.3)"
                   keyboardType="numeric"
                   maxLength={10}

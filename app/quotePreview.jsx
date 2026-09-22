@@ -70,7 +70,7 @@ export default function QuotePreview() {
       });
 
       const uploadJson = await response.data;
-      const uploadedPath = `https://aquaservices.esotericprojects.tech/uploads/${uploadJson.file_info.filename}`;
+      const uploadedPath = uploadJson.file_info.url;
       handleSave(uploadedPath)
     } catch (error) {
       console.error("error ::", error);

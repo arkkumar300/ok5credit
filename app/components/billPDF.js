@@ -1,7 +1,7 @@
 // billPDF.js
 
 import * as Print from 'expo-print';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 
 const billPDF = async (userDetails, customerInfo, bill, items, charges, totalAmount) => {
   const currentDate = new Date().toLocaleDateString('en-IN', {
