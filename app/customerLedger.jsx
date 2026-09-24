@@ -253,7 +253,7 @@ export default function CustomerLedger() {
                         <View style={[styles.iconBadge, { backgroundColor: '#E8F5E9' }]}>
                             <ArrowDown size={14} color="#0A4D3C" />
                         </View>
-                        <Text style={styles.paymentAmount}>₹{item.amount.toFixed(2)}</Text>
+                        <Text style={styles.paymentAmount}>₹{Number(item.amount.toFixed(2))}</Text>
                     </View>
                 )}
             </View>
@@ -264,7 +264,7 @@ export default function CustomerLedger() {
                         <View style={[styles.iconBadge, { backgroundColor: '#FEE2E2' }]}>
                             <ArrowUp size={14} color="#EF4444" />
                         </View>
-                        <Text style={styles.creditAmount}>₹{item.amount.toFixed(2)}</Text>
+                        <Text style={styles.creditAmount}>₹{Number(item.amount.toFixed(2))}</Text>
                     </View>
                 )}
             </View>

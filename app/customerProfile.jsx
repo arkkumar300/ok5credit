@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import ApiService from './components/ApiServices';
 import getSignedUrl from './components/signedURL';
+import { useFocusEffect } from '@react-navigation/native';
 
 const COLORS = {
   primary: '#0A4D3C',

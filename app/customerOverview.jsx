@@ -295,7 +295,7 @@ export default function CustomerOverview() {
         </View>
         <View style={styles.transactionRight}>
           <Text style={[styles.transactionAmount, { color: isCredit ? '#DC2626' : '#0A4D3C' }]}>
-            {isCredit ? '↑' : '↓'} ₹{item.amount}
+            {isCredit ? '↑' : '↓'} ₹{parseFloat(item.amount)}
           </Text>
         </View>
       </View>

@@ -199,7 +199,7 @@ export default function BillPreview() {
       ownerId,
       created_user: userId,
       transaction_type: "you_gave",
-      transaction_for: transaction_for,
+      transaction_for: billData.transaction_for,
       amount: Number(totalAmount),
       paidAmount: format === 'unpaid' ? 0 : Number(totalAmount),
       remainingAmount: format === 'unpaid' ? Number(totalAmount) : 0,
@@ -215,6 +215,8 @@ export default function BillPreview() {
         ? { supplier_id: supplierInfo?.id }
         : { customer_id: supplierInfo?.id }),
     };
+
+    console.log("payload::",payload)
     const URL = transaction_for === "supplier"
       ? `/transactions/supplier/${billData.transaction_id}`
       : `/transactions/customer/${billData.transaction_id}`;
@@ -262,6 +264,7 @@ export default function BillPreview() {
       amount: Number(totalAmount),
       bill_id: bill,
       userId:userId,
+      transaction_type: "you_gave",
       description: `i have given ${totalAmount} to ${supplierInfo?.name} on ${moment().format('YYYY-MM-DD')}`,
       bill_date: moment().format("YYYY-MM-DD"),
       paymentType: format === 'paid' ? "paid" : "credit",
@@ -273,15 +276,15 @@ export default function BillPreview() {
     const billResponse = await ApiService.put(`/bill/${bill_prm_id}`, payload);
     const encodedCustomer = encodeURIComponent(JSON.stringify(supplierInfo));
 
-    router.push({
-      pathname: "/billDetails",
-      params: {
-        billId: bill_prm_id,
-        supplierInfo: encodedCustomer,
-        bill,
-        transaction_for
-      }
-    });
+    // router.push({
+    //   pathname: "/billDetails",
+    //   params: {
+    //     billId: bill_prm_id,
+    //     supplierInfo: encodedCustomer,
+    //     bill,
+    //     transaction_for
+    //   }
+    // });
     return billResponse.data.bill;
   };
 

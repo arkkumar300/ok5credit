@@ -32,7 +32,7 @@ const TransactionItem = React.memo(({ item, personName, router, customer }) => {
           <View style={styles.amountRow}>
             <Delete size={20} color="gray" />
             <Text style={[styles.amountText, styles.deletedText]}>
-              ₹ {item.amount}
+              ₹ {parseFloat(item.amount)}
             </Text>
           </View>
           <Text style={[styles.timeText, styles.deletedText]}>
@@ -170,7 +170,7 @@ const TransactionItem = React.memo(({ item, personName, router, customer }) => {
               <File size={24} color="green" />
               <Text style={styles.billText}>{item.bill_id}</Text>
               <Text style={[styles.amountText, styles.billAmount]}>
-                ₹ {item.amount}
+                ₹ {parseFloat(item.amount)}
               </Text>
               <ChevronRight size={24} color="green" />
             </TouchableOpacity>
@@ -187,7 +187,7 @@ const TransactionItem = React.memo(({ item, personName, router, customer }) => {
             >
               {renderImage()}
               <Text style={[styles.amountText, styles.imageAmount]}>
-                ₹ {item.amount}
+                ₹ {parseFloat(item.amount)}
               </Text>
               <ChevronRight size={24} color="green" />
             </TouchableOpacity>

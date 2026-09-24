@@ -33,7 +33,7 @@ const formatSectionDate = (date) => {
     return inputDate.format('DD MMM YYYY'); // Returns date like 15 Mar 2024
   }
 };
-
+ 
 // Modal component for discount
 const DiscountModal = ({ visible, onClose, onSubmit, loading }) => {
   const [discountAmount, setDiscountAmount] = useState('');
@@ -209,7 +209,7 @@ const TransactionItem = React.memo(({ item, personName, router, customer, userDe
           <View style={styles.amountRow}>
             <Delete size={20} color="gray" />
             <Text style={[styles.amountText, styles.deletedText]}>
-              ₹ {item.amount}
+              ₹ {parseFloat(item.amount)}
             </Text>
           </View>
           <Text style={[styles.timeText, styles.deletedText]}>
@@ -363,7 +363,7 @@ const TransactionItem = React.memo(({ item, personName, router, customer, userDe
               <File size={24} color="green" />
               <Text style={styles.billText}>{item.bill_id}</Text>
               <Text style={[styles.amountText, styles.billAmount]}>
-                ₹ {item.amount}
+                ₹ {parseFloat(item.amount)}
               </Text>
               <ChevronRight size={24} color="green" />
             </TouchableOpacity>
@@ -380,7 +380,7 @@ const TransactionItem = React.memo(({ item, personName, router, customer, userDe
             >
               {renderImage()}
               <Text style={[styles.amountText, styles.imageAmount]}>
-                ₹ {item.amount}
+                ₹ {parseFloat(item.amount)}
               </Text>
               <ChevronRight size={24} color="green" />
             </TouchableOpacity>

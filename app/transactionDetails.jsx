@@ -305,12 +305,10 @@ const [rawPaths, setRawPaths] = useState([]);
       Alert.alert("Invalid Amount", "Please enter a valid number.");
       return;
     }
-
+console.log("ID::",transaction.id)
     try {
       const url = transaction.transaction_for === "customer" ? `/transactions/customer/${transaction.id}` : `/transactions/supplier/${transaction.id}`;
 
-      // If transaction_for === "customer" → send customer_id
-      // If transaction_for === "supplier" → send supplier_id
       const idPayload =
         transaction.transaction_for === "customer"
           ? { customer_id: transaction.customer_id }
@@ -342,13 +340,13 @@ const [rawPaths, setRawPaths] = useState([]);
         Alert.alert("Update Failed", response.data?.message || "Unknown error");
       }
     } catch (error) {
-      console.error("API Error:", error);
+      console.error("API Error:", error.message);
       Alert.alert("Error", "Something went wrong!");
     }
   };
 
   const handleUpdateTransactionPics = async (updatedImages) => {
-    console.log("rrr::",updatedImages)
+
     try {
       const url = `/transactions/${transaction.id}`
 

@@ -30,7 +30,7 @@ const { width } = Dimensions.get('window');
 export default function DefaulterDetails() {
   const router = useRouter();
   const { customerId, customerName } = useLocalSearchParams();
-  
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -49,11 +49,11 @@ export default function DefaulterDetails() {
 
       const userId = JSON.parse(userData).id;
       const ownerId = JSON.parse(userData).owner_user_id;
-      
+
       const response = await ApiService.get(`/transactions/defaulters/customer/${customerId}`, {
         params: { userId, ownerId }
       });
-      
+
       if (response.data.success) {
         const data = response.data.data;
         setDefaulterData(data);
@@ -85,7 +85,7 @@ export default function DefaulterDetails() {
 
   const getStageColor = (stage) => {
     if (!stage) return '#64748B';
-    switch(stage) {
+    switch (stage) {
       case 'stage1': return '#F97316'; // Orange
       case 'stage2': return '#EA580C'; // Dark Orange
       case 'stage3': return '#DC2626'; // Red
@@ -96,7 +96,7 @@ export default function DefaulterDetails() {
 
   const getStageBgColor = (stage) => {
     if (!stage) return '#F1F5F9';
-    switch(stage) {
+    switch (stage) {
       case 'stage1': return '#FFF7ED';
       case 'stage2': return '#FFEDD5';
       case 'stage3': return '#FEE2E2';
@@ -107,7 +107,7 @@ export default function DefaulterDetails() {
 
   const getStageText = (stage) => {
     if (!stage) return 'No Stage';
-    switch(stage) {
+    switch (stage) {
       case 'stage1': return 'Stage 1 - Initial Reminder';
       case 'stage2': return 'Stage 2 - Follow Up';
       case 'stage3': return 'Stage 3 - Final Notice';
@@ -117,7 +117,7 @@ export default function DefaulterDetails() {
   };
 
   const getStageIcon = (stage) => {
-    switch(stage) {
+    switch (stage) {
       case 'stage1': return <Clock size={20} color="#F97316" />;
       case 'stage2': return <AlertTriangle size={20} color="#EA580C" />;
       case 'stage3': return <AlertOctagon size={20} color="#DC2626" />;
@@ -463,8 +463,7 @@ export default function DefaulterDetails() {
                             ? styles.positiveBalance
                             : styles.negativeBalance
                         ]}>
-                          ₹ {transaction.amount?.toFixed(2)}
-                        </Text>
+                          ₹ {Number(transaction.amount || 0).toFixed(2)}                        </Text>
                       </View>
                       {transaction.description && (
                         <Text style={styles.transactionDesc}>
