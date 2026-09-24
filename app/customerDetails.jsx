@@ -33,7 +33,7 @@ const formatSectionDate = (date) => {
     return inputDate.format('DD MMM YYYY'); // Returns date like 15 Mar 2024
   }
 };
- 
+
 // Modal component for discount
 const DiscountModal = ({ visible, onClose, onSubmit, loading }) => {
   const [discountAmount, setDiscountAmount] = useState('');
@@ -149,7 +149,7 @@ const DiscountModal = ({ visible, onClose, onSubmit, loading }) => {
 const FALLBACK_IMAGE =
   'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg';
 
-  // Cache signed URLs so we don't refetch the same path on every render
+// Cache signed URLs so we don't refetch the same path on every render
 const signedUrlCache = new Map();
 export const clearSignedUrlCache = () => signedUrlCache.clear();
 
@@ -262,14 +262,14 @@ const TransactionItem = React.memo(({ item, personName, router, customer, userDe
   const renderImage = () => {
     const images = parseTransactionImages(item?.transaction_pic);
     const firstImage = images.length > 0 ? images[0] : null;
-  
+
     return (
       <TransactionThumbnail
         rawPath={firstImage}
         style={styles.transactionImage}
       />
     );
-  };  
+  };
   const getEmployeeStatusIcon = () => {
     switch (status) {
       case "approved":
@@ -557,37 +557,48 @@ Your current balance is ₹${balance} ${balanceType}`;
 
 
 
-  const handleAddTransaction = async (transactionType) => {
-    if (!subscription || !subscription?.isActive) {
-      if (transactionType === 'you_got' && payment_got_count_user >= 10) {
-        setError('You have reached the limit for received transactions in Basic plan');
-        return;
+  const handleAddTransaction = useCallback(
+    (transactionType) => {
+      if (!subscription || !subscription?.isActive) {
+        if (transactionType === 'you_got' && payment_got_count_user >= 3) {
+          setError('You have reached the limit for received transactions in Basic plan');
+          return;
+        }
+        if (transactionType === 'you_gave' && credit_given_count_user >= 3) {
+          setError('You have reached the limit for given transactions in Basic plan');
+          return;
+        }
       }
-      if (transactionType === 'you_gave' && credit_given_count_user >= 30) {
-        setError('You have reached the limit for given transactions in Basic plan');
-        return;
+      // Check expired subscription
+      if (subscription && subscription?.hasExpired) {
+        setError("Your subscription has expired");
+        return false;
       }
-    }
-    // Check expired subscription
-    if (subscription && subscription?.hasExpired) {
-      setError("Your subscription has expired");
-      return false;
-    }
 
-    router.push({
-      pathname: '/transaction',
-      params: {
-        transactionType,
-        transaction_for: 'customer',
-        id: personId,
-        mobile: customerMobile,
-        personName: personName,
-        isSubscribe_user:subscription?.isActive,
-        userAmountStatus: `₹ ${Math.abs(customer?.current_balance || 0)} ${Number(customer?.current_balance) > 0 ? 'Advance' : 'Due'}`,
-        transaction_limit: transactionType === 'you_got' ? payment_got_count_user : credit_given_count_user,
-      },
-    });
-  };
+      router.push({
+        pathname: '/transaction',
+        params: {
+          transactionType,
+          transaction_for: 'customer',
+          id: personId,
+          mobile: customerMobile,
+          personName: personName,
+          isSubscribe_user: subscription?.isActive,
+          userAmountStatus: `₹ ${Math.abs(customer?.current_balance || 0)} ${Number(customer?.current_balance) > 0 ? 'Advance' : 'Due'}`,
+          transaction_limit: transactionType === 'you_got' ? payment_got_count_user : credit_given_count_user,
+        },
+      });
+    },
+    [
+      router,
+      personId,
+      customerMobile,
+      personName,
+      subscription?.isActive,
+      payment_got_count_user,
+      credit_given_count_user,
+    ]
+  )
 
   const handleDiscountSubmit = async ({ amount, note }) => {
     setDiscountLoading(true);
@@ -1096,30 +1107,30 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingHorizontal: 12,
   },
-sectionHeader: {
-  backgroundColor: 'rgba(10,77,60,0.08)',
-  paddingVertical: 6,
-  paddingHorizontal: 16,
-  marginTop: 16,
-  marginBottom: 8,
-  borderRadius: 20,
-  alignSelf: 'center',
-  borderWidth: 1,
-  borderColor: 'rgba(10,77,60,0.2)',
-  width: 120, // Fixed width
-  alignItems: 'center',
-  justifyContent: 'center',
-},
+  sectionHeader: {
+    backgroundColor: 'rgba(10,77,60,0.08)',
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    borderRadius: 20,
+    alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(10,77,60,0.2)',
+    width: 120, // Fixed width
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
-sectionHeaderText: {
-  fontSize: 13,
-  fontWeight: '600',
-  color: '#0A4D3C',
-  textTransform: 'uppercase',
-  letterSpacing: 0.5,
-  textAlign: 'center',
-  width: '100%', // Take full width of parent
-},
+  sectionHeaderText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0A4D3C',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+    width: '100%', // Take full width of parent
+  },
   transactionWrapper: {
     marginVertical: 4,
   },
