@@ -58,6 +58,7 @@ export default function OTPScreen() {
       if (!response.data.success)
         throw new Error(response.data.message || "Failed to send OTP");
       const genrateOTP=response.data.otp
+console.log("OTP::",genrateOTP)
       await sendSMS(cleanMobile, genrateOTP);
 
       setOtp(Array(6).fill("")); // clear UI

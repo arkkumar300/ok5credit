@@ -216,7 +216,7 @@ export default function TransactionDetails() {
     }
 
     const result = await ImagePicker.launchCameraAsync({
-      quality: 0.7,
+      quality: 0.5,
     });
 
     if (!result.canceled) {
@@ -242,7 +242,7 @@ export default function TransactionDetails() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      quality: 0.7,
+      quality: 0.5,
       allowsMultipleSelection: true,
     });
 

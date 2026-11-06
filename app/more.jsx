@@ -166,7 +166,7 @@ export default function MoreScreen() {
       // Razorpay options
       const options = {
         description: `Renew ${data.plan_name} Subscription`,
-        image: "../assets/images/icon.png",
+        image: "../assets/images/aqualogo.png",
         currency: "INR",
         key: YOUR_RAZORPAY_KEY_ID,
         amount: data.amount,

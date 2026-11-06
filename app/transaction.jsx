@@ -347,7 +347,7 @@ export default function TransactionScreen() {
     try {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["images"],
-        quality: 1,
+        quality: 0.5,
         allowsEditing: false,
         saveToPhotos: true,
       });
@@ -378,7 +378,7 @@ export default function TransactionScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         allowsMultipleSelection: true,
-        quality: 1,
+        quality: 0.5,
       });
 
       if (!result.canceled) {

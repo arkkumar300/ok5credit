@@ -103,6 +103,7 @@ export default function DashboardScreen() {
           amount: parseFloat(c.current_balance),
           type: parseFloat(c.current_balance) <= 0 ? "Due" : "Advance",
           date: new Date(c.created_at).toDateString(),
+          due_date: c.due_date ? new Date(c.due_date).toDateString():null,
           initial: c.name?.charAt(0).toUpperCase(),
           color: "#4CAF50",
           created_by: c.created_user,
@@ -117,6 +118,7 @@ export default function DashboardScreen() {
           amount: parseFloat(s.current_balance),
           type: parseFloat(s.current_balance) >= 0 ? "Due" : "Advance",
           date: new Date(s.created_at).toDateString(),
+          due_date: s.due_date ? new Date(s.due_date).toDateString():null,
           initial: s.name?.charAt(0).toUpperCase(),
           color: "#2196F3",
           created_by: s.created_user,
@@ -501,7 +503,7 @@ export default function DashboardScreen() {
             currentData.map((person, index) => (
               <TouchableOpacity
                 key={person.id}
-                style={[styles.personCard, { borderLeftColor: getStageColor(person.defaulter_stage), borderLeftWidth: 10, borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }]}
+                style={[styles.personCard, { borderLeftColor: getStageColor(person.defaulter_stage), borderLeftWidth: 10, borderTopLeftRadius: 8, borderBottomLeftRadius: 8,marginTop:8 }]}
                 onPress={() => handlePersonClick(person)}
                 activeOpacity={0.7}
               >
@@ -517,6 +519,12 @@ export default function DashboardScreen() {
                         {person.type === 'Advance' ? 'Payment Added' : 'Credit Added'} • {person.date}
                       </Text>
                     </View>
+                    {(person?.due_date && person.type !== 'Advance')&& <View style={styles.paymentInfo}>
+                      <CheckCircle size={10} color="#0A4D3C" />
+                      <Text style={styles.paymentText}>
+                        DueDate • {person?.due_date}
+                      </Text>
+                    </View>}
                   </View>
 
                   <View style={styles.amountContainer}>

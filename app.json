@@ -5,14 +5,14 @@
     "version": "1.0.0",
     "owner": "pentapillisuresh",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/aqualogo.png",
     "scheme": "aquacredit",
     "userInterfaceStyle": "automatic",
     "useNextNotificationsApi": true,
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sureshpentapilli.aquacredit",
+      "bundleIdentifier": "com.sikiservices.aquacredit",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to use Face ID to securely authenticate you and protect your financial data."
@@ -41,14 +41,14 @@
       }
     },
     "android": {
-      "package": "com.sureshpentapilli.aquacredit",
-      "googleServicesFile": "./android/app/google-services.json",
+      "package": "com.sikiservices.aquacredit",
+      "googleServicesFile": "./google-services.json",
       "useNextNotificationsApi": true,
       "permissions": [
         "USE_BIOMETRIC"
       ],
       "associatedDomains": [
-        "applinks:aquaadmin.esotericprojects.tech"
+        "applinks:admin.aquacredit.in"
       ],
       "intentFilters": [
         {
@@ -60,7 +60,7 @@
           ],
           "data": {
             "scheme": "https",
-            "host": "aquaadmin.esotericprojects.tech",
+            "host": "admin.aquacredit.in",
             "pathPrefix": "/refer"
           }
         }

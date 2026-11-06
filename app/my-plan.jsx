@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import {View,Text,StyleSheet,TouchableOpacity,SafeAreaView,ScrollView,Alert,Modal,TextInput,StatusBar,Platform} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Alert, Modal, TextInput, StatusBar, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import {Smartphone,X,Check,FileText,Headphones,Monitor,Image,Package,Share,TrendingUp,Settings,MoreHorizontal,Minus,Plus,User,Award,Clock,ChevronRight,ArrowLeft,Users,CreditCard,Zap,Star,Crown,CheckCircle} from "lucide-react-native";
+import { Smartphone, X, Check, FileText, Headphones, Monitor, Image, Package, Share, TrendingUp, Settings, MoreHorizontal, Minus, Plus, User, Award, Clock, ChevronRight, ArrowLeft, Users, CreditCard, Zap, Star, Crown, CheckCircle } from "lucide-react-native";
 import { ActivityIndicator, Appbar, Avatar, RadioButton } from 'react-native-paper';
 import RazorpayCheckout from 'react-native-razorpay';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -120,17 +120,24 @@ export default function MyPlanScreen() {
       if (!userData) {
         Alert.alert("Error", "User data not found. Please login again.");
         return;
-      }      
+      }
       const userDetails = JSON.parse(userData);
-
-      // Call verification endpoint
-      const verifyRes = await ApiService.post(`/payment_rozarpay/verify-payment`, {
+      console.log("paymentpayload::", "\nrazorpay_order_id:", paymentData.razorpay_order_id,
+        "\nrazorpay_payment_id:", paymentData.razorpay_payment_id,
+        "\nrazorpay_signature:", paymentData.razorpay_signature,
+        "\nsubscriber_phone:", userDetails.mobile,
+        "\nNOU:", userCount
+      )
+      const paymentPayload = {
         razorpay_order_id: paymentData.razorpay_order_id,
         razorpay_payment_id: paymentData.razorpay_payment_id,
         razorpay_signature: paymentData.razorpay_signature,
         subscriber_phone: userDetails.mobile,
-        NOU:userCount
-      });
+        NOU: userCount
+      }
+      // Call verification endpoint
+      const verifyRes = await ApiService.post(`/payment_rozarpay/verify-payment`, paymentPayload);
+      console.log("payment response::", verifyRes)
       if (verifyRes.data.success) {
         Alert.alert(
           "Success",
@@ -142,11 +149,13 @@ export default function MyPlanScreen() {
       }
     } catch (error) {
       console.error("Payment verification error:", error);
-        Alert.alert(
-          "Success",
-          "Payment completed! Your subscription will be activated shortly.",
-          [{ text: "OK", onPress: () => router.push('/dashboard') }]
-        );
+      // Only show "activated shortly" if the *client* payment succeeded
+      if (error?.response?.data?.message === "Invalid signature") {
+        Alert.alert("Verification Failed", "Please contact support with payment ID: " + paymentData.razorpay_payment_id);
+      } else {
+        Alert.alert("Verification Pending", "Payment completed! Your subscription will be activated shortly.",
+          [{ text: "OK", onPress: () => router.push('/dashboard') }]);
+      }
     }
   };
 
@@ -190,7 +199,7 @@ export default function MyPlanScreen() {
       // Razorpay options
       const options = {
         description: `Payment for ${selectedPlanData.name} Plan (${userCount} user${userCount > 1 ? 's' : ''})`,
-        image: "../assets/images/icon.png",
+        image: "../assets/images/aqualogo.png",
         currency: "INR",
         key: YOUR_RAZORPAY_KEY_ID,
         amount: totalPrice * 100, // Amount in paise

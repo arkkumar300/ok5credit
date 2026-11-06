@@ -560,11 +560,11 @@ Your current balance is ₹${balance} ${balanceType}`;
   const handleAddTransaction = useCallback(
     (transactionType) => {
       if (!subscription || !subscription?.isActive) {
-        if (transactionType === 'you_got' && payment_got_count_user >= 3) {
+        if (transactionType === 'you_got' && payment_got_count_user >= 30) {
           setError('You have reached the limit for received transactions in Basic plan');
           return;
         }
-        if (transactionType === 'you_gave' && credit_given_count_user >= 3) {
+        if (transactionType === 'you_gave' && credit_given_count_user >= 30) {
           setError('You have reached the limit for given transactions in Basic plan');
           return;
         }

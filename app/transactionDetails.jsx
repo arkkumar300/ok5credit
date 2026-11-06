@@ -240,7 +240,7 @@ const [rawPaths, setRawPaths] = useState([]);
     }
   
     const result = await ImagePicker.launchCameraAsync({
-      quality: 0.7,
+      quality: 0.5,
     });
   
     if (result.canceled) return;
@@ -270,7 +270,7 @@ const [rawPaths, setRawPaths] = useState([]);
     }
   
     const result = await ImagePicker.launchImageLibraryAsync({
-      quality: 0.7,
+      quality: 0.5,
       allowsMultipleSelection: true,
     });
   

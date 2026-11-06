@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "153863750865",
-    "project_id": "aquacredit-421a9",
-    "storage_bucket": "aquacredit-421a9.firebasestorage.app"
+    "project_number": "736708084968",
+    "project_id": "aquacredit-b2ee3",
+    "storage_bucket": "aquacredit-b2ee3.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:153863750865:android:b945d27bcb745955bbb1f0",
+        "mobilesdk_app_id": "1:736708084968:android:9466c745b7d6744200f55d",
         "android_client_info": {
-          "package_name": "com.sureshpentapilli.aquacredit"
+          "package_name": "com.sikiservices.aquacredit"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBqfyy4eEsSIbhAhToi4zTMqugnpXXQxsw"
+          "current_key": "AIzaSyAl_-jkY75YHulDgV6Sn1GBFuaZwDYnUFU"
         }
       ],
       "services": {

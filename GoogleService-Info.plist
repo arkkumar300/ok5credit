@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>AIzaSyDJAoTVB3iNCXp0SGpaSv7iX5VpZhj1-9w</string>
+	<string>AIzaSyCCbclwq1VYCOIMzc9jp4IxrvEMNLp2JdQ</string>
 	<key>GCM_SENDER_ID</key>
-	<string>153863750865</string>
+	<string>736708084968</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.sureshpentapilli.aquacredit</string>
+	<string>com.sikiservices.aquacredit</string>
 	<key>PROJECT_ID</key>
-	<string>aquacredit-421a9</string>
+	<string>aquacredit-b2ee3</string>
 	<key>STORAGE_BUCKET</key>
-	<string>aquacredit-421a9.firebasestorage.app</string>
+	<string>aquacredit-b2ee3.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:153863750865:ios:4c34e40a9dc3fecbbbb1f0</string>
+	<string>1:736708084968:ios:17df1c54ce3cc41d00f55d</string>
 </dict>
 </plist>

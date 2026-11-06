@@ -73,7 +73,7 @@ export default function QuotationDetails() {
         // Capture and share image
         const uri = await captureRef(quoteRef, {
           format: 'png',
-          quality: 1,
+          quality: 0.5,
         });
         await Sharing.shareAsync(uri);
         setDownloading(false);

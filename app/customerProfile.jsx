@@ -174,7 +174,7 @@ const ProfileScreen = () => {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.8,
+        quality: 0.5,
       };
 
       let result;
@@ -233,6 +233,7 @@ const ProfileScreen = () => {
           'The emulator or device does not have a camera app installed. Please use a physical device or install a camera app on the emulator.'
         );
       } else {
+        console.log("error::",err)
         Alert.alert('Error', 'Failed to process image. Please try again.');
       }
     }
@@ -312,7 +313,7 @@ const ProfileScreen = () => {
                 {profile?.name || 'Profile'}
               </Text>
               <Text style={styles.headerSubtitle}>
-                {isCustomer ? 'Customer Details' : 'Supplier Details'}
+                {isCustomer ? 'Customer Detailsss' : 'Supplier Details'}
               </Text>
             </View>
 

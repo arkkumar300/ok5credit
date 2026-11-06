@@ -214,7 +214,7 @@ export default function SubscriptionMembersScreen() {
       // Razorpay options
       const options = {
         description: `Add ${additionalUserCount} more user${additionalUserCount > 1 ? 's' : ''} to subscription`,
-        image: "../assets/images/icon.png",
+        image: "../assets/images/aqualogo.png",
         currency: "INR",
         key: YOUR_RAZORPAY_KEY_ID,
         amount: totalPrice * 100, // Amount in paise
