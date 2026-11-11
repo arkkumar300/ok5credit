@@ -32,6 +32,8 @@ yarn-error.*
 # local env files
 .env*.local
 .env
+android/app/my-upload-key.jks
+android/gradle.properties
 
 # typescript
 *.tsbuildinfo
